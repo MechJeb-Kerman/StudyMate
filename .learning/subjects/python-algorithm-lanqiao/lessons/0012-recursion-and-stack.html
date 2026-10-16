@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>递归：函数调用自己 · Python 算法与蓝桥杯</title>
+
+<!-- 共享层在 .learning/assets/，课件在 .learning/subjects/<slug>/lessons/ 下，所以是 ../../../assets/ -->
+<link rel="stylesheet" href="../../../assets/sayo/sayo.css">
+<link rel="stylesheet" href="../../../assets/learn-theme.css">
+<link rel="stylesheet" href="../assets/style.css">
+
+<!-- 主题要在首帧前应用，避免闪白/闪黑 -->
+<script src="../../../assets/learn-theme.js"></script>
+<script>LearnTheme.apply();</script>
+</head>
+
+<body class="lesson-body">
+
+<nav class="lesson-bar">
+  <a href="../index.html">← 返回课程</a>
+  <span>Python 算法与蓝桥杯</span>
+  <span class="lesson-bar__no">0012</span>
+  <!-- 课件页自带主题开关：学生从文件管理器直接打开课件时也能切暗色 -->
+  <label class="syo-toggle syo-toggle--theme lesson-bar__toggle" title="切换深浅主题" aria-label="切换深浅主题">
+    <input type="checkbox" id="lesson-theme-checkbox" checked>
+    <span class="syo-toggle-track"></span>
+    <span class="syo-toggle-knob">
+      <svg class="syo-toggle-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.5" stroke="#f57c00" stroke-width="1.5"/><path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.34 4.34l1.77 1.77M13.89 13.89l1.77 1.77M4.34 15.66l1.77-1.77M13.89 6.11l1.77-1.77" stroke="#f57c00" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <svg class="syo-toggle-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.5 12.5A6 6 0 019 4.5a6 6 0 007.5 8z" stroke="#5c6bc0" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </span>
+  </label>
+</nav>
+
+<article class="lesson">
+
+  <header class="lesson-header">
+    <span class="lesson-header__eyebrow">0012 · 递归：函数调用自己</span>
+    <h1>递归：函数调用自己</h1>
+    <p class="lesson-goal"><b>本节目标：</b>能写出带正确基例与递归关系的递归函数，并说清每层调用在调用栈里留下了什么。</p>
+  </header>
+
+  <!-- ── 正文：渲染器按内容文件（lessons/<序号>-<节点id>.md）产出，块词汇见 docs/规范/课件内容格式.md ── -->
+
+  <h2>六行解完汉诺塔</h2>
+
+  <p>汉诺塔的题面是这样：三根柱子 A、B、C，A 柱上从下到上按大小顺序摞着 <span class="math-inline">n</span> 个盘子，大的在下。每次只允许移动一个盘子，且任何时刻大盘都不能压在小盘上面。要求把 <span class="math-inline">n</span> 个盘子整体搬到 C 柱。</p>
+
+  <p><span class="math-inline">n = 64</span> 时，移动步数是 <span class="math-inline">2^{64} - 1</span>，约 <span class="math-inline">1.8 \times 10^{19}</span> 步。把每一步都显式列出来，在数量上就不可能。</p>
+
+  <p>下面这段代码只有六行，它给出了完整的移动顺序：</p>
+
+  <pre data-lang="python"><code>def hanoi(n, a, c, b):
+    if n == 0:
+        return
+    hanoi(n - 1, a, b, c)
+    print(f'盘{n}：{a} -&gt; {c}')
+    hanoi(n - 1, b, c, a)</code></pre>
+
+  <p>取 <span class="math-inline">n = 3</span>，把这段代码跑一遍，输出是：</p>
+
+  <pre data-lang="text"><code>盘1：A -&gt; C
+盘2：A -&gt; B
+盘1：C -&gt; B
+盘3：A -&gt; C
+盘1：B -&gt; A
+盘2：B -&gt; C
+盘1：A -&gt; C</code></pre>
+
+  <p>七步，与 <span class="math-inline">2^3 - 1 = 7</span> 相符。函数体里没有循环，没有列表，也没有别处保存中间状态；它只是调用了自己两次。</p>
+
+  <p>一个函数调用自己，居然能把每一步都做完——这一课要把这件事讲清楚，讲清它的代价，以及它在什么地方会崩。</p>
+
+  <div class="lesson-note">
+    <b>这一课的位置</b>
+    <p>上一课讲了栈只在同一端进出。这一课回答的问题是：一个函数调用自己的时候，这种「后进先出」发生在机器的哪一处。树、分治、动态规划的代码骨架全部写成递归，这一课的机制没弄明白，后面每一课都会在同一个位置卡住。</p>
+  </div>
+
+  <h2>递归的三个要素</h2>
+
+  <p>「递归」的英文是 recursion，源自拉丁语 recurrere：<code>re-</code> 表示「回」，<code>currere</code> 表示「跑」，字面意思是「往回跑」。</p>
+
+  <p>设一个函数的定义里出现了对自身的调用，则称这个函数是<b>递归函数</b>，这种定义方式称为<b>递归定义</b>。</p>
+
+  <p>一个能停下来的递归由三件事构成：</p>
+
+  <table>
+    <thead>
+      <tr><th>要素</th><th>含义</th><th>汉诺塔里的对应</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>基例</td><td>不再调用自身的那些输入</td><td><code>n == 0</code> 时直接 <code>return</code></td></tr>
+      <tr><td>递归关系</td><td>把规模为 <span class="math-inline">n</span> 的问题归结为规模更小的问题</td><td>把 <span class="math-inline">n</span> 个盘子拆成「<span class="math-inline">n-1</span> 个搬到中转柱、搬第 <span class="math-inline">n</span> 个、<span class="math-inline">n-1</span> 个搬去目标柱」</td></tr>
+      <tr><td>向基例收敛</td><td>每一步递归都让输入严格变小</td><td>每次调用里 <span class="math-inline">n</span> 减一，有限步后必然到 <span class="math-inline">0</span></td></tr>
+    </tbody>
+  </table>
+
+  <p>基例是三者里唯一不能省的一项。它允许有两条或更多（例如 <span class="math-inline">n = 0</span> 与 <span class="math-inline">n = 1</span> 各一条），前提是覆盖所有会终止的分支。</p>
+
+  <p>汉诺塔的递归关系值得单独看一眼。要把 <span class="math-inline">n</span> 个盘子从 A 搬到 C：先把上面 <span class="math-inline">n-1</span> 个搬到 B，再把第 <span class="math-inline">n</span> 个（此时它上面已经空了）搬到 C，最后把 <span class="math-inline">n-1</span> 个从 B 搬到 C。这三步里，前一步与后一步都是同一个问题的更小规模，中间那一步是一次直接移动。</p>
+
+  <p>按这个关系数一下步数：设 <span class="math-inline">T(n)</span> 为搬 <span class="math-inline">n</span> 个盘子的步数，则 <span class="math-inline">T(n) = T(n-1) + 1 + T(n-1) = 2T(n-1) + 1</span>，且 <span class="math-inline">T(0) = 0</span>。依次代入得 <span class="math-inline">T(n) = 2^n - 1</span>。<span class="math-inline">n = 64</span> 时就是前面那个 <span class="math-inline">1.8 \times 10^{19}</span>。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "汉诺塔的递归函数里 if n == 0: return 这一条起什么作用？",
+    "opts": [
+      "让 n 减到 0 时停下来，不再调用自己",
+      "保证每次搬动的都是当前最小的那个盘子",
+      "让函数在 n 为奇数时改走另一条分支",
+      "把调用栈里的栈帧数量控制在两张以内"
+    ],
+    "ans": 0,
+    "why": "基例是不再调用自身的那些输入。没有它，n 会一路减成负数，调用永不停下。其余三项都不是这一行的作用：搬哪个盘子由递归关系决定，奇偶分支这段代码里没有，栈帧数量取决于深度。"
+  }
+]'></div>
+
+  <h2>调用栈里留下了什么</h2>
+
+  <p>上一课讲过，栈是只在一端进出的结构，最后压进去的最先被取出。函数调用正是用栈实现的：每发生一次调用，解释器就把一张<b>栈帧</b>（stack frame）压到调用栈的栈顶。栈帧里存着这次调用的形参与局部变量，以及一项容易被忽略的内容——<b>这一层返回之后，控制权交回上一层的哪一行</b>。</p>
+
+  <p>函数返回时，栈顶那张帧被弹出，控制权交回帧里记下的那一行。</p>
+
+  <p>由此得到两条结论：</p>
+
+  <ul>
+    <li>栈里同时存在的帧数，就是当前的<b>递归深度</b>。</li>
+    <li>最后压入的那层最先返回。这与上一课「后进先出」是同一条规则。</li>
+  </ul>
+
+  <p>汉诺塔的两层调用，栈的变化过程如下：</p>
+
+  <figure class="lesson-figure lesson-figure--inline" role="img" aria-label="调用栈里三层栈帧自下而上堆叠">
+<svg viewBox="0 0 460 250" role="img">
+  <g fill="none" stroke="currentColor" stroke-width="1.2">
+    <rect x="118" y="16" width="240" height="42" rx="6"/>
+    <rect x="118" y="66" width="240" height="42" rx="6"/>
+    <rect x="118" y="116" width="240" height="42" rx="6"/>
+    <rect x="118" y="176" width="240" height="42" rx="6" stroke-dasharray="5 4"/>
+    <path d="M84 214 L84 42" stroke-width="1.4"/>
+    <path d="M77 54 L84 40 L91 54" stroke-width="1.4"/>
+  </g>
+  <g fill="currentColor" font-size="13">
+    <text x="132" y="42">hanoi(0, A -&#62; C)　栈顶，马上就返回</text>
+    <text x="132" y="92">hanoi(1, A -&#62; B)　存着「返回到哪一行」</text>
+    <text x="132" y="142">hanoi(2, A -&#62; C)　栈底</text>
+    <text x="132" y="202" opacity="0.6">空位，下一次调用压在这张上面</text>
+    <text x="30" y="120" opacity="0.75">压栈</text>
+    <text x="30" y="138" opacity="0.75">方向</text>
+  </g>
+</svg>
+    <figcaption>图 1 · 进入 hanoi(0) 那一刻的调用栈</figcaption>
+  </figure>
+
+  <p>栈帧里的「返回到哪一行」是理解递归返回路径的关键。同一段代码被调用多次，每次进入时执行到哪、返回后接着执行哪，靠的是每张帧各自记一份，而不是靠某处的一个全局标记。</p>
+
+  <p>这条性质也解释了递归的一个代价：<b>每进入一层就多一张帧，帧里的局部变量各存一份</b>。递归深度越大，占用的内存越多。</p>
+
+  <h2>亲手推一遍两层</h2>
+
+  <p>把上面的代码加一层缩进打印，栈的进出就变成可见的输出：</p>
+
+  <pre data-lang="python"><code>def hanoi_trace(n, a, c, b, depth=0):
+    pad = '    ' * depth
+    print(f'{pad}进入 hanoi({n}, {a} -&gt; {c})')
+    if n == 0:
+        print(f'{pad}返回：n 为 0，什么都不做')
+        return
+    hanoi_trace(n - 1, a, b, c, depth + 1)
+    print(f'{pad}移动 盘{n}：{a} -&gt; {c}')
+    hanoi_trace(n - 1, b, c, a, depth + 1)
+    print(f'{pad}返回 hanoi({n}, {a} -&gt; {c})')
+
+hanoi_trace(2, 'A', 'C', 'B')</code></pre>
+
+  <pre data-lang="text"><code>进入 hanoi(2, A -&gt; C)
+    进入 hanoi(1, A -&gt; B)
+        进入 hanoi(0, A -&gt; C)
+        返回：n 为 0，什么都不做
+    移动 盘1：A -&gt; B
+        进入 hanoi(0, C -&gt; B)
+        返回：n 为 0，什么都不做
+    返回 hanoi(1, A -&gt; B)
+移动 盘2：A -&gt; C
+    进入 hanoi(1, B -&gt; C)
+        进入 hanoi(0, B -&gt; A)
+        返回：n 为 0，什么都不做
+    移动 盘1：B -&gt; C
+        进入 hanoi(0, A -&gt; C)
+        返回：n 为 0，什么都不做
+    返回 hanoi(1, B -&gt; C)
+返回 hanoi(2, A -&gt; C)</code></pre>
+
+  <p>缩进的格数就是递归深度。挑几行对一下栈里的内容：</p>
+
+  <table>
+    <thead>
+      <tr><th>输出行</th><th>深度</th><th>栈里自底向顶</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>进入 hanoi(2, A -&gt; C)</td><td>0</td><td>hanoi(2)</td></tr>
+      <tr><td>进入 hanoi(1, A -&gt; B)</td><td>1</td><td>hanoi(2) · hanoi(1)</td></tr>
+      <tr><td>进入 hanoi(0, A -&gt; C)</td><td>2</td><td>hanoi(2) · hanoi(1) · hanoi(0)</td></tr>
+      <tr><td>返回：n 为 0，什么都不做</td><td>2</td><td>hanoi(2) · hanoi(1)</td></tr>
+      <tr><td>移动 盘1：A -&gt; B</td><td>1</td><td>hanoi(2) · hanoi(1)</td></tr>
+      <tr><td>返回 hanoi(1, A -&gt; B)</td><td>0</td><td>hanoi(2)</td></tr>
+    </tbody>
+  </table>
+
+  <p>这里能看到基例的实际作用：<code>hanoi(0, ...)</code> 什么也不做就返回，它的存在是为了让「<span class="math-inline">n-1</span> 个盘子」这件事在 <span class="math-inline">n = 1</span> 时有个终止处。每一次「进入」后面都必然跟着一次同层的「返回」，两者配对出现，数量相等。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "在 hanoi_trace(2, &#39;A&#39;, &#39;C&#39;, &#39;B&#39;) 的输出里，读到「移动 盘2：A -&gt; C」这一行时，调用栈里自底向顶是哪几张帧？",
+    "opts": [
+      "只有 hanoi(2) 这一张帧，它就是栈底",
+      "hanoi(2) 与 hanoi(1) 都还在",
+      "三张帧都还压在栈里，此刻深度正好到最大值",
+      "一张帧也没有，这一行由主程序直接打印出来的"
+    ],
+    "ans": 0,
+    "why": "这一行在「返回 hanoi(1, A -&gt; B)」之后才出现，hanoi(1) 那张帧已经弹出，栈里只剩栈底的 hanoi(2)。它下面的两次调用属于 hanoi(2)，要等这一行打印完才发生。"
+  }
+]'></div>
+
+  <div class="lesson-practice">
+    <div class="lesson-practice__head">
+      <span class="lesson-practice__level">练习</span>
+      <span class="lesson-practice__title">亲手推一遍三层</span>
+    </div>
+
+      <p>这一节的动作都在本机 Python 里做，写一个 <code>hanoi.py</code> 就够。</p>
+
+      <p><b>第一步 · 先手推再看答案。</b> 拿三张纸片标上 1、2、3 当盘子，在纸上挪一遍 <span class="math-inline">n = 3</span> 的七步，把移动顺序写下来（形如 <code>盘1：A -&gt; B</code>）。写完再跑一遍本文开头那六行代码，对答案。</p>
+
+      <p><b>第二步 · 数一数栈有多深。</b> 把 <code>hanoi_trace(2, 'A', 'C', 'B')</code> 改成 <code>hanoi_trace(3, 'A', 'C', 'B')</code>，在输出里找出深度为 3 的那几行，写下那一刻栈里自底向顶是哪些调用。</p>
+
+      <p><b>第三步 · 挪一行看变化。</b> 把 <code>print(f'{pad}移动 盘{n}：{a} -&gt; {c}')</code> 这一行挪到两次递归调用<b>之前</b>，再跑 <code>hanoi(2, 'A', 'C', 'B')</code>。写出新的三步，然后判断它还是不是一个合法解（提示：第一步想搬的是哪个盘子，它当时在不在源柱上）。</p>
+  </div>
+
+  <h2>三个函数与循环版</h2>
+
+  <p>递归不只在移动盘子上用。下面两个函数是同一件事的两种写法：</p>
+
+  <pre data-lang="python"><code>def fact_rec(n):
+    if n &lt;= 1:
+        return 1
+    return n * fact_rec(n - 1)
+
+def fact_loop(n):
+    r = 1
+    for i in range(2, n + 1):
+        r *= i
+    return r
+
+print(fact_rec(10), fact_loop(10))</code></pre>
+
+  <pre data-lang="text"><code>3628800 3628800</code></pre>
+
+  <p>求和也一样，再加上第三种写法：</p>
+
+  <pre data-lang="python"><code>def sum_rec(xs):
+    if not xs:
+        return 0
+    return xs[0] + sum_rec(xs[1:])
+
+def sum_loop(xs):
+    s = 0
+    for x in xs:
+        s += x
+    return s
+
+def sum_stack(xs):
+    st = [(0, 0)]
+    total = 0
+    while st:
+        i, acc = st.pop()
+        if i == len(xs):
+            total = acc
+            continue
+        st.append((i + 1, acc + xs[i]))
+    return total
+
+a = [3, 1, 4, 1, 5, 9, 2, 6]
+print(sum_rec(a), sum_loop(a), sum_stack(a))</code></pre>
+
+  <pre data-lang="text"><code>31 31 31</code></pre>
+
+  <p>三个结果一致。三种写法里只有第一种是递归，第三种把「还没处理到哪」与「已经累加到多少」显式地压进了自己维护的栈——它做的是解释器在递归版里替你做的事。</p>
+
+  <p>两种写法在代价上并不对等，这一点值得说清：</p>
+
+  <table>
+    <thead>
+      <tr><th>写法</th><th>时间</th><th>额外空间</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>sum_loop</code></td><td><span class="math-inline">O(n)</span></td><td><span class="math-inline">O(1)</span></td><td>只用一个累加变量</td></tr>
+      <tr><td><code>sum_stack</code></td><td><span class="math-inline">O(n)</span></td><td><span class="math-inline">O(n)</span></td><td>栈里最多存 <span class="math-inline">n</span> 项</td></tr>
+      <tr><td><code>sum_rec</code></td><td><span class="math-inline">O(n)</span></td><td><span class="math-inline">O(n^2)</span></td><td>每层都写 <code>xs[1:]</code>，第 3 课讲过切片会复制一份新列表</td></tr>
+    </tbody>
+  </table>
+
+  <p>第三行是这一节最该记住的一条：递归版看起来最短，代价却最高。<code>xs[1:]</code> 每进入一层就复制一次剩余全部元素，<span class="math-inline">n</span> 层加起来是 <span class="math-inline">O(n^2)</span> 次复制。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "关于递归与循环的关系，下面哪一条说法是对的？",
+    "opts": [
+      "任何递归都能改写成循环加一个显式栈",
+      "递归只能用递归实现，循环改不出来",
+      "循环能做的事递归都做不到，反之亦然",
+      "两者既然等价，递归就永远比循环更快"
+    ],
+    "ans": 0,
+    "why": "递归函数里的参数、调用自己、返回，分别对应栈里的一项、压入一项、弹出并处理。改写后深度不再受解释器上限约束，代价是代码更长。等价与快慢是两件事：递归版每层都有调用开销，往往更慢。"
+  }
+]'></div>
+
+  <h2>缺了基例会怎样</h2>
+
+  <p>把基例删掉，函数里只剩递归关系：</p>
+
+  <pre data-lang="python"><code>def broken(n):
+    return n + broken(n - 1)
+
+print(broken(5))</code></pre>
+
+  <p>跑它的现场是这样（中间重复的行省略）：</p>
+
+  <pre data-lang="text"><code>  File "broken.py", line 2, in broken
+    return n + broken(n - 1)
+               ~~~~~~^^^^^^^
+  [Previous line repeated 996 more times]
+RecursionError: maximum recursion depth exceeded</code></pre>
+
+  <p>报错的名字说明了原因：<code>broken(5)</code> 调用 <code>broken(4)</code>，再调用 <code>broken(3)</code>，<code>n</code> 一路减下去却永远不会停，因为没有任何一条输入能让它不调用自己。栈里堆到解释器允许的上限，解释器就把它掐断。</p>
+
+  <p><code>[Previous line repeated 996 more times]</code> 这一行给出的是层数。加上最外几层，总数正好是解释器允许的上限。</p>
+
+  <div class="lesson-warn">
+    <b>基例覆盖不全，与没有基例同一种后果</b>
+    <p>只有一条 <code>if n == 1</code> 的基例、却用 <code>n = 0</code> 去调用时，<code>n</code> 会继续减到负数，同样一路调用下去。写基例时要想的是「所有会终止的输入」，不只是最常用的那一个。递归关系不向基例收敛（例如 <code>broken(n - 1)</code> 写成 <code>broken(n)</code>）也是同一种崩法。</p>
+  </div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "一个递归函数只写了 if n == 1: return 1 作基例，用 n = 0 去调用会发生什么？",
+    "opts": [
+      "n 一路减成负数，调用不停直到爆栈",
+      "n 等于 0 时函数直接返回 0，结果正确",
+      "解释器把负数的 n 自动当成基例处理",
+      "函数在第二次调用时就抛出 KeyError"
+    ],
+    "ans": 0,
+    "why": "基例只覆盖了 n 为 1 这一种输入，n 为 0 时判断不成立，函数继续用 n - 1 调用自己，从此再也碰不到基例。写基例要想的是所有会终止的输入，不只是最常用的那一个。"
+  }
+]'></div>
+
+  <h2>递归深度有上限</h2>
+
+  <p>这个上限是可以查的：</p>
+
+  <pre data-lang="python"><code>import sys
+print(sys.getrecursionlimit())</code></pre>
+
+  <pre data-lang="text"><code>1000</code></pre>
+
+  <p>本机（Python 3.14.7，free-threading 构建）实测：默认上限 1000，实际能进入的最深层数是 998（本机实测、非通用值，换机器换版本都会变）。它与上面报错里的 <code>996</code> 是同一件事的不同侧面。</p>
+
+  <p>上限用 <code>sys.setrecursionlimit()</code> 可以调高。调高之前要看两件事：</p>
+
+  <ul>
+    <li><b>栈帧要占内存。</b> 深度 <span class="math-inline">10^5</span> 的递归，即使上限允许，帧本身占的空间也相当可观。</li>
+    <li><b>上限受解释器栈空间限制。</b> 调到远超实际可用的值，程序可能在抛 <code>RecursionError</code> 之前就异常退出，那种崩溃不会给你一行可读的报错。</li>
+  </ul>
+
+  <div class="lesson-warn">
+    <b>调高上限不是解决办法</b>
+    <p>递归深度随 <span class="math-inline">n</span> 线性增长、而 <span class="math-inline">n</span> 达到 <span class="math-inline">10^4</span> 以上时，正确的做法是把它改写成循环加显式栈（像 <code>sum_stack</code> 那样），或者改写成深度只有 <span class="math-inline">O(\log n)</span> 的形状（分治就是这样，后面会讲）。把上限调到一万只是把撞墙的位置往后挪，规模再大一次照样撞。</p>
+  </div>
+
+  <h2>指数级的递归陷阱</h2>
+
+  <p>有些递归不只是慢，它会随规模指数级地变慢。斐波那契数列的朴素递归就是一个典型：</p>
+
+  <pre data-lang="python"><code>calls = 0
+
+def fib_rec(n):
+    global calls
+    calls += 1
+    if n &lt; 2:
+        return n
+    return fib_rec(n - 1) + fib_rec(n - 2)
+
+def fib_loop(n):
+    x, y = 0, 1
+    for _ in range(n):
+        x, y = y, x + y
+    return x</code></pre>
+
+  <p>两个函数都正确，代价差得极远。把调用次数和耗时数出来（计时用第 2 课的 <code>time.perf_counter()</code> 前后相减）：</p>
+
+  <pre data-lang="python"><code>import time
+
+for n in (20, 25, 30):
+    calls = 0
+    t0 = time.perf_counter()
+    v = fib_rec(n)
+    t1 = time.perf_counter()
+    print(n, v, calls, f'{t1 - t0:.6f} 秒')</code></pre>
+
+  <p>本机跑出来的三行是：</p>
+
+  <table>
+    <thead>
+      <tr><th><span class="math-inline">n</span></th><th>递归版调用次数</th><th>递归版耗时</th><th>循环版耗时</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>20</td><td>21 891</td><td>0.001483 秒</td><td>—</td></tr>
+      <tr><td>25</td><td>242 785</td><td>0.016244 秒</td><td>—</td></tr>
+      <tr><td>30</td><td>2 692 537</td><td>0.175716 秒</td><td>0.0000074 秒</td></tr>
+    </tbody>
+  </table>
+
+  <p><span class="math-inline">n</span> 每增加 5，调用次数约乘 11。把 <span class="math-inline">n</span> 从 20 加到 30，规模只增加一半，调用次数却从两万涨到两百七十万——这是指数级增长的形状。<span class="math-inline">n = 30</span> 时循环版是 0.0000074 秒，递归版是 0.175716 秒，相差约 23 700 倍（本机实测、非通用值）。</p>
+
+  <p>按这个倍率往下估：<span class="math-inline">n = 45</span> 时递归版约需 <span class="math-inline">0.175716 \times 11^3 \approx 234</span> 秒，<span class="math-inline">n = 50</span> 时约 43 分钟。这道题在 <span class="math-inline">n = 45</span> 上就已经越过了常见的一秒时限。</p>
+
+  <p>为什么会重复这么多次？画出来就清楚了：</p>
+
+  <figure class="lesson-figure lesson-figure--inline" role="img" aria-label="斐波那契朴素递归的调用树，同一个子问题被反复重算">
+<svg viewBox="0 0 480 250" role="img">
+  <g fill="none" stroke="currentColor" stroke-width="1">
+    <path d="M240 42 L150 102"/>
+    <path d="M240 42 L330 102"/>
+    <path d="M150 102 L104 162"/>
+    <path d="M150 102 L198 162"/>
+    <path d="M330 102 L284 162"/>
+    <path d="M330 102 L378 162"/>
+    <path d="M104 162 L74 222"/>
+    <path d="M104 162 L150 222"/>
+  </g>
+  <g fill="none" stroke="currentColor" stroke-width="1.2">
+    <circle cx="240" cy="42" r="22"/>
+    <circle cx="150" cy="102" r="22"/>
+    <circle cx="330" cy="102" r="22" stroke-dasharray="4 3"/>
+    <circle cx="104" cy="162" r="22" stroke-dasharray="4 3"/>
+    <circle cx="198" cy="162" r="22" stroke-dasharray="4 3"/>
+    <circle cx="284" cy="162" r="22" stroke-dasharray="4 3"/>
+    <circle cx="378" cy="162" r="22"/>
+    <circle cx="74" cy="222" r="22" stroke-dasharray="4 3"/>
+    <circle cx="150" cy="222" r="22"/>
+  </g>
+  <g fill="currentColor" font-size="11" text-anchor="middle">
+    <text x="240" y="46">fib(4)</text>
+    <text x="150" y="106">fib(3)</text>
+    <text x="330" y="106">fib(2)</text>
+    <text x="104" y="166">fib(2)</text>
+    <text x="198" y="166">fib(1)</text>
+    <text x="284" y="166">fib(1)</text>
+    <text x="378" y="166">fib(0)</text>
+    <text x="74" y="226">fib(1)</text>
+    <text x="150" y="226">fib(0)</text>
+  </g>
+</svg>
+    <figcaption>图 2 · fib(4) 的调用树里，fib(2) 出现了三次</figcaption>
+  </figure>
+
+  <p>虚线画的那几个节点是同一个子问题：<code>fib(2)</code> 在这里被算了三次，<code>fib(1)</code> 被算了三次。每往上一层，重复的次数翻一倍，调用总数就这样涨成指数级。</p>
+
+  <p>这道题的正确做法是把它改成循环（上表最后一列），或者把算过的结果记下来（动态规划那一课讲这件事）。这里的重点是判断方法：<b>看到「一个函数调用自己两次或更多次、且两次的输入只差常数」时，先把调用次数估出来</b>——<span class="math-inline">n</span> 取一个能跑的小值数一数，看它随 <span class="math-inline">n</span> 增长的速度是不是指数级。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "朴素递归版斐波那契在 n = 30 时调用约 270 万次，按同一倍率估 n = 45 会怎样？",
+    "opts": [
+      "调用次数按指数级涨，大约需要两百多秒",
+      "调用次数按平方级涨，大约需要一秒以内",
+      "调用次数按线性级涨，大约只有四万次上下",
+      "与 n = 30 相同，因为函数体没有变"
+    ],
+    "ans": 0,
+    "why": "n 每加 5 调用次数约乘 11，从 30 到 45 是三个这样的台阶，倍率约 11 的三次方。实测 0.175716 秒乘上这个倍率约 234 秒，早已越过常见的一秒时限。"
+  }
+]'></div>
+
+  <h2>递归改成循环与栈</h2>
+
+  <p>任何递归都能改写成循环加显式栈，<code>sum_stack</code> 就是一个例子。改写的一般形状是：</p>
+
+  <ul>
+    <li>递归函数里的<b>参数</b>变成栈里的一项；</li>
+    <li>「调用自己」变成<b>压入一项</b>；</li>
+    <li>「返回」变成<b>弹出并处理</b>，把这一层的结果并进上一层。</li>
+  </ul>
+
+  <p>这样写出来的版本深度不再受解释器上限约束，代价是代码更长、可读性更低。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "把递归求和改写成循环加显式栈，栈里的每一项要存什么？",
+    "opts": [
+      "存「处理到第几个」和「已经累加多少」",
+      "只存数组里还没有被处理过的那些元素",
+      "只存最后算出来的那一个累加结果",
+      "存递归函数的形参名和它的默认取值"
+    ],
+    "ans": 0,
+    "why": "递归版里「执行到哪」与「累加到多少」原本由栈帧替你保存，改写后要自己存。两项合成一个元组压进栈，弹出时按它决定是继续压入下一项还是收下结果。"
+  }
+]'></div>
+
+  <h2>这一课用到的判断</h2>
+
+  <ul>
+    <li><b>写递归先写基例。</b> 基例要覆盖所有会终止的输入，不只是最常用的那一个。</li>
+    <li><b>递归关系必须向基例收敛</b>，每一步都让输入严格变小。</li>
+    <li><b>每层调用在栈里留下一张帧</b>，帧里存形参与局部变量、以及返回到哪一行；栈里同时存在的帧数就是深度。</li>
+    <li><b>深度是有上限的</b>。本机默认 1000、实测最深 998；深度随 <span class="math-inline">n</span> 线性增长时要考虑改写。</li>
+    <li><b>调用有一笔固定开销</b>。第 4 课实测过：空循环 8.5 纳秒、调用一个空函数 22.9 纳秒，两者之差约 14 纳秒就是一次调用的净开销（本次复测 8.39 与 21.83 纳秒，差值 13.44 纳秒，与上一课一致）。递归把调用次数放大，这笔开销也一起放大。</li>
+    <li><b>一个函数调用自己两次以上时，先估调用次数。</b> 输入只差常数的那种写法很容易变成指数级。</li>
+  </ul>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "要递归处理一个长度 100000 的数组，而本机默认递归上限是 1000。该怎么做？",
+    "opts": [
+      "改成循环加显式栈，或者改成分治的形状",
+      "把递归上限调到十万以上，然后照原样递归",
+      "什么都不用改，Python 会自动切成循环",
+      "把数组切成十段，每段分别递归一次就好"
+    ],
+    "ans": 0,
+    "why": "深度随 n 线性增长时会远超上限。调高上限只是把撞墙的位置往后挪，栈帧占的内存还在，调得过高可能让程序在报错之前就异常退出。分治的形状之所以可行，是因为它的深度只有 O(log n)，十万个元素也只需十几层。切成十段后每段深度仍是五位数，同样越限。"
+  }
+]'></div>
+
+  <ul class="lesson-resources">
+    <li>《算法导论（第 3 版）》第 4 章 分治策略<span class="lesson-resources__meta">书 · 递归式的引入；当参考书查</span></li>
+    <li><a href="https://docs.python.org/3/library/sys.html#sys.setrecursionlimit">Python 官方文档 · sys.setrecursionlimit</a><span class="lesson-resources__meta">官方文档 · 递归深度上限与解释器栈空间</span></li>
+  </ul>
+
+  <div class="lesson-related">
+    <a href="0010-stack-and-queue.html">第 10 课：后进先出与先进先出</a>
+  </div>
+
+  <!-- ── 提问提示：固定写法，别删 ── -->
+
+  <div class="lesson-ask">
+    <b>没看懂？随时问</b>
+    把看不懂的段落（或报错）原样复制回会话，说一句哪里不懂就行，我只解释这一段，不打断你的进度。
+  </div>
+
+  <!-- ── 上/下节课指针由渲染器按 curriculum.yaml 的 nodes 顺序算（第一课无 --prev、最后一课无 --next） ── -->
+
+  <nav class="lesson-nav" aria-label="上一课 / 下一课">
+    <a class="lesson-nav__link lesson-nav__link--prev" href="0011-two-pointers-applications.html">
+      <span class="lesson-nav__dir">上节课</span>
+      <span class="lesson-nav__title">双指针：两个下标的配合</span>
+    </a>
+    <a class="lesson-nav__link lesson-nav__link--next" href="0013-sorting-and-divide-conquer.html">
+      <span class="lesson-nav__dir">下节课</span>
+      <span class="lesson-nav__title">排序：分而治之的样板</span>
+    </a>
+  </nav>
+
+  <footer class="lesson-footer">
+    StudyMate · 0012 递归：函数调用自己 · 本地学习工作区
+  </footer>
+
+</article>
+
+<script src="../../../assets/sayo/sayo.js"></script>
+<link rel="stylesheet" href="../../../assets/katex/katex.min.css">
+<script src="../../../assets/katex/katex.min.js" defer></script>
+<script src="../../../assets/lesson-math.js" defer></script>
+<script src="../assets/quiz.js" defer></script>
+<script src="../assets/lesson-toc.js" defer></script>
+<script>LearnTheme.wire(document.getElementById('lesson-theme-checkbox'));</script>
+</body>
+</html>

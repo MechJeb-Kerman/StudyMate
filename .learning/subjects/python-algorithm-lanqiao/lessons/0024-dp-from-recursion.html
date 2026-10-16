@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>动态规划：把重复计算记下来 · Python 算法与蓝桥杯</title>
+
+<!-- 共享层在 .learning/assets/，课件在 .learning/subjects/<slug>/lessons/ 下，所以是 ../../../assets/ -->
+<link rel="stylesheet" href="../../../assets/sayo/sayo.css">
+<link rel="stylesheet" href="../../../assets/learn-theme.css">
+<link rel="stylesheet" href="../assets/style.css">
+
+<!-- 主题要在首帧前应用，避免闪白/闪黑 -->
+<script src="../../../assets/learn-theme.js"></script>
+<script>LearnTheme.apply();</script>
+</head>
+
+<body class="lesson-body">
+
+<nav class="lesson-bar">
+  <a href="../index.html">← 返回课程</a>
+  <span>Python 算法与蓝桥杯</span>
+  <span class="lesson-bar__no">0024</span>
+  <!-- 课件页自带主题开关：学生从文件管理器直接打开课件时也能切暗色 -->
+  <label class="syo-toggle syo-toggle--theme lesson-bar__toggle" title="切换深浅主题" aria-label="切换深浅主题">
+    <input type="checkbox" id="lesson-theme-checkbox" checked>
+    <span class="syo-toggle-track"></span>
+    <span class="syo-toggle-knob">
+      <svg class="syo-toggle-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.5" stroke="#f57c00" stroke-width="1.5"/><path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.34 4.34l1.77 1.77M13.89 13.89l1.77 1.77M4.34 15.66l1.77-1.77M13.89 6.11l1.77-1.77" stroke="#f57c00" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <svg class="syo-toggle-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.5 12.5A6 6 0 019 4.5a6 6 0 007.5 8z" stroke="#5c6bc0" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </span>
+  </label>
+</nav>
+
+<article class="lesson">
+
+  <header class="lesson-header">
+    <span class="lesson-header__eyebrow">0024 · 动态规划：把重复计算记下来</span>
+    <h1>动态规划：把重复计算记下来</h1>
+    <p class="lesson-goal"><b>本节目标：</b>能把递归解改成记忆化与递推两版，并写清状态、转移方程与边界。</p>
+  </header>
+
+  <!-- ── 正文：渲染器按内容文件（lessons/<序号>-<节点id>.md）产出，块词汇见 docs/规范/课件内容格式.md ── -->
+
+  <h2>同一个值被算了多少次</h2>
+
+  <p>爬楼梯：一次能上 1 级或 2 级，走到第 <span class="math-inline">n</span> 级有多少种走法。</p>
+
+  <p>按第 12 课的老办法，直接写成递归：走到第 <span class="math-inline">n</span> 级的走法数，等于「先走 1 级再来 <span class="math-inline">n-1</span> 级」加上「先走 2 级再来 <span class="math-inline">n-2</span> 级」。写出来就是 <code>climb(n) = climb(n-1) + climb(n-2)</code>。</p>
+
+  <pre data-lang="python"><code>import sys
+import time
+
+sys.setrecursionlimit(100000)
+calls = [0]
+
+
+def climb_naive(n):
+    calls[0] += 1
+    if n &lt;= 1:
+        return 1
+    return climb_naive(n - 1) + climb_naive(n - 2)
+
+
+def climb_memo(n):
+    """记忆化：算过的记在字典里，下次直接取。"""
+    memo = {}
+
+    def f(k):
+        if k &lt;= 1:
+            return 1
+        if k not in memo:
+            memo[k] = f(k - 1) + f(k - 2)
+        return memo[k]
+
+    return f(n)
+
+
+def climb_iter(n):
+    """自底向上递推：从 0 和 1 一路推到 n。"""
+    if n &lt;= 1:
+        return 1
+    a, b = 1, 1
+    for _ in range(2, n + 1):
+        a, b = b, a + b
+    return b
+
+
+print('   n   朴素递归调用次数   三版答案')
+for n in (20, 25, 30, 34):
+    calls[0] = 0
+    r1 = climb_naive(n)
+    r2 = climb_memo(n)
+    r3 = climb_iter(n)
+    print(f'  {n:&gt;3}  {calls[0]:&gt;16,}   {r1} {"一致" if r1 == r2 == r3 else "不一致"}')</code></pre>
+
+  <pre data-lang="text"><code>   n   朴素递归调用次数   三版答案
+   20            21,891   10946 一致
+   25           242,785   121393 一致
+   30         2,692,537   1346269 一致
+   34        18,454,929   9227465 一致</code></pre>
+
+  <p>调用次数是确定的，每加一级就涨到 6.8 倍左右。耗时则每次跑都不一样，看个数：</p>
+
+  <table>
+    <thead>
+      <tr><th>n</th><th>朴素递归</th><th>记忆化</th><th>递推</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>20</td><td>0.0016 秒</td><td>0.000010 秒</td><td>0.000003 秒</td></tr>
+      <tr><td>25</td><td>0.017 秒</td><td>0.00002 秒</td><td>0.00001 秒</td></tr>
+      <tr><td>30</td><td>0.18 秒</td><td>0.00002 秒</td><td>0.000005 秒</td></tr>
+      <tr><td>34</td><td>1.2 ~ 1.4 秒</td><td>0.00002 秒</td><td>0.000005 秒</td></tr>
+    </tbody>
+  </table>
+
+  <p>（本机实测，跑两遍秒数会在上表这个范围内浮动，所以只当数量级看。递归版那三列里含了一次计数开销，比第 12 课量到的稍慢。）</p>
+
+  <p>三版答案完全一样。差别全在代价上：</p>
+
+  <ul>
+    <li>朴素递归算 <span class="math-inline">n=34</span> 要 <b>1845 万次调用、一秒多</b>。</li>
+    <li>记忆化 <b>0.00002 秒</b>上下。</li>
+    <li>递推 <b>0.000005 秒</b>上下。</li>
+  </ul>
+
+  <p>递推版循环了 32 次。<b>1845 万次调用做的事，和 32 次循环做的事完全一样。</b></p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "爬楼梯的朴素递归算 n=34 要 1845 万次调用。为什么？",
+    "opts": [
+      "同一个子问题被不同路径反复到达，算了又算",
+      "递归函数每次调用都要重新分配一块新的内存",
+      "Python 的函数调用比循环慢，次数一多就慢",
+      "递归深度受上限限制，超过之后要重新开始"
+    ],
+    "ans": 0,
+    "why": "递归树里大量结点是同一个子问题，只是走过的路径不同。实测 n=30 时 climb(0) 这个永远等于 1 的值被算了 514,229 次。把算过的记下来，这 51 万次就变成 1 次——这正是动态规划的起点。"
+  }
+]'></div>
+
+  <h2>重叠子问题</h2>
+
+  <p>调用次数为什么爆炸？因为同一个子问题被反复重算。</p>
+
+  <p>把次数数出来看：</p>
+
+  <pre data-lang="python"><code>counts = {}
+
+
+def climb_count(n):
+    counts[n] = counts.get(n, 0) + 1
+    if n &lt;= 1:
+        return 1
+    return climb_count(n - 1) + climb_count(n - 2)
+
+
+for n in (10, 15, 20, 25, 30):
+    counts.clear()
+    climb_count(n)
+    total = sum(counts.values())
+    print(f'  n={n:&gt;2}: 一共 {total:&gt;9,} 次调用，其中 climb(0) 被算了 {counts.get(0, 0):&gt;9,} 次')</code></pre>
+
+  <pre data-lang="text"><code>  n=10: 一共       177 次调用，其中 climb(0) 被算了        34 次
+  n=15: 一共     1,973 次调用，其中 climb(0) 被算了       377 次
+  n=20: 一共    21,891 次调用，其中 climb(0) 被算了     4,181 次
+  n=25: 一共   242,785 次调用，其中 climb(0) 被算了    46,368 次
+  n=30: 一共 2,692,537 次调用，其中 climb(0) 被算了   514,229 次</code></pre>
+
+  <p><code>climb(0)</code> 的值永远是 1，可它被算了 <b>51 万次</b>。这就是「重叠子问题」：递归树里大量的结点其实是同一个子问题，只是走了不同的路径到达。</p>
+
+  <p>动态规划的全部起点就是这一件事：<b>把算过的答案记下来。</b> 记下来之后，那个 51 万次变成 1 次。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "「重叠子问题」是什么意思？",
+    "opts": [
+      "递归树里大量结点其实是同一个子问题",
+      "两个不同的子问题算出来恰好是同一个值",
+      "子问题的规模重叠在一起，没法分清楚",
+      "同一个子问题要用两种不同的方法各算一次"
+    ],
+    "ans": 0,
+    "why": "把递归树画出来看得最清楚：从根往下走，很多不同的路径会落到同一个子问题上，于是它被重复求解。有重叠子问题才谈得上「记下来复用」；如果每个子问题只出现一次（比如归并排序的分治），记忆化就没东西可省。"
+  }
+]'></div>
+
+  <h2>记忆化搜索</h2>
+
+  <p>上一步的 <code>climb_memo</code> 就是记忆化：<b>写法还是递归，只是在函数开头先查表，算完把结果写进表。</b></p>
+
+  <pre data-lang="python"><code>memo = {}
+
+
+def f(k):
+    if k &lt;= 1:
+        return 1          # 边界：不用查表
+    if k not in memo:     # 没算过才算
+        memo[k] = f(k - 1) + f(k - 2)
+    return memo[k]        # 算过就直接取</code></pre>
+
+  <p>改动只有三行，代价从 1.37 秒掉到 0.000014 秒。<b>记忆化是最容易上手的动态规划形式</b>：先在朴素递归上把「状态是什么」想清楚，然后加一个字典，不改结构。</p>
+
+  <p>记忆化版本的字典里存了多少格？</p>
+
+  <ul>
+    <li><span class="math-inline">n=30</span>：29 项</li>
+    <li><span class="math-inline">n=100</span>：99 项</li>
+    <li><span class="math-inline">n=1000</span>：999 项</li>
+  </ul>
+
+  <p>也就是 <span class="math-inline">O(n)</span> 格。递归总共只会真正算出 <span class="math-inline">n</span> 个不同的子问题——剩下的 1800 万次调用全都被字典挡住了。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "记忆化是在朴素递归上改动哪几行？",
+    "opts": [
+      "函数开头先查一次表，算完把结果写进表",
+      "把递归改成循环，再给循环加上一个累加器",
+      "在函数外面加一个装饰器，自动缓存所有调用",
+      "把递归深度上限调大，让递归能跑得更深"
+    ],
+    "ans": 0,
+    "why": "改动就三行：函数开头 if k not in memo 先查表，没算过才算并把结果写进 memo，然后统一 return memo[k]。结构一点不改，仍然是递归。所以记忆化是最容易上手的动态规划形式——先想清状态是什么，再套一层字典。"
+  }
+]'></div>
+
+  <h2>自底向上递推</h2>
+
+  <p><code>climb_iter</code> 是另一条路：<b>不递归，从最小的问题开始，一格一格往外推。</b></p>
+
+  <pre data-lang="python"><code>def climb_iter2(n):
+    if n &lt;= 1:
+        return 1
+    a, b = 1, 1
+    for _ in range(2, n + 1):
+        a, b = b, a + b
+    return b</code></pre>
+
+  <p><code>a</code> 存第 <span class="math-inline">i-2</span> 级的走法数，<code>b</code> 存第 <span class="math-inline">i-1</span> 级的，每循环一次就把两者相加得到下一个。它比记忆化还快一点，而且<b>只用了两个变量</b>——记忆化要开一个字典存 <span class="math-inline">n</span> 项，递推只要存最近两项。</p>
+
+  <p>代价是递推版本更难写：你得自己决定<b>按什么顺序填表</b>，保证算某一格时它依赖的格子都已经算好了。记忆化不用操心这个，递归会自己按需要往下走。</p>
+
+  <table>
+    <thead>
+      <tr><th></th><th>记忆化搜索</th><th>自底向上递推</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>写法</td><td>几乎是原来的递归</td><td>循环填表</td></tr>
+      <tr><td>顺序</td><td>不用管，递归自己决定</td><td>自己排，依赖的格子必须先填</td></tr>
+      <tr><td>空间</td><td>要开表（可能很大）</td><td>常常能压到几项</td></tr>
+      <tr><td>会不会算用不到的状态</td><td>不会，只算真正用到的</td><td>会，整张表都要填</td></tr>
+      <tr><td>适合</td><td>状态多但用到的少；转移复杂</td><td>状态规整；要压空间</td></tr>
+    </tbody>
+  </table>
+
+  <p><b>先用记忆化把答案写对，再考虑改成递推。</b> 反过来容易在填表顺序上卡住。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "递推和记忆化各自的取舍是什么？",
+    "opts": [
+      "递推常能压空间，但要自己排填表顺序",
+      "递推一定更快，因为少了递归的函数调用",
+      "记忆化一定更省空间，因为它只算用到的",
+      "两者的时间和空间都一样，只是写法不同"
+    ],
+    "ans": 0,
+    "why": "爬楼梯的递推只用两个变量，记忆化要开一个 n 项的字典——递推能压空间。但递推得自己决定按什么顺序填表，保证算某一格时它依赖的格子都已算好；记忆化不用操心，递归自己按需要往下走。先用记忆化把答案写对，再考虑改递推。"
+  }
+]'></div>
+
+  <h2>状态转移与边界</h2>
+
+  <p>动态规划写之前要回答三个问题，这三件套缺一不可：</p>
+
+  <ol>
+    <li><b>状态</b>：<code>dp[...]</code> 里的下标代表什么？一句话说清，比如「<code>dp[i]</code> 是走到第 <span class="math-inline">i</span> 级的走法数」。</li>
+    <li><b>转移</b>：<code>dp[i]</code> 由哪些更小的状态算出来？比如 <code>dp[i] = dp[i-1] + dp[i-2]</code>。</li>
+    <li><b>边界与初始化</b>：最小的那几个状态值是多少？比如 <code>dp[0] = 1</code>、<code>dp[1] = 1</code>。</li>
+  </ol>
+
+  <p>三件事里<b>最容易糊弄过去的是第一件</b>。「<code>dp[i]</code> 表示前 <span class="math-inline">i</span> 个的最优值」这种话不算说清——「最优值」是最大值还是最小值？「前 <span class="math-inline">i</span> 个」包不包含第 <span class="math-inline">i</span> 个？说不清，转移方程就写不对。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "为什么状态定义必须一句话说清？",
+    "opts": [
+      "含糊的「前 i 个的最优值」写不出正确的转移",
+      "说不清状态就没法给 dp 数组分配足够的内存",
+      "题目要求解题者必须写出状态的定义再写代码",
+      "说不清状态的话，打印出来的状态表会很难看"
+    ],
+    "ans": 0,
+    "why": "「dp[i] 是前 i 个的最优值」这种话里，「最优」是最大还是最小？「前 i 个」包不包含第 i 个？含糊着往下写，转移方程一定会错。所以状态要说到这种程度：「dp[i][j] 是从塔尖走到第 i 行第 j 列的最大和」——边界、方向、含不含当前元素全在里面。"
+  }
+]'></div>
+
+  <h2>把状态表画出来</h2>
+
+  <p>看一道状态有两个下标的题：数字三角形，从塔尖走到塔底，每一步只能走到下一行的相邻位置，求路径上数字之和的最大值。</p>
+
+  <p>这次状态是 <code>dp[i][j]</code>：<b>从塔尖走到第 <span class="math-inline">i</span> 行第 <span class="math-inline">j</span> 列的最大和</b>。转移是「从左上或右上过来，取大的那个」。</p>
+
+  <pre data-lang="python"><code>tri = [
+    [7],
+    [3, 8],
+    [8, 1, 0],
+    [2, 7, 4, 4],
+    [4, 5, 2, 6, 5],
+]
+
+
+def tri_iter(rows):
+    dp = [row[:] for row in rows]
+    for i in range(1, len(rows)):
+        for j in range(len(rows[i])):
+            if j == 0:                                  # 最左边只有一条路
+                dp[i][j] += dp[i - 1][0]
+            elif j == len(rows[i]) - 1:                 # 最右边也只有一条
+                dp[i][j] += dp[i - 1][j - 1]
+            else:                                       # 中间从左上或右上取大的
+                dp[i][j] += max(dp[i - 1][j - 1], dp[i - 1][j])
+    return dp
+
+
+dp = tri_iter(tri)
+for row in dp:
+    print('   ' + '  '.join('%3d' % v for v in row))
+print('   答案（最底一行的最大者）:', max(dp[-1]))</code></pre>
+
+  <pre data-lang="text"><code>     7
+    10   15
+    18   16   15
+    20   25   20   19
+    24   30   27   26   24
+   答案（最底一行的最大者）: 30</code></pre>
+
+  <p><b>把这张表打印出来，是检查状态定义最快的方法。</b> 第二行那两个数 10 和 15：10 是 7+3，15 是 7+8，符合「从塔尖走下来的最大和」。第三行最左的 18 是 10+8——因为最左列只有一条路。这些数都对得上，说明状态和转移都写对了。</p>
+
+  <p>对不上就是状态想错了。<b>比赛时别硬盯代码，把表打出来看。</b></p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "把状态表打印出来，主要能帮你发现什么？",
+    "opts": [
+      "每一格的数对不对得上题目，能验出状态想错了",
+      "程序的运行时间花在了哪一步，方便做优化",
+      "数组有没有越界，把所有的下标都检查一遍",
+      "递归的深度有没有超过 Python 规定的上限"
+    ],
+    "ans": 0,
+    "why": "数字三角形那张表里，第二行的 10 和 15 分别是 7+3 和 7+8，第三行最左的 18 是 10+8（最左列只有一条路）——每一格的含义都能跟题目对上，就说明状态和转移都写对了。对不上就是状态想错了。盯代码看不出来，打表一眼就看出来。"
+  }
+]'></div>
+
+  <h2>键漏了参数会怎样</h2>
+
+  <p>记忆化的键必须<b>包含状态的全部维度</b>。少写一个，两种不同的状态就会撞成同一格，互相覆盖。</p>
+
+  <p>把数字三角形的记忆化键从 <code>(i, j)</code> 改成只写 <code>i</code>，试 200 组随机三角形：</p>
+
+  <pre data-lang="python"><code>import random
+
+
+def tri_memo(rows, memo, key_of):
+    """key_of 决定 memo 的键怎么算——这一版让它可换，好用来看漏参数的后果。"""
+    n = len(rows)
+    memo.clear()
+
+    def f(i, j):
+        if i == n - 1:
+            return rows[i][j]
+        key = key_of(i, j)
+        if key not in memo:
+            memo[key] = rows[i][j] + max(f(i + 1, j), f(i + 1, j + 1))
+        return memo[key]
+
+    return f(0, 0)
+
+
+random.seed(13)
+bad_cases = 0
+for _ in range(200):
+    n = random.randint(2, 7)
+    rows = [[random.randint(-9, 9) for _ in range(i + 1)] for i in range(n)]
+    right = tri_memo(rows, {}, lambda i, j: (i, j))
+    wrong = tri_memo(rows, {}, lambda i, j: i)
+    if right != wrong:
+        bad_cases += 1
+print(f'   200 组随机三角形：键写成 (行, 列) 与只写成 行，结果不同的有 {bad_cases} 组')</code></pre>
+
+  <pre data-lang="text"><code>   200 组随机三角形：键写成 (行, 列) 与只写成 行，结果不同的有 130 组</code></pre>
+
+  <p><b>200 组里错 130 组。</b> 而且错的方式很隐蔽：只写 <code>i</code> 的话，<code>(3, 0)</code> 和 <code>(3, 2)</code> 会被当成同一格，谁先算出来谁就占了这一格，另一个直接读到别人的答案。</p>
+
+  <p>这个错误<b>不会报错、不会死循环</b>，只会安静地给出偏小的答案。所以凡是记忆化，写完一定要问一遍：<b>memo 的键里，状态有几个维度就有几个分量吗？</b></p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "记忆化的键漏写了状态的一个维度，会怎样？",
+    "opts": [
+      "不同状态撞成同一格，安静地给出偏小答案",
+      "程序会报错，说字典的键缺少必要的分量",
+      "程序会反复重算，退化成没有记忆化的样子",
+      "字典会无限变大，最后把内存撑爆而崩溃"
+    ],
+    "ans": 0,
+    "why": "数字三角形的键从 (i, j) 改成只写 i，200 组随机数据里错 130 组。只写 i 的话 (3, 0) 和 (3, 2) 被当成同一格，谁先算出来谁就占了这格，另一个直接读到别人的答案。不报错、不死循环，只给偏小的答案。写完一定要问：状态有几个维度，键里就有几个分量吗？"
+  }
+]'></div>
+
+  <h2>初始化错一位</h2>
+
+  <p>另一个安静的坑在边界上。爬楼梯的 <code>dp[0]</code> 按定义应该是 1（走 0 级有 1 种走法：什么都不做）。把它写成 0：</p>
+
+  <pre data-lang="python"><code>def climb_wrong0(n):
+    """dp[0] 写成 0——整张表往后偏一位。"""
+    if n == 0:
+        return 0
+    if n == 1:
+        return 1
+    dp = [0] * (n + 1)
+    dp[0] = 0          # 应该是 1
+    dp[1] = 1
+    for i in range(2, n + 1):
+        dp[i] = dp[i - 1] + dp[i - 2]
+    return dp[n]
+
+
+print('   n   正确   dp[0]写成0')
+for n in range(1, 9):
+    print(f'   {n:&gt;2}  {climb_iter(n):&gt;6}  {climb_wrong0(n):&gt;8}')</code></pre>
+
+  <pre data-lang="text"><code>   n   正确   dp[0]写成0
+    1       1         1
+    2       2         1
+    3       3         2
+    4       5         3
+    5       8         5
+    6      13         8
+    7      21        13
+    8      34        21</code></pre>
+
+  <p>注意右边那一列：<b>它交回的正好是正确序列的前一项。</b> 1、2、3、5、8、13——全都是合法答案，只是整体往后挪了一位。</p>
+
+  <p>这就是初始化错误最坏的地方：它不是随机错，是<b>系统性地偏移</b>。拿 <span class="math-inline">n=1</span> 试，两边都是 1，看不出问题；拿 <span class="math-inline">n=2</span> 试才露出来。而如果题目里 <span class="math-inline">n</span> 很大，你会得到一个「看起来很正常」的数，只是不对。</p>
+
+  <p><b>自查办法：拿最小的几个输入手算一遍，跟程序对。</b> <span class="math-inline">n=0</span>、<span class="math-inline">n=1</span>、<span class="math-inline">n=2</span> 这三个值要对得上，整张表的基准才对。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "初始化写错（比如 dp[0]）为什么特别难发现？",
+    "opts": [
+      "它让整张表系统性偏移，给出的还都是合法值",
+      "初始化只在程序启动时执行一次，没法打断点",
+      "初始化写错只会让最后一个答案错，中间都对",
+      "初始化错了程序会直接报错，但错误信息很含糊"
+    ],
+    "ans": 0,
+    "why": "爬楼梯的 dp[0] 从 1 写成 0，交回的整列变成 1、1、2、3、5、8——正好是正确序列的前一项，每一个都是合法答案，只是整体往后挪了一位。n=1 时两边都是 1 看不出问题，n 一大就得到一个「看着很正常」的错数。自查办法：拿 n=0、1、2 手算一遍跟程序对。"
+  }
+]'></div>
+
+  <h2>这一课用到的判断</h2>
+
+  <ul>
+    <li><b>动态规划解决的是「重叠子问题」</b>：朴素递归把同一个子问题算了几十万次，实测 <span class="math-inline">n=30</span> 时 <code>climb(0)</code> 被算了 51 万次。</li>
+    <li><b>记忆化就是「朴素递归加一个字典」</b>：函数开头查表、算完写表。爬楼梯从一秒多掉到 0.00002 秒上下，代码只多三行。</li>
+    <li><b>递推是「从最小的问题往外推」</b>：不用递归、常常能把空间压到几项（爬楼梯只要两个变量），但要自己排填表顺序。</li>
+    <li><b>三件套缺一不可</b>：状态（<code>dp[...]</code> 是什么）、转移（由哪些更小的状态算出来）、边界与初始化。状态定义必须一句话说清，含糊了就写不对转移。</li>
+    <li><b>记忆化的键要包含状态的全部维度</b>：数字三角形漏掉列，200 组随机数据错 130 组，而且不报错。</li>
+    <li><b>初始化错误是系统性偏移</b>：爬楼梯 <code>dp[0]</code> 从 1 写成 0，整列答案变成正确序列的前一项。拿 <span class="math-inline">n=0,1,2</span> 手算对一遍就能挡住。</li>
+    <li><b>把状态表打印出来</b>是最快的自查手段：表格里每一格的含义能跟题目对得上，状态就写对了。</li>
+    <li><b>先用记忆化写对，再考虑改成递推</b>：顺序反了容易卡在填表顺序上。</li>
+  </ul>
+
+  <div class="lesson-practice">
+    <div class="lesson-practice__head">
+      <span class="lesson-practice__level">上手做</span>
+      <span class="lesson-practice__title">一道题写三版</span>
+    </div>
+
+      <p>这一课是概念课，动手部分不配 lab，落在你自己的编辑器里。要做的是三件事。</p>
+
+      <ol>
+        <li><b>换一道题，写三版</b>：不要用爬楼梯。挑数字三角形，把朴素递归、记忆化、递推三版都写出来，量出三者的耗时，确认三版答案一致。</li>
+        <li><b>把状态表打出来</b>：给递推版加一段打印，把所有 <code>dp[i][j]</code> 按原样排成三角形。逐行核对每一格的含义——特别是最左列和最右列，那两列只有一条路。</li>
+        <li><b>故意把键和初始化各写错一次</b>：先让记忆化的键漏掉列，再让 <code>dp</code> 的边界偏一位，各跑一遍，把错在哪、小样例上为什么看不出来写下来。</li>
+      </ol>
+  </div>
+
+  <ul class="lesson-resources">
+    <li>《算法导论（第 3 版）》第 15 章 动态规划<span class="lesson-resources__meta">书 · 最优子结构、重叠子问题、自顶向下与自底向上的对照</span></li>
+    <li><a href="https://oi-wiki.org/dp/basic/">OI Wiki · 动态规划基础</a><span class="lesson-resources__meta">状态设计、转移方程与记忆化搜索的写法</span></li>
+    <li><a href="0012-recursion-and-stack.html">第 12 课：递归：函数调用自己</a><span class="lesson-resources__meta">上一课量过的递归调用开销与递归深度上限</span></li>
+    <li><a href="0023-greedy-and-intervals.html">第 23 课：贪心：每一步都选当前最好</a><span class="lesson-resources__meta">贪心证不出来时，换的就是这一课的方法</span></li>
+  </ul>
+
+  <!-- ── 提问提示：固定写法，别删 ── -->
+
+  <div class="lesson-ask">
+    <b>没看懂？随时问</b>
+    把看不懂的段落（或报错）原样复制回会话，说一句哪里不懂就行，我只解释这一段，不打断你的进度。
+  </div>
+
+  <!-- ── 上/下节课指针由渲染器按 curriculum.yaml 的 nodes 顺序算（第一课无 --prev、最后一课无 --next） ── -->
+
+  <nav class="lesson-nav" aria-label="上一课 / 下一课">
+    <a class="lesson-nav__link lesson-nav__link--prev" href="0023-greedy-and-intervals.html">
+      <span class="lesson-nav__dir">上节课</span>
+      <span class="lesson-nav__title">贪心：每一步都选当前最好</span>
+    </a>
+    <a class="lesson-nav__link lesson-nav__link--next" href="0025-dp-knapsack.html">
+      <span class="lesson-nav__dir">下节课</span>
+      <span class="lesson-nav__title">背包：选与不选</span>
+    </a>
+  </nav>
+
+  <footer class="lesson-footer">
+    StudyMate · 0024 动态规划：把重复计算记下来 · 本地学习工作区
+  </footer>
+
+</article>
+
+<script src="../../../assets/sayo/sayo.js"></script>
+<link rel="stylesheet" href="../../../assets/katex/katex.min.css">
+<script src="../../../assets/katex/katex.min.js" defer></script>
+<script src="../../../assets/lesson-math.js" defer></script>
+<script src="../assets/quiz.js" defer></script>
+<script src="../assets/lesson-toc.js" defer></script>
+<script>LearnTheme.wire(document.getElementById('lesson-theme-checkbox'));</script>
+</body>
+</html>

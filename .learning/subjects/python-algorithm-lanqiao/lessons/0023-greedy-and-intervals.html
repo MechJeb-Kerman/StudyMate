@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>贪心：每一步都选当前最好 · Python 算法与蓝桥杯</title>
+
+<!-- 共享层在 .learning/assets/，课件在 .learning/subjects/<slug>/lessons/ 下，所以是 ../../../assets/ -->
+<link rel="stylesheet" href="../../../assets/sayo/sayo.css">
+<link rel="stylesheet" href="../../../assets/learn-theme.css">
+<link rel="stylesheet" href="../assets/style.css">
+
+<!-- 主题要在首帧前应用，避免闪白/闪黑 -->
+<script src="../../../assets/learn-theme.js"></script>
+<script>LearnTheme.apply();</script>
+</head>
+
+<body class="lesson-body">
+
+<nav class="lesson-bar">
+  <a href="../index.html">← 返回课程</a>
+  <span>Python 算法与蓝桥杯</span>
+  <span class="lesson-bar__no">0023</span>
+  <!-- 课件页自带主题开关：学生从文件管理器直接打开课件时也能切暗色 -->
+  <label class="syo-toggle syo-toggle--theme lesson-bar__toggle" title="切换深浅主题" aria-label="切换深浅主题">
+    <input type="checkbox" id="lesson-theme-checkbox" checked>
+    <span class="syo-toggle-track"></span>
+    <span class="syo-toggle-knob">
+      <svg class="syo-toggle-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.5" stroke="#f57c00" stroke-width="1.5"/><path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.34 4.34l1.77 1.77M13.89 13.89l1.77 1.77M4.34 15.66l1.77-1.77M13.89 6.11l1.77-1.77" stroke="#f57c00" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <svg class="syo-toggle-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.5 12.5A6 6 0 019 4.5a6 6 0 007.5 8z" stroke="#5c6bc0" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </span>
+  </label>
+</nav>
+
+<article class="lesson">
+
+  <header class="lesson-header">
+    <span class="lesson-header__eyebrow">0023 · 贪心：每一步都选当前最好</span>
+    <h1>贪心：每一步都选当前最好</h1>
+    <p class="lesson-goal"><b>本节目标：</b>能判断一个问题能否用贪心，并用交换论证把理由说清楚。</p>
+  </header>
+
+  <!-- ── 正文：渲染器按内容文件（lessons/<序号>-<节点id>.md）产出，块词汇见 docs/规范/课件内容格式.md ── -->
+
+  <h2>先看一个看着很对的策略</h2>
+
+  <p>找零钱。手里有 1 元、5 元、10 元、25 元的硬币，要凑出 63 元，怎么让硬币枚数最少？</p>
+
+  <p>绝大多数人会这么做：<b>先看 25 元能用几枚，再用 10 元，再用 5 元，最后用 1 元。</b> 这就是贪心——每一步都挑当前面额最大的那枚。</p>
+
+  <p>这个策略对这套面额完全正确。金额从 1 试到 199，贪心和真正的最优解<b>一枚都不差</b>：</p>
+
+  <pre data-lang="python"><code>def greedy_coins(coins, amount):
+    """每步都挑当前能用的最大面额。"""
+    used = []
+    for c in sorted(coins, reverse=True):
+        while amount &gt;= c:
+            amount -= c
+            used.append(c)
+    return used if amount == 0 else None
+
+
+def best_coins(coins, amount):
+    """动态规划：真正的最少枚数。"""
+    INF = float('inf')
+    dp = [0] + [INF] * amount
+    for v in range(1, amount + 1):
+        for c in coins:
+            if c &lt;= v and dp[v - c] + 1 &lt; dp[v]:
+                dp[v] = dp[v - c] + 1
+    return dp[amount]
+
+
+bad = [v for v in range(1, 200)
+       if len(greedy_coins([1, 5, 10, 25], v)) != best_coins([1, 5, 10, 25], v)]
+print('  面额 [1, 5, 10, 25]，金额 1 到 199：贪心与最优不一致的有', len(bad), '个')
+print('  金额 63 贪心给', greedy_coins([1, 5, 10, 25], 63),
+      '共', len(greedy_coins([1, 5, 10, 25], 63)), '枚')</code></pre>
+
+  <pre data-lang="text"><code>  面额 [1, 5, 10, 25]，金额 1 到 199：贪心与最优不一致的有 0 个
+  金额 63 贪心给 [25, 25, 10, 1, 1, 1] 共 6 枚</code></pre>
+
+  <p>跑起来一次都没错，你会很自然地认为「找零钱就该这么贪」。</p>
+
+  <p><b>换一套面额，它立刻错。</b> 面额改成 1 元、3 元、4 元：</p>
+
+  <pre data-lang="python"><code>coins = [1, 3, 4]
+for v in range(1, 31):
+    g = greedy_coins(coins, v)
+    b = best_coins(coins, v)
+    if len(g) != b:
+        print(f'  金额 {v}: 贪心 {g} 共 {len(g)} 枚，最优 {b} 枚')</code></pre>
+
+  <pre data-lang="text"><code>  金额 6: 贪心 [4, 1, 1] 共 3 枚，最优 2 枚
+  金额 10: 贪心 [4, 4, 1, 1] 共 4 枚，最优 3 枚
+  金额 14: 贪心 [4, 4, 4, 1, 1] 共 5 枚，最优 4 枚
+  金额 18: 贪心 [4, 4, 4, 4, 1, 1] 共 6 枚，最优 5 枚
+  金额 22: 贪心 [4, 4, 4, 4, 4, 1, 1] 共 7 枚，最优 6 枚
+  金额 26: 贪心 [4, 4, 4, 4, 4, 4, 1, 1] 共 8 枚，最优 7 枚
+  金额 30: 贪心 [4, 4, 4, 4, 4, 4, 4, 1, 1] 共 9 枚，最优 8 枚</code></pre>
+
+  <p>凑 6 元：贪心先拿最大的 4，剩 2 元只能拿两个 1，一共 3 枚。<b>最优解是 3 + 3，两枚。</b></p>
+
+  <p>这就是贪心最要紧的一件事：<b>「每一步都选当前最好」这个想法本身不保证结果最好。</b> 它有时对，有时错，而错的时候答案看起来一样合情合理——上面每一行的贪心解都能凑出那个金额，只是枚数多。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "贪心有时候会给出一个可行、但不是最优的解。为什么？",
+    "opts": [
+      "每步只顾眼前最好，可能把后面的路堵死",
+      "贪心的代码写法有误，改对关键字就好了",
+      "贪心只能处理整数，遇到小数就会出偏差",
+      "贪心没有排序，顺序不对就会多走几步"
+    ],
+    "ans": 0,
+    "why": "贪心解总是能凑出答案（所以叫可行），但它没考虑这一步会不会让剩下的问题变难。凑 6 元时先拿 4，剩下 2 只能用两个 1，共 3 枚；而 3+3 只要 2 枚——最优解里根本没有 4。这不是写法问题，是策略本身的前提不成立。"
+  }
+]'></div>
+
+  <h2>贪心选择性质</h2>
+
+  <p>一个策略要算贪心算法，光「每步选当前最好」不够，还得额外满足一条：</p>
+
+  <p><b>贪心选择性质</b>：每一步选的那个「当前最好」，一定存在于某个全局最优解里。</p>
+
+  <p>找零的 1/5/10/25 满足它——最优解里总能找到一个含最大面额的。1/3/4 不满足：凑 6 元的最优解 3+3 里<b>根本没有 4</b>，而贪心第一步就把 4 拿走了，之后再补救也补不回来。</p>
+
+  <p>一个贪心策略对不对，<b>跟代码写法无关，只跟这条性质成不成立有关</b>。所以判断一道题能不能贪心，不是看它像不像贪心题，而是要问：<b>我现在选的这个，会不会堵死后面的路？</b> 会，就不能贪。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "「贪心选择性质」说的是什么？",
+    "opts": [
+      "每步选的那个当前最好，一定在某个最优解里",
+      "每一步的选择都不会影响后面能选的东西",
+      "每一步都必须选所有选项里最大的那一个",
+      "只要写出代码能通过样例，性质就成立了"
+    ],
+    "ans": 0,
+    "why": "光说「每步选当前最好」不构成算法，还要额外保证：这一步选的这个，一定存在于某个全局最优解里。1/5/10/25 满足（最优解里总能找到含 25 的），1/3/4 不满足（凑 6 元的最优解 3+3 里没有 4）。性质成立与否跟代码无关。"
+  }
+]'></div>
+
+  <h2>交换论证的套路</h2>
+
+  <p>那条性质怎么证明？竞赛里最常用的办法叫<b>交换论证</b>，套路是三句话：</p>
+
+  <ol>
+    <li>假设存在一个最优解，它跟我贪心选的<b>不一样</b>。</li>
+    <li>把它里面第一个和我不同的选择，<b>换成我贪心的那个选择</b>。换完之后，剩下的部分照样接得上，总代价没变差。</li>
+    <li>于是存在一个<b>也含我贪心这个选择</b>的最优解。一步一步换下去，最优解就变成了贪心解——<b>贪心解就是最优解</b>。</li>
+  </ol>
+
+  <p>关键是第 2 步那个「换」。你要说明的是：<b>换掉之后不会变坏，也不会接不上。</b> 这两点说清楚了，论证就成立了。</p>
+
+  <p>拿区间调度（下面那节）举例，交换论证长这样：</p>
+
+  <ul>
+    <li>设最优解第一个区间是 <span class="math-inline">B</span>，贪心选的第一个区间是 <span class="math-inline">A</span>（结束时间最早的那个）。因为 <span class="math-inline">A</span> 的结束时间不晚于任何区间，所以 <span class="math-inline">A</span> 的结束时间也不晚于 <span class="math-inline">B</span>。</li>
+    <li>把最优解里的 <span class="math-inline">B</span> 换成 <span class="math-inline">A</span>。<span class="math-inline">A</span> 结束得更早，<b>剩下的区间只会更容易接上</b>，不会变少。</li>
+    <li>所以存在一个以 <span class="math-inline">A</span> 开头的最优解。对剩下的区间重复这个论证，贪心解就等于最优解。</li>
+  </ul>
+
+  <p>三句话，不用公式。<b>写不出这三句话，就说明你还没想清楚为什么能贪。</b></p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "交换论证里最关键的一步是什么？",
+    "opts": [
+      "把最优解里第一个不同处换成我的选择，且不变差",
+      "枚举所有可能的解，挑出总代价最小的那一个",
+      "证明每一步都不影响最终结果，所以随便选",
+      "对数据排序，证明排序之后贪心一定不会错"
+    ],
+    "ans": 0,
+    "why": "套路是三句话：假设有一个最优解跟我贪心选的不一样；把它第一个不同处换成我的选择，说明换完之后剩下的部分照样接得上、总代价没变差；于是存在一个也含我这个选择的最优解，一步步换下去贪心解就是最优解。关键全在第 2 步那个「换了不会坏、也不会接不上」。"
+  }
+]'></div>
+
+  <h2>区间调度怎么排</h2>
+
+  <p>区间调度：给一堆区间，选出最多的、互不重叠的区间。</p>
+
+  <p>贪心策略是：<b>把所有区间按结束时间从早到晚排，然后扫一遍，能放就放。</b></p>
+
+  <pre data-lang="python"><code>def pick_by(ivs, key):
+    """按 key 排序后扫一遍，跟上一个选的接得上就选。"""
+    chosen = []
+    last_end = None
+    for a, b in sorted(ivs, key=key):
+        if last_end is None or a &gt;= last_end:
+            chosen.append((a, b))
+            last_end = b
+    return chosen
+
+
+def brute_max(ivs):
+    """枚举所有子集，找出最多能选几个互不重叠的区间（区间少的时候才能用）。"""
+    best = 0
+    n = len(ivs)
+    for mask in range(1 &lt;&lt; n):
+        cnt = bin(mask).count('1')
+        if cnt &lt;= best:
+            continue
+        sel = sorted(ivs[i] for i in range(n) if mask &gt;&gt; i &amp; 1)
+        if all(sel[i][1] &lt;= sel[i + 1][0] for i in range(len(sel) - 1)):
+            best = cnt
+    return best
+
+
+ivs = [(1, 4), (3, 5), (0, 6), (5, 7), (3, 9), (5, 9), (6, 10), (8, 11), (8, 12), (12, 14), (2, 6)]
+for name, key in [('按结束时间排', lambda t: (t[1], t[0])),
+                  ('按开始时间排', lambda t: (t[0], t[1])),
+                  ('按区间长度排', lambda t: (t[1] - t[0], t[0]))]:
+    got = pick_by(ivs, key)
+    print(f'  {name}: 选了 {len(got)} 个  {got}')
+print('  枚举验出的最大值:', brute_max(ivs))</code></pre>
+
+  <pre data-lang="text"><code>  按结束时间排: 选了 4 个  [(1, 4), (5, 7), (8, 11), (12, 14)]
+  按开始时间排: 选了 3 个  [(0, 6), (6, 10), (12, 14)]
+  按区间长度排: 选了 3 个  [(3, 5), (5, 7), (12, 14)]
+  枚举验出的最大值: 4</code></pre>
+
+  <p>按结束时间排拿到 4 个，正好是枚举出来的最大值；另外两种各差一个。</p>
+
+  <p>为什么是<b>结束时间</b>？因为按它排序时，每一步选的区间都给后面留下最大的余地——结束得越早，后面能接的越多。用交换论证说就是上面那三句话。</p>
+
+  <p>这一节的 <code>lambda</code> 你可能没见过，它是「没有名字的小函数」，<code>lambda t: t[1]</code> 等价于先写一个只返回 <code>t[1]</code> 的函数再传进来。第 5 课提过排序可以按关键字排，这里给的就是那个关键字。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "区间调度为什么按结束时间排，而不是按开始时间排？",
+    "opts": [
+      "结束得越早，留给后面能接的区间就越多",
+      "开始时间相同的区间太多，排序时不好区分",
+      "按开始时间排要对每个区间重新算一遍长度",
+      "结束时间是唯一的，按它排不会出现并列情况"
+    ],
+    "ans": 0,
+    "why": "按结束时间排，每一步选的区间都给后面留下最大的余地。交换论证里那句「A 结束得不晚于 B，所以把 B 换成 A 之后剩下的区间只会更容易接上」说的就是这件事。实测按结束时间排拿到 4 个，与枚举出的最大值一致。"
+  }
+]'></div>
+
+  <h2>排序关键字选错</h2>
+
+  <p>按开始时间排「看着也行」，而且它在很多数据上真的不错。<b>问题是它有时错。</b></p>
+
+  <p>给你一组它错得很惨的区间：一个从 0 到 100 的长区间，外加 6 个长度 1 的小区间。</p>
+
+  <pre data-lang="python"><code>bad = [(0, 100)] + [(2 * i + 1, 2 * i + 2) for i in range(6)]
+for name, key in [('按结束时间排', lambda t: (t[1], t[0])),
+                  ('按开始时间排', lambda t: (t[0], t[1]))]:
+    got = pick_by(bad, key)
+    print(f'  {name}: 选了 {len(got)} 个  {got}')
+print('  枚举验出的最大值:', brute_max(bad))</code></pre>
+
+  <pre data-lang="text"><code>  按结束时间排: 选了 6 个  [(1, 2), (3, 4), (5, 6), (7, 8), (9, 10), (11, 12)]
+  按开始时间排: 选了 1 个  [(0, 100)]
+  枚举验出的最大值: 6</code></pre>
+
+  <p>按开始时间排第一步就挑了那个从 0 开始的长区间，之后<b>什么都接不上了</b>——1 个，而最优是 6 个。</p>
+
+  <p>真正值得注意的是这个：</p>
+
+  <table>
+    <thead>
+      <tr><th>数据长什么样</th><th>按开始时间排错多少组</th><th>按区间长度排错多少组</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>区间长度都差不多（端点撒点两两配对）</td><td>0 / 300 组</td><td>297 / 300 组</td></tr>
+      <tr><td>一半短区间、一半长区间</td><td>210 / 300 组</td><td>185 / 300 组</td></tr>
+      <tr><td>同上，但点数更多</td><td>237 / 300 组</td><td>187 / 300 组</td></tr>
+    </tbody>
+  </table>
+
+  <p>（本机实测，每组随机 300 次，每次都跟枚举出的真正最大值比。）</p>
+
+  <p><b>在「长度都差不多」的数据上，错误的策略一次都没错。</b> 这就是它危险的地方——你拿小样例、拿随机数据试，试不出来；真到考场上碰上一长一短混在一起的数据（237/300 组），它立刻崩掉，而且崩得毫无征兆。</p>
+
+  <p><b>「有时对」在竞赛里等于「错」。</b> 一道题只有一个答案要对。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "按开始时间排是错的，为什么在小数据上试不出来？",
+    "opts": [
+      "长度差不多的数据上它一次都不错，混着长短才错",
+      "小数据的答案本来就不唯一，错一个也看不出来",
+      "小数据上枚举也枚举不出真正的最优答案来",
+      "小数据上两种排序交出的结果恰好总是相同"
+    ],
+    "ans": 0,
+    "why": "实测：区间长度都差不多的随机数据上，按开始时间排 0/300 组出错；一半短一半长的数据上 210/300 组出错，最多差 5 个。「有时对」在竞赛里等于「错」——一道题只有一个答案要对，而它恰恰在小样例上装得完美无缺。"
+  }
+]'></div>
+
+  <h2>贪心什么时候失效</h2>
+
+  <p>回过头看找零那两套面额，能看出一条规律。</p>
+
+  <p>面额 1/5/10/25 里，每个面额都是前一个的整数倍左右，<b>大面额永远能由小面额凑出来，而且不亏</b>。所以挑最大的那枚永远不会让「剩下的金额」变成凑不出的形状。</p>
+
+  <p>面额 1/3/4 里，4 和 3 之间没有这种关系。凑 6 元的时候，挑 4 会留下 2——<b>2 不是一个能高效凑出的形状</b>（只能用两个 1）；而挑 3 留下 3，正好又是一枚。</p>
+
+  <p>所以判断贪心会不会失效，可以盯住这一句：<b>当前这一步的选择，会不会把「剩下的问题」变成一个更难的形状？</b> 会，就得换方法。</p>
+
+  <p>几个常见的信号：</p>
+
+  <ul>
+    <li>局部最优的选择<b>限制了</b>后面的选择（上面的长区间）。</li>
+    <li>需要在「多拿一点现在」和「留点余地给后面」之间权衡。</li>
+    <li>数据是<b>混着来的</b>：一部分很容易，一部分很极端。极端的那部分就是贪心的坟场。</li>
+  </ul>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "判断一个贪心策略会不会失效，最该盯住哪一句？",
+    "opts": [
+      "这一步的选择会不会把剩下的问题变得更难",
+      "这一步选的是不是当前所有选项里最大的",
+      "写出来的代码能不能通过题目给的样例",
+      "这一步的选择是不是唯一的、没有并列"
+    ],
+    "ans": 0,
+    "why": "1/5/10/25 里大面额永远能由小面额补上，所以挑最大的不会让剩下的金额变成凑不出的形状；1/3/4 里挑 4 会留下 2 这种难凑的形状。所以信号是「当前选择限制了后面的选择」「要在现在多拿和以后有路之间权衡」「数据里混着极端情况」——过样例不说明任何事。"
+  }
+]'></div>
+
+  <h2>失效了该换什么</h2>
+
+  <p>贪心失效时，<b>正确的做法不是给贪心打补丁</b>，而是换方法。</p>
+
+  <p>最常见的换法是<b>动态规划</b>。上面那个 <code>best_coins</code> 就是：它不预设「该先拿哪个」，而是把金额 1、2、3、……、63 的最优枚数<b>全部算出来</b>，要算 6 的时候直接看 5、3、2 这三个已知的答案，挑最好的那个加一。</p>
+
+  <p>代价是慢一些（要开一张表，时间跟金额成正比），换来的是不用证明——<b>递推关系写对，答案就是对的。</b></p>
+
+  <table>
+    <thead>
+      <tr><th></th><th>贪心</th><th>动态规划</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>需要证明吗</td><td>需要（交换论证）</td><td>不需要，写对递推就行</td></tr>
+      <tr><td>速度</td><td>一般更快</td><td>一般更慢，要填表</td></tr>
+      <tr><td>失效时</td><td>悄悄给出偏差的答案</td><td>不会失效（前提是递推对）</td></tr>
+      <tr><td>什么时候选</td><td>能证明贪心性质</td><td>证不出来，或者贪心已失效</td></tr>
+    </tbody>
+  </table>
+
+  <p>所以真正的选择顺序是：<b>先想贪心，能写出交换论证就用贪心；写不出来，就别硬凑，直接上动态规划。</b> 给失效的贪心打补丁（加几个特判、往回退一步重选）几乎总是错的——那等于用一堆不成体系的规则去模拟动态规划，还容易漏情况。</p>
+
+  <p>动态规划是下一课的内容。这一课只要记住：<b>贪心失效不是「再改改」的信号，是「该换方法」的信号。</b></p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "贪心失效时，为什么不该给它打补丁？",
+    "opts": [
+      "打补丁等于用零散规则去模拟动态规划，还容易漏",
+      "打补丁会让代码变长，超过题目的代码长度限制",
+      "补丁只能在 Python 里用，换别的语言就失效",
+      "打补丁会让排序变慢，整体复杂度升一个档次"
+    ],
+    "ans": 0,
+    "why": "给失效的贪心加特判、往回退一步重选，本质是用一堆不成体系的规则去模拟动态规划，规则之间还会互相干扰，漏一种情况就错。正确做法是换方法：动态规划不预设「该先拿哪个」，把每个金额的最优枚数全算出来，慢一些但不需要证明。证不出交换论证就别硬凑贪心。"
+  }
+]'></div>
+
+  <h2>这一课用到的判断</h2>
+
+  <ul>
+    <li><b>贪心是「每一步选当前最好」，但它不保证全局最好</b>：面额 1/5/10/25 时找零一枚不差，换成 1/3/4，凑 6 元贪心要 3 枚而最优只要 2 枚。</li>
+    <li><b>判断能不能贪，看「贪心选择性质」</b>：每步选的那个当前最好，是否一定存在于某个全局最优解里。</li>
+    <li><b>证明性质的套路是交换论证</b>：假设最优解与我不同 → 把第一个不同处换成我的选择，说明不会变坏也接得上 → 于是存在含我选择的最优解，归纳下去贪心解即最优解。写不出这三句话就别用贪心。</li>
+    <li><b>区间调度按结束时间排</b>：结束得越早，给后面留的余地越大。实测拿到 4 个，与枚举的最大值一致。</li>
+    <li><b>按开始时间排是错的，但「有时才错」</b>：区间长度都差不多时 0/300 组出错，一半短一半长时 210/300 组出错，最多差 5 个。<b>「有时对」在竞赛里等于「错」</b>，而它恰恰在小样例上试不出来。</li>
+    <li><b>也別按区间长度排</b>：实测 297/300 组出错，比按开始时间排还糟。</li>
+    <li><b>贪心失效的信号</b>：这一步的选择限制了后面的选择；需要在「现在多拿」和「以后有路」之间权衡；数据里混着极端情况。</li>
+    <li><b>失效了就换动态规划，别打补丁</b>：动态规划要填表、慢一些，但不需要证明——递推写对，答案就对。</li>
+  </ul>
+
+  <div class="lesson-practice">
+    <div class="lesson-practice__head">
+      <span class="lesson-practice__level">上手做</span>
+      <span class="lesson-practice__title">三个贪心策略各写一段论证</span>
+    </div>
+
+      <p>这一课是概念课，动手部分不配 lab，落在纸面上。要做的是三件事。</p>
+
+      <ol>
+        <li><b>写区间调度的交换论证</b>：把「按结束时间排」那三句话用自己的话写一遍，特别要写清「换掉之后为什么不会变少」。写不出来就回去读那一节。</li>
+        <li><b>给找零的两个面额各判一次</b>：面额 1/5/10/25 为什么能满足贪心选择性质？面额 1/3/4 在凑 6 元时为什么不能满足？各写两三句，要提到「剩下的金额变成了什么形状」。</li>
+        <li><b>自己造一个贪心失效的例子</b>：不要用课件里的 1/3/4。自己挑一套面额，用 <code>best_coins</code> 找出一个贪心会多用的金额，把这个金额与两边的解都记下来。</li>
+      </ol>
+  </div>
+
+  <ul class="lesson-resources">
+    <li>《算法导论（第 3 版）》第 16 章 贪心算法<span class="lesson-resources__meta">书 · 贪心选择性质、最优子结构、交换论证的完整写法</span></li>
+    <li><a href="https://oi-wiki.org/basic/greedy/">OI Wiki · 贪心</a><span class="lesson-resources__meta">竞赛里常见的贪心模型与邻项交换法的证明模板</span></li>
+    <li><a href="0013-sorting-and-divide-conquer.html">第 13 课：排序：分而治之的样板</a><span class="lesson-resources__meta">贪心常要排序，先排什么由策略决定</span></li>
+    <li><a href="0024-dp-from-recursion.html">第 24 课：动态规划：把重复计算记下来</a><span class="lesson-resources__meta">贪心证不出来时该换的方法</span></li>
+  </ul>
+
+  <!-- ── 提问提示：固定写法，别删 ── -->
+
+  <div class="lesson-ask">
+    <b>没看懂？随时问</b>
+    把看不懂的段落（或报错）原样复制回会话，说一句哪里不懂就行，我只解释这一段，不打断你的进度。
+  </div>
+
+  <!-- ── 上/下节课指针由渲染器按 curriculum.yaml 的 nodes 顺序算（第一课无 --prev、最后一课无 --next） ── -->
+
+  <nav class="lesson-nav" aria-label="上一课 / 下一课">
+    <a class="lesson-nav__link lesson-nav__link--prev" href="0022-binary-search-on-answer.html">
+      <span class="lesson-nav__dir">上节课</span>
+      <span class="lesson-nav__title">二分答案：猜一个再验一遍</span>
+    </a>
+    <a class="lesson-nav__link lesson-nav__link--next" href="0024-dp-from-recursion.html">
+      <span class="lesson-nav__dir">下节课</span>
+      <span class="lesson-nav__title">动态规划：把重复计算记下来</span>
+    </a>
+  </nav>
+
+  <footer class="lesson-footer">
+    StudyMate · 0023 贪心：每一步都选当前最好 · 本地学习工作区
+  </footer>
+
+</article>
+
+<script src="../../../assets/sayo/sayo.js"></script>
+<link rel="stylesheet" href="../../../assets/katex/katex.min.css">
+<script src="../../../assets/katex/katex.min.js" defer></script>
+<script src="../../../assets/lesson-math.js" defer></script>
+<script src="../assets/quiz.js" defer></script>
+<script src="../assets/lesson-toc.js" defer></script>
+<script>LearnTheme.wire(document.getElementById('lesson-theme-checkbox'));</script>
+</body>
+</html>

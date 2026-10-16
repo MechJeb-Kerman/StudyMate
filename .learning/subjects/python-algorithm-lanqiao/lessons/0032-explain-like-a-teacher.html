@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>把算法讲给别人听 · Python 算法与蓝桥杯</title>
+
+<!-- 共享层在 .learning/assets/，课件在 .learning/subjects/<slug>/lessons/ 下，所以是 ../../../assets/ -->
+<link rel="stylesheet" href="../../../assets/sayo/sayo.css">
+<link rel="stylesheet" href="../../../assets/learn-theme.css">
+<link rel="stylesheet" href="../assets/style.css">
+
+<!-- 主题要在首帧前应用，避免闪白/闪黑 -->
+<script src="../../../assets/learn-theme.js"></script>
+<script>LearnTheme.apply();</script>
+</head>
+
+<body class="lesson-body">
+
+<nav class="lesson-bar">
+  <a href="../index.html">← 返回课程</a>
+  <span>Python 算法与蓝桥杯</span>
+  <span class="lesson-bar__no">0032</span>
+  <!-- 课件页自带主题开关：学生从文件管理器直接打开课件时也能切暗色 -->
+  <label class="syo-toggle syo-toggle--theme lesson-bar__toggle" title="切换深浅主题" aria-label="切换深浅主题">
+    <input type="checkbox" id="lesson-theme-checkbox" checked>
+    <span class="syo-toggle-track"></span>
+    <span class="syo-toggle-knob">
+      <svg class="syo-toggle-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.5" stroke="#f57c00" stroke-width="1.5"/><path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.34 4.34l1.77 1.77M13.89 13.89l1.77 1.77M4.34 15.66l1.77-1.77M13.89 6.11l1.77-1.77" stroke="#f57c00" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <svg class="syo-toggle-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.5 12.5A6 6 0 019 4.5a6 6 0 007.5 8z" stroke="#5c6bc0" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </span>
+  </label>
+</nav>
+
+<article class="lesson">
+
+  <header class="lesson-header">
+    <span class="lesson-header__eyebrow">0032 · 把算法讲给别人听</span>
+    <h1>把算法讲给别人听</h1>
+    <p class="lesson-goal"><b>本节目标：</b>能对一个算法讲清正确性、复杂度与被淘汰的数据规模。</p>
+  </header>
+
+  <!-- ── 正文：渲染器按内容文件（lessons/<序号>-<节点id>.md）产出，块词汇见 docs/规范/课件内容格式.md ── -->
+
+  <h2>讲不清就是没懂</h2>
+
+  <p>这门课一开始定的目标是「能做出来」。到这一课要升一级：<b>能讲明白。</b></p>
+
+  <p>这两件事差的不是表达能力，是理解的深度。有两句话听起来很像，其实完全不同：</p>
+
+  <ul>
+    <li>「我记得 0/1 背包的循环要逆着写。」</li>
+    <li>「逆着写的时候，<code>dp[j - wt]</code> 读到的是<b>还没考虑当前物品</b>时的答案，所以当前物品最多只能用一次。」</li>
+  </ul>
+
+  <p>第一句在第 26 课那种「照葫芦画瓢」的场合够用，<b>换一道题就不够了</b>——因为你不知道那条规则是为哪个目的服务的，也就不知道什么时候可以违反它。</p>
+
+  <p>这一课给一套可自查的讲解结构，然后<b>拿它去拷问你自己学过的每个算法</b>。凡是讲不下来的地方，就是还有一层没吃透。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "为什么「讲不清一个算法」通常说明还没真懂，而不只是表达问题？",
+    "opts": [
+      "讲不出为什么，就不知道那条规则什么时候能改",
+      "讲不清说明记性不好，多背几遍就能讲清了",
+      "能讲清只是表达能力好，和理解深不深无关",
+      "讲不清只是措辞问题，换几个词就讲得通了"
+    ],
+    "ans": 0,
+    "why": "「0/1 背包要逆序」这句话在照葫芦画瓢时够用，但你不知道它是为哪个目的服务的，也就不知道什么时候可以违反它。一旦讲得出「逆序时 dp[j-wt] 读到的是还没考虑当前物品时的答案」，你立刻能回答一个「要逆序」回答不了的问题：想要完全背包（物品能用无限次）该怎么办。理解的深度就体现在这里——它决定你能不能用同一个知识解决新问题。"
+  }
+]'></div>
+
+  <h2>三分钟讲解稿的四段</h2>
+
+  <p>一份能自查的讲解稿，固定分成四段。<b>顺序不能换</b>，因为后一段要用到前一段的结论。</p>
+
+  <p><b>第一段：这个东西在解决什么问题。</b> 一句话，不许出现算法名字和代码。比如「并查集在解决：一堆元素分成若干组，我要快速知道两个元素在不在同一组」。</p>
+
+  <p><b>第二段：为什么它是正确的。</b> 这是最难也最关键的一段。<b>不许复述代码流程</b>——「先这样再那样然后返回」是流程，不是论证。要讲的是<b>不变式</b>：每一步结束时，什么东西一定成立；以及<b>为什么这个不变式能推出最终答案</b>。</p>
+
+  <p><b>第三段：复杂度怎么推出来的。</b> 不许只报结论。<span class="math-inline">O(n \log n)</span> 要能说清楚那个 <span class="math-inline">\log n</span> 是从哪一步来的——是每层分一半（分治），还是每次操作让某个量减半（堆的上浮）。</p>
+
+  <p><b>第四段：多大的规模会把它淘汰掉。</b> 这是最常被跳过的一段，也是最能看出你懂没懂的一段。<b>任何算法都有它不适用的输入</b>，说不出失效条件的，等于不知道它的边界在哪。</p>
+
+  <p>下面三节分别把第二、三、四段拿出来，各量一组数据给你看。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "一份能自查的三分钟讲解稿，固定要讲清哪四段？",
+    "opts": [
+      "解决什么问题、为什么正确、复杂度、什么规模淘汰它",
+      "问题描述、代码的流程、复杂度的结论、常见错误",
+      "算法的名字、适用的题型、模板代码、时间估算",
+      "为什么正确、复杂度是多少、优化方向、同类题目"
+    ],
+    "ans": 0,
+    "why": "四段是：①它在解决什么问题（一句话，不许出现算法名字和代码）；②为什么它是正确的（讲不变式，不许复述代码流程）；③复杂度怎么推出来的（每一项是从哪一步来的）；④多大的规模会把它淘汰掉（必须带具体数字）。顺序不能换，因为后一段要用到前一段的结论。第四段最常被跳过，也最能看出懂没懂——任何算法都有不适用的输入。"
+  }
+]'></div>
+
+  <h2>讲得出为什么，才写得出对的</h2>
+
+  <p>先看最直接的一种检验方式：<b>如果你说不清「为什么」，那你多半也写不出对的。</b></p>
+
+  <p>0/1 背包的内层循环要逆序，这是第 25 课的内容。正序写会怎样？</p>
+
+  <pre data-lang="python"><code>W = 10
+items = [(2, 3), (3, 4), (4, 5), (5, 6)]
+
+
+def knap(direction, w):
+    """direction='back' 是 0/1 背包，'forward' 是完全背包。"""
+    dp = [0] * (w + 1)
+    for wt, val in items:
+        js = range(w, wt - 1, -1) if direction == 'back' else range(wt, w + 1)
+        for j in js:
+            dp[j] = max(dp[j], dp[j - wt] + val)
+    return dp[w]
+
+
+print(f'   物品（重量, 价值）= {items}，背包容量 {W}')
+print(f'   内层循环逆序（0/1 背包）: {knap("back", W)} 分')
+print(f'   内层循环正序（完全背包）: {knap("forward", W)} 分')
+print()
+print('   逆序时每一轮 dp（容量 0..10）：')
+dp = [0] * (W + 1)
+for wt, val in items:
+    for j in range(W, wt - 1, -1):
+        dp[j] = max(dp[j], dp[j - wt] + val)
+    print(f'      处理完（{wt}, {val}）: {dp}')
+print('   正序时每一轮 dp（容量 0..10）：')
+dp = [0] * (W + 1)
+for wt, val in items:
+    for j in range(wt, W + 1):
+        dp[j] = max(dp[j], dp[j - wt] + val)
+    print(f'      处理完（{wt}, {val}）: {dp}')</code></pre>
+
+  <pre data-lang="text"><code>   物品（重量, 价值）= [(2, 3), (3, 4), (4, 5), (5, 6)]，背包容量 10
+   内层循环逆序（0/1 背包）: 13 分
+   内层循环正序（完全背包）: 15 分
+
+   逆序时每一轮 dp（容量 0..10）：
+      处理完（2, 3）: [0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+      处理完（3, 4）: [0, 0, 3, 4, 4, 7, 7, 7, 7, 7, 7]
+      处理完（4, 5）: [0, 0, 3, 4, 5, 7, 8, 9, 9, 12, 12]
+      处理完（5, 6）: [0, 0, 3, 4, 5, 7, 8, 9, 10, 12, 13]
+   正序时每一轮 dp（容量 0..10）：
+      处理完（2, 3）: [0, 0, 3, 3, 6, 6, 9, 9, 12, 12, 15]
+      处理完（3, 4）: [0, 0, 3, 4, 6, 7, 9, 10, 12, 13, 15]
+      处理完（4, 5）: [0, 0, 3, 4, 6, 7, 9, 10, 12, 13, 15]
+      处理完（5, 6）: [0, 0, 3, 4, 6, 7, 9, 10, 12, 13, 15]</code></pre>
+
+  <p><b>两种写法循环体一字不差，只有 <code>range</code> 的方向不同，答案差了 2 分。</b> 而且注意一个细节：</p>
+
+  <p><b>正序处理完第一件物品 <code>(2, 3)</code> 时，<code>dp[10]</code> 已经是 15 了</b>——<code>15 = 3 × 5</code>，意思是这件重量为 2 的物品<b>被用了 5 次</b>。可题目说每件物品只有一件。这就是那个 bug 的全部：<b>正序时 <code>dp[j - wt]</code> 读到的已经被这一轮更新过了，所以当前物品被重复使用。</b></p>
+
+  <p>反过来，逆序处理完 <code>(2, 3)</code> 时 <code>dp[10] = 3</code>，只用了一次——因为 <code>dp[j - wt]</code> 读到的还是「上一轮」的值。</p>
+
+  <p><b>这就是第二段该讲的东西。</b> 它比「要逆序」这句话长，但它能回答一个「要逆序」回答不了的问题：<b>如果我确实想要完全背包（物品能用无限次），该怎么写？</b> ——把方向倒过来。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "为什么说「讲得出为什么」和「写得出对的代码」是同一件事？",
+    "opts": [
+      "讲得出目的，才知道那条规则什么时候可以违反",
+      "能讲出来说明你背得熟，背熟了自然写得对",
+      "因为讲解稿本身就要写代码，两者是同一件事",
+      "讲得出来的人通常刷题多，刷多了就写得对"
+    ],
+    "ans": 0,
+    "why": "本课量过：0/1 背包与完全背包的循环体一字不差，只有 range 的方向不同，答案差 2 分（13 对 15）。正序处理完第一件物品 (2,3) 时 dp[10] 就已经是 15——15 = 3×5，那件重量为 2 的物品被用了 5 次，可题目说每件只有一件。讲得出「正序时 dp[j-wt] 读到的已被这一轮更新过」，你不但知道该逆序，还知道想要完全背包时把方向倒过来就行。这就是「讲得出为什么」带来的可迁移性。"
+  }
+]'></div>
+
+  <h2>复杂度要推，不能背</h2>
+
+  <p>第三段的要求是「推出来」，不是「报结论」。看并查集，这是最容易被一句「查得很快」糊过去的结构。</p>
+
+  <p>第 19 课讲过并查集。它的查询代价有一个微妙之处：<b>不同的实现方式，总代价差三个数量级。</b></p>
+
+  <pre data-lang="python"><code>def uf(n, mode):
+    """n-1 次合并 + n 次查询，返回（总步数, 单次查询最坏步数）。
+
+    合并时一律 parent[find(i-1)] = i，也就是每次都把「已经建好的那棵树」
+    挂到新结点下面 —— 这样不管什么模式，合并后 parent 都是一条长度 n 的链。
+    四种模式的区别只在「查询时做不做路径压缩」和「合并时看不看秩」。
+    """
+    parent = list(range(n))
+    rank = [0] * n
+    total = 0
+    worst = 0
+
+    def find(x):
+        nonlocal total, worst
+        root, d = x, 0
+        while parent[root] != root:
+            root = parent[root]
+            d += 1
+        total += d
+        if d &gt; worst:
+            worst = d
+        if mode in ('compress', 'both'):
+            while parent[x] != root:
+                parent[x], x = root, parent[x]
+        return root
+
+    for i in range(1, n):
+        if mode in ('rank', 'both'):
+            a, b = find(0), find(i)
+            if a != b:
+                if rank[a] &lt; rank[b]:
+                    a, b = b, a
+                parent[b] = a
+                if rank[a] == rank[b]:
+                    rank[a] += 1
+        else:
+            parent[find(i - 1)] = i
+    for i in range(n):
+        find(i)
+    return total, worst
+
+
+N = 2000
+print(f'   n = {N}：{N - 1} 次合并 + {N} 次查询，数「沿 parent 走了多少步」')
+print('   做法                        总步数      平均每次   单次最坏')
+for mode, name in (('chain', '不压缩、不按秩'),
+                   ('compress', '只用路径压缩'),
+                   ('rank', '只按秩合并'),
+                   ('both', '按秩合并 + 路径压缩')):
+    t, w = uf(N, mode)
+    print(f'   {name:&lt;26} {t:&gt;9,}    {t / N:&gt;7.2f}   {w:&gt;7,}')
+print(f'   n(n-1)/2 = {N * (N - 1) // 2:,}')</code></pre>
+
+  <pre data-lang="text"><code>   n = 2000：1999 次合并 + 2000 次查询，数「沿 parent 走了多少步」
+   做法                        总步数      平均每次   单次最坏
+   不压缩、不按秩                    1,999,000     999.50     1,999
+   只用路径压缩                         3,997       2.00     1,999
+   只按秩合并                          1,999       1.00         1
+   按秩合并 + 路径压缩                    1,999       1.00         1
+   n(n-1)/2 = 1,999,000</code></pre>
+
+  <p><b>「不压缩、不按秩」那一行的总步数是 1,999,000，正好等于 <span class="math-inline">n(n-1)/2</span>。</b> 这个数字不是巧合——它就是把一条长度 <span class="math-inline">n</span> 的链从每个结点各走一遍的总和，也就是 <span class="math-inline">O(n^2)</span>。<b>能说出「这个数字为什么正好是 <span class="math-inline">n(n-1)/2</span>」，就说明你真的推出来了，而不是背了个结论。</b></p>
+
+  <h2>「摊还」是什么意思</h2>
+
+  <p>上面那张表最值得盯的是第三行：<b>只用路径压缩，总步数 3,997，但单次最坏仍然是 1,999。</b></p>
+
+  <p>这两个数放在一起会让人困惑：到底快不快？答案是<b>两个都对</b>——它说的是两件不同的事：</p>
+
+  <ul>
+    <li><b>总代价很小</b>：3,997 步，比不压缩的 1,999,000 步小了 <b>500 倍</b>。</li>
+    <li><b>单次可能很慢</b>：第一次查询那条长链时，它老老实实走了 1,999 步才把路径压平。</li>
+  </ul>
+
+  <p><b>「摊还」就是把这两件事分开说的术语</b>：不是「每一次都快」，而是「<b>总代价小</b>」——某一次特别慢的账，由它顺手压平路径、让后面所有查询都变快这笔收入抵掉了。</p>
+
+  <p>所以「并查集查询是 <span class="math-inline">O(\alpha(n))</span>」这句话的准确含义是<b>摊还</b> <span class="math-inline">O(\alpha(n))</span>，不是每一次都 <span class="math-inline">O(\alpha(n))</span>。<b>面试或讲题时把「摊还」两个字说清楚，和不说的差别很大。</b></p>
+
+  <div class="lesson-warn">
+    <p>我这张表里的「只按秩合并」和「按秩合并 + 路径压缩」<b>总步数完全一样（都是 1,999）</b>。这不是我写错了，而是<b>这个合并顺序恰好让按秩合并单独用就够了</b>：每次合并都是「大树 + 一个孤立点」，按秩规则会自然把孤立点挂到树下，深度停在 1，路径压缩无事可做。</p>
+
+    <p><b>换一种合并顺序，两者就分开了。</b> 下一节量给你看。</p>
+  </div>
+
+  <pre data-lang="python"><code>def uf_tournament(n, compress):
+    """先合相邻两块、再合相邻两大块（像淘汰赛）。返回（总步数, 单次最坏）。"""
+    parent = list(range(n))
+    rank = [0] * n
+    total = 0
+    worst = 0
+
+    def find(x):
+        nonlocal total, worst
+        root, d = x, 0
+        while parent[root] != root:
+            root = parent[root]
+            d += 1
+        total += d
+        if d &gt; worst:
+            worst = d
+        if compress:
+            while parent[x] != root:
+                parent[x], x = root, parent[x]
+        return root
+
+    step = 1
+    while step &lt; n:
+        i = 0
+        while i + step &lt; n:
+            a, b = find(i), find(i + step)
+            if a != b:
+                if rank[a] &lt; rank[b]:
+                    a, b = b, a
+                parent[b] = a
+                if rank[a] == rank[b]:
+                    rank[a] += 1
+            i += 2 * step
+        step *= 2
+    for i in range(n):
+        find(i)
+    return total, worst
+
+
+for N in (2000, 4000):
+    print(f'   n = {N}')
+    for compress, name in ((False, '只按秩合并'), (True, '按秩合并 + 路径压缩')):
+        t, w = uf_tournament(N, compress)
+        print(f'      {name:&lt;24} 总步数 {t:&gt;9,}   平均每次 {t / N:&gt;6.2f}   单次最坏 {w:&gt;5,}')
+    print(f'      n × log2(n) = {N * (N.bit_length() - 1):,}')</code></pre>
+
+  <pre data-lang="text"><code>   n = 2000
+      只按秩合并                    总步数    10,864   平均每次   5.43   单次最坏    10
+      按秩合并 + 路径压缩              总步数     3,987   平均每次   1.99   单次最坏     2
+      n × log2(n) = 20,000
+   n = 4000
+      只按秩合并                    总步数    23,728   平均每次   5.93   单次最坏    11
+      按秩合并 + 路径压缩              总步数     7,986   平均每次   2.00   单次最坏     2
+      n × log2(n) = 44,000</code></pre>
+
+  <p><b>这张表要横着看，看「规模翻倍时总步数翻了几倍」：</b></p>
+
+  <ul>
+    <li><b>只按秩合并</b>：10,864 → 23,728，是 <b>2.18 倍</b>。规模翻倍而代价涨了 2.18 倍，比线性多一点——这正是 <span class="math-inline">n \log n</span> 的样子。</li>
+    <li><b>两者都用</b>：3,987 → 7,986，是 <b>2.00 倍</b>。规模翻倍代价正好翻倍——这就是<b>线性</b>，也才配得上「摊还 <span class="math-inline">O(\alpha(n))</span> 近似常数」这个说法。</li>
+  </ul>
+
+  <p><b>这就是第三段该讲的东西。</b> 说「并查集接近 <span class="math-inline">O(1)</span>」是背结论；能指出「规模翻倍时总步数只翻一倍」是推导；能进一步说清「因为路径压缩把长链摊平了，代价被后面的查询分掉」才是真懂。</p>
+
+  <p><b>顺带一个反过来的结论</b>：这张表也说明了<b>只按秩合并不是没用</b>——它在上一节的合并顺序下已经足够好，在这一节也只是 <span class="math-inline">O(n \log n)</span>。路径压缩的收益取决于<b>合并顺序可不可控</b>。讲清「什么时候可以省掉路径压缩」，比背「两个优化都要写」有用。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "并查集查询的「摊还 O(α(n))」，准确的含义是什么？",
+    "opts": [
+      "总代价小，但某一次查询仍可能走上千步",
+      "每一次查询都很快，最坏情况也是常数步",
+      "平均下来快，但总代价和不优化时差不多",
+      "查询的代价会随着并查集的规模变大而变慢"
+    ],
+    "ans": 0,
+    "why": "本课实测：只用路径压缩，总步数 3,997（比不压缩的 1,999,000 小 500 倍），但单次最坏仍然走 1,999 步。这两个数同时成立，说的就是「摊还」——不是每一次都快，而是总代价小：某一次特别慢的账，由它顺手压平路径、让后面所有查询都变快这笔收入抵掉了。所以「并查集查询是 O(α(n))」的准确说法是「摊还 O(α(n))」，讲题时把这两个字说清楚和不说的差别很大。"
+  }
+]'></div>
+
+  <h2>适用的边界在哪</h2>
+
+  <p>第四段是「多大的规模会把它淘汰掉」。这一段的关键在于<b>任何算法都有不适用的输入</b>，而且<b>失效条件通常不在平均情况上，在某个特定的输入形状上</b>。</p>
+
+  <p>看快排。它最常被讲成「平均 <span class="math-inline">O(n \log n)</span>，很快」，但这句里藏了一个前提：<b>主元挑得够随机</b>。取首元素当主元，遇到已经排好序的输入会怎样：</p>
+
+  <pre data-lang="python"><code>import random
+
+
+def qsort_count(a):
+    """朴素快排，取首元素当主元，返回比较次数。"""
+    if len(a) &lt;= 1:
+        return 0
+    p = a[0]
+    lo = [x for x in a[1:] if x &lt; p]
+    hi = [x for x in a[1:] if x &gt;= p]
+    return len(a) - 1 + qsort_count(lo) + qsort_count(hi)
+
+
+n = 300
+rng = random.Random(5)
+rand_data = list(range(n))
+rng.shuffle(rand_data)
+print(f'   取首元素当主元的快排，n = {n}：')
+print(f'      随机数据   : {qsort_count(list(rand_data)):&gt;8,} 次比较')
+print(f'      已经排好序 : {qsort_count(list(range(n))):&gt;8,} 次比较')
+print(f'      完全逆序   : {qsort_count(list(range(n, 0, -1))):&gt;8,} 次比较')
+print(f'   n(n-1)/2 = {n * (n - 1) // 2:,}')</code></pre>
+
+  <pre data-lang="text"><code>   取首元素当主元的快排，n = 300：
+      随机数据   :    3,298 次比较
+      已经排好序 :   44,850 次比较
+      完全逆序   :   44,850 次比较
+   n(n-1)/2 = 44,850</code></pre>
+
+  <p><b>同一份代码、同一个 <span class="math-inline">n</span>，随机数据 3,298 次比较，已经排好序 44,850 次——差 13.6 倍。</b> 而且 44,850 正好是 <span class="math-inline">n(n-1)/2</span>，也就是<b>退化成了 <span class="math-inline">O(n^2)</span></b>。</p>
+
+  <p>为什么会这样：主元取首元素，而已经排好序的数组里首元素正好是<b>最小值</b>。于是每次划分都得到「空 + 剩下的全部」，递归深度变成 <span class="math-inline">n</span>，每次只消掉一个元素。</p>
+
+  <p><b>注意这有多危险</b>：快速排序「平均 <span class="math-inline">O(n \log n)</span>」这句话<b>没有错</b>，但如果你只讲这一句，听的人会以为它在所有输入上都安全。<b>一个只讲平均情况的讲解，等于没讲边界。</b></p>
+
+  <p><b>第四段该讲的东西长这样</b>：「朴素快排平均 <span class="math-inline">O(n \log n)</span>，但如果主元取首元素、且输入已经有序或逆序，会退化成 <span class="math-inline">O(n^2)</span>，<span class="math-inline">n = 300</span> 时比较次数从 3,298 涨到 44,850。修法是随机选主元或三数取中。」</p>
+
+  <p><b>这段话里「<span class="math-inline">n = 300</span> 时 3,298 对 44,850」就是最有说服力的部分</b>——具体数字比「会退化」三个字有分量得多，因为它能让人估出<b>多大规模会出事</b>。这正是第四段要回答的问题。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "第四段「多大的规模会把它淘汰掉」，该怎么讲才算合格？",
+    "opts": [
+      "指出特定输入形状会退化，并给出具体数字",
+      "说出平均和最坏复杂度，这两个就够了",
+      "说一句它很快、适用范围很广，让人放心",
+      "列出它适用的题型，题型表就是边界"
+    ],
+    "ans": 0,
+    "why": "失效条件通常不挂在平均情况上，而是挂在某个特定输入形状上。本课实测：取首元素当主元的快排，n = 300 时随机数据 3,298 次比较，已经排好序 44,850 次——差 13.6 倍，而 44,850 正好是 n(n-1)/2，也就是退化成了 O(n^2)。「会退化」三个字没人能估出风险；带上「n = 300 时 3,298 变 44,850」这种数字，听的人才能判断多大规模会出事。这就是第四段要回答的问题。"
+  }
+]'></div>
+
+  <h2>把术语翻译成直觉</h2>
+
+  <p>最后一段是贯穿全程的要求：<b>能用日常语言说一遍。</b></p>
+
+  <p>术语是压缩过的信息，它省了字，但也藏了理解。「摊还」「不变式」「宽松上界」这些词，能背下来不代表能用。检验方法是<b>把它翻译回具体的动作和数字</b>：</p>
+
+  <table>
+    <thead>
+      <tr><th>术语</th><th>翻译成直觉</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>摊还 <span class="math-inline">O(\alpha(n))</span></td><td>某一次查询可能走 1,999 步，但它顺手把整条路径压平了，后面几百次查询都只走 1 步</td></tr>
+      <tr><td>不变式</td><td>每做完一步，这两个堆的长度差不超过一——不是某一步成立，是<b>每一步</b>都成立</td></tr>
+      <tr><td>退化成 <span class="math-inline">O(n^2)</span></td><td>主元每次都取到最小值，划分变成「空 + 其余」，<span class="math-inline">n = 300</span> 时要比较 44,850 次</td></tr>
+      <tr><td>近似常数</td><td>规模翻倍时总步数只翻一倍（3,987 → 7,986）</td></tr>
+      <tr><td>上界是紧的</td><td>不是「不超过这个数」，是<b>真的能取到这个数</b>（1,999,000 恰好等于 <span class="math-inline">n(n-1)/2</span>）</td></tr>
+    </tbody>
+  </table>
+
+  <p><b>这张表的用法</b>：讲到一个术语时，强迫自己往右列说一遍。<b>说得出来说明懂了，说不出来就是还在背。</b></p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "为什么要求「把术语翻译回日常语言」？",
+    "opts": [
+      "说不出来就是在背，说出来才说明真懂了",
+      "术语更严谨，日常语言不够准确，能不用就不用",
+      "翻译之后方便给外行讲，对自己理解没帮助",
+      "术语是给人看的，日常语言只是临时的说法"
+    ],
+    "ans": 0,
+    "why": "术语是压缩过的信息，省了字也藏了理解。「摊还」翻译成「某一次查询可能走 1,999 步，但它顺手把整条路径压平了，后面几百次查询都只走 1 步」，能说成这样就是懂了；说不出就是还在背。同理，「退化成 O(n^2)」翻译成「主元每次都取到最小值，划分变成空加其余，n=300 时要比较 44,850 次」，这个翻译过程本身就是一次检验。"
+  }
+]'></div>
+
+  <h2>这一课用到的判断</h2>
+
+  <ul>
+    <li><b>讲不清就是没懂。</b> 「记得要逆序」和「说出逆序时 <code>dp[j-wt]</code> 读的是上一轮的值」是两种深度，后者才能回答「那我想要完全背包该怎么办」。</li>
+    <li><b>第二段讲不变式，不背流程。</b> 复述代码顺序是流程；说清「每步之后什么一定成立、为什么能推出答案」才是论证。</li>
+    <li><b>第三段要推，不报结论。</b> 能指出「1,999,000 正好是 <span class="math-inline">n(n-1)/2</span>」是推导；说「并查集很快」是背结论。</li>
+    <li><b>摊还是「总代价小」，不是「每次都快」。</b> 只用路径压缩总步数 3,997（比不压缩小 500 倍），但单次最坏仍是 1,999 步。这两个数同时成立。</li>
+    <li><b>看增长率比看单点更快。</b> 规模翻倍时总步数翻 2.18 倍是 <span class="math-inline">n \log n</span>，翻 2.00 倍是线性——这张表比任何一句「接近 <span class="math-inline">O(1)</span>」都有说服力。</li>
+    <li><b>路径压缩的收益取决于合并顺序可不可控。</b> 我实测的一种合并顺序下，只按秩合并已经足够（1,999 步），两者都用毫无增益；换成锦标赛式合并才分开（10,864 对 3,987）。</li>
+    <li><b>每个算法都有失效条件，而且失效通常挂在某个特定输入形状上。</b> 快排平均 <span class="math-inline">O(n \log n)</span> 没错，但主元取首元素遇上有序输入会退化——<span class="math-inline">n = 300</span> 时 3,298 变 44,850。</li>
+    <li><b>第四段要带数字。</b> 「会退化」没人能估出风险，「<span class="math-inline">n = 300</span> 时 44,850 次」能让人立刻知道多大规模会出事。</li>
+    <li><b>术语要能翻译回直觉。</b> 说不出来就是在背。</li>
+  </ul>
+
+  <div class="lesson-practice">
+    <div class="lesson-practice__head">
+      <span class="lesson-practice__level">上手做</span>
+      <span class="lesson-practice__title">挑五个算法，各写一份三分钟讲解稿</span>
+    </div>
+
+      <p>这一课是概念课，动手部分不配 lab，落在纸面上。挑<b>五个你已经学过的算法</b>，照下面的结构各写一份讲解稿，然后讲出来。</p>
+
+      <ol>
+        <li><b>先列五个算法。</b> 建议从这些里挑，它们的「为什么」都不好讲：并查集、0/1 背包、区间 DP、二分答案、堆求前 <span class="math-inline">k</span> 大。<b>至少挑一个你觉得自己「会用但讲不清」的。</b></li>
+      </ol>
+
+      <ol>
+        <li><b>每份稿子照四段写。</b> 一段一段来，<b>不许跳过任何一段</b>：
+          <ul>
+            <li>它在解决什么问题（一句话，不许出现算法名字和代码）</li>
+            <li>为什么它是正确的（讲<b>不变式</b>，不许复述代码流程）</li>
+            <li>复杂度怎么推出来的（<span class="math-inline">O(\cdot)</span> 里每一项是从哪一步来的）</li>
+            <li>多大的规模会把它淘汰掉（<b>必须带一个具体数字</b>）</li>
+          </ul>
+        </li>
+      </ol>
+
+      <ol>
+        <li><b>讲一遍，最好录音。</b> 讲给自己听也算。<b>不要照着稿子念</b>——念稿子不会暴露你没懂的地方。讲完记下<b>被问住或卡壳的位置</b>，那些就是还没吃透的地方。</li>
+      </ol>
+
+      <ol>
+        <li><b>把术语翻译一遍。</b> 每份稿子里至少挑一个术语（如「摊还」「不变式」「宽松上界」），用日常语言说一遍，并<b>带上一个具体数字</b>。</li>
+      </ol>
+
+      <ol>
+        <li><b>回头补洞。</b> 卡住的地方回到对应课件重看那一节，然后<b>只重写那一段</b>，不用整篇重来。</li>
+      </ol>
+  </div>
+
+  <ul class="lesson-resources">
+    <li><a href="https://oi-wiki.org/basic/amortized-analysis/">OI Wiki · 摊还分析</a><span class="lesson-resources__meta">社区 · 「总代价小」这套算法的完整框架，本课「摊还」那一节是它的入门</span></li>
+    <li><a href="https://oi-wiki.org/ds/dsu/">OI Wiki · 并查集</a><span class="lesson-resources__meta">社区 · 路径压缩与按秩合并的复杂度证明</span></li>
+    <li><a href="https://oi-wiki.org/basic/quick-sort/">OI Wiki · 快速排序</a><span class="lesson-resources__meta">社区 · 主元选取与退化情形，本课「适用边界」那一节的出处</span></li>
+    <li><a href="0019-union-find.html">第 19 课：并查集：合并与查询</a><span class="lesson-resources__meta">本课并查集那两节的算法正主</span></li>
+    <li><a href="0025-dp-knapsack.html">第 25 课：背包：选与不选</a><span class="lesson-resources__meta">本课「为什么逆序」那一节的正主</span></li>
+    <li><a href="0031-lab-04-spaced-repetition-drill.html">第 31 课：实验四：一次完整的赛前模拟</a><span class="lesson-resources__meta">讲解稿的第一版在那里写，这一课把它讲标准</span></li>
+  </ul>
+
+  <!-- ── 提问提示：固定写法，别删 ── -->
+
+  <div class="lesson-ask">
+    <b>没看懂？随时问</b>
+    把看不懂的段落（或报错）原样复制回会话，说一句哪里不懂就行，我只解释这一段，不打断你的进度。
+  </div>
+
+  <!-- ── 上/下节课指针由渲染器按 curriculum.yaml 的 nodes 顺序算（第一课无 --prev、最后一课无 --next） ── -->
+
+  <nav class="lesson-nav" aria-label="上一课 / 下一课">
+    <a class="lesson-nav__link lesson-nav__link--prev" href="0031-lab-04-spaced-repetition-drill.html">
+      <span class="lesson-nav__dir">上节课</span>
+      <span class="lesson-nav__title">实验四：一次完整的赛前模拟</span>
+    </a>
+    <a class="lesson-nav__link lesson-nav__link--next" href="0033-capstone-ai-tutor.html">
+      <span class="lesson-nav__dir">下节课</span>
+      <span class="lesson-nav__title">综合实战：把刷题助手做完</span>
+    </a>
+  </nav>
+
+  <footer class="lesson-footer">
+    StudyMate · 0032 把算法讲给别人听 · 本地学习工作区
+  </footer>
+
+</article>
+
+<script src="../../../assets/sayo/sayo.js"></script>
+<link rel="stylesheet" href="../../../assets/katex/katex.min.css">
+<script src="../../../assets/katex/katex.min.js" defer></script>
+<script src="../../../assets/lesson-math.js" defer></script>
+<script src="../assets/quiz.js" defer></script>
+<script src="../assets/lesson-toc.js" defer></script>
+<script>LearnTheme.wire(document.getElementById('lesson-theme-checkbox'));</script>
+</body>
+</html>

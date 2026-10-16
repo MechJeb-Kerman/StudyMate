@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>实验四：一次完整的赛前模拟 · Python 算法与蓝桥杯</title>
+
+<!-- 共享层在 .learning/assets/，课件在 .learning/subjects/<slug>/lessons/ 下，所以是 ../../../assets/ -->
+<link rel="stylesheet" href="../../../assets/sayo/sayo.css">
+<link rel="stylesheet" href="../../../assets/learn-theme.css">
+<link rel="stylesheet" href="../assets/style.css">
+
+<!-- 主题要在首帧前应用，避免闪白/闪黑 -->
+<script src="../../../assets/learn-theme.js"></script>
+<script>LearnTheme.apply();</script>
+</head>
+
+<body class="lesson-body">
+
+<nav class="lesson-bar">
+  <a href="../index.html">← 返回课程</a>
+  <span>Python 算法与蓝桥杯</span>
+  <span class="lesson-bar__no">0031</span>
+  <!-- 课件页自带主题开关：学生从文件管理器直接打开课件时也能切暗色 -->
+  <label class="syo-toggle syo-toggle--theme lesson-bar__toggle" title="切换深浅主题" aria-label="切换深浅主题">
+    <input type="checkbox" id="lesson-theme-checkbox" checked>
+    <span class="syo-toggle-track"></span>
+    <span class="syo-toggle-knob">
+      <svg class="syo-toggle-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.5" stroke="#f57c00" stroke-width="1.5"/><path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.34 4.34l1.77 1.77M13.89 13.89l1.77 1.77M4.34 15.66l1.77-1.77M13.89 6.11l1.77-1.77" stroke="#f57c00" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <svg class="syo-toggle-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.5 12.5A6 6 0 019 4.5a6 6 0 007.5 8z" stroke="#5c6bc0" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </span>
+  </label>
+</nav>
+
+<article class="lesson">
+
+  <header class="lesson-header">
+    <span class="lesson-header__eyebrow">0031 · 实验四：一次完整的赛前模拟</span>
+    <h1>实验四：一次完整的赛前模拟</h1>
+    <p class="lesson-goal"><b>本节目标：</b>能限时独立完成省赛难度真题，并讲清所用算法为何正确。</p>
+  </header>
+
+  <!-- ── 正文：渲染器按内容文件（lessons/<序号>-<节点id>.md）产出，块词汇见 docs/规范/课件内容格式.md ── -->
+
+  <h2>这次要做出什么</h2>
+
+  <p>前面几课把零件和工具都备齐了：算法族（第 16 到 26 课）、看规模挑算法（第 28 课）、常数优化（第 29 课）、提交前自检（第 30 课）。但考场上不是一题一题分开考的——<b>是在时间压力下连着选题、决策、写码、自检。</b></p>
+
+  <p>这一课不教新算法，做一次完整的赛前模拟。<b>产出两样东西：</b></p>
+
+  <ol>
+    <li><b>一份限时解题记录</b>：按省赛节奏（4 小时、5 道题）实际走一遍，记录每道题的读题时间、定下的算法、写完的时刻、自检结果、最终得分。</li>
+    <li><b>一份讲解稿</b>：对你<b>做出来的</b>每道题，讲清三件事——它为什么可以这么解、复杂度是多少、以及<b>多大的数据规模会把这种方法淘汰掉</b>。</li>
+  </ol>
+
+  <p>第 2 样是这一课的重点。<b>做出来不等于会做</b>；讲不出「为什么正确」的解法，换一道题你就用不上了。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "限时比赛一坐下，第一件事应该做什么？",
+    "opts": [
+      "先花五到八分钟通读全部题目，列出一张表再动手",
+      "从最有把握的那道题开始写，边写边看别的",
+      "先算一遍数据范围，然后立刻开写最有把握的题",
+      "先把五道题的样例都跑一遍，确认输入格式"
+    ],
+    "ans": 0,
+    "why": "通读那 5 到 8 分钟要产出三样东西：每道题的数据范围换算出的复杂度上限、从问法缩到的两三个算法族、以及自己的完成时间估计。有了这张表才谈得上选题顺序。直接开写等于默认按题面顺序做，本课实测那是最差的策略之一（平均 90.6 分，只做完 1.86 道）。"
+  }
+]'></div>
+
+  <h2>限时里最先做的判断</h2>
+
+  <p>一坐下不要打开第一题就写。<b>先花五到八分钟通读全部题目</b>，对每道题做三件事：</p>
+
+  <ol>
+    <li><b>读数据范围，算出复杂度上限。</b> 这是第 28 课那套：<span class="math-inline">n \le 10^5</span> 就只能上 <span class="math-inline">O(n \log n)</span>，<span class="math-inline">n \le 10^3</span> 才容得下平方级。</li>
+    <li><b>读问法，缩到两三个算法族。</b> 「让最大值最小」指向二分答案，「第 <span class="math-inline">k</span> 大」指向堆，「方案数」指向动态规划。</li>
+    <li><b>估自己的完成时间。</b> 这一步最难也最值钱——<b>估错时间的代价比选错算法还大</b>，下一节会量给你看。</li>
+  </ol>
+
+  <p>这三步做完，你手上就有一张「这五道题分别大概要多久、值多少分」的表。<b>选题顺序就是照着这张表定的。</b></p>
+
+  <div class="lesson-warn">
+    <p>「估完成时间」有一个必须承认的事实：<b>你的估计一定不准。</b> 所以估计的时候要给自己留余量——估 40 分钟的题按 60 分钟算。下面几节所有数字都是在这个前提下算的。</p>
+  </div>
+
+  <h2>选题顺序真的决定得分</h2>
+
+  <p>「选题顺序能有多大影响」听起来是个没法量的问题，但它其实可以建模。把一场比赛抽象成：<b>5 道题，每道题有一个耗时和一个分值，总时长 240 分钟，做完一题才拿分</b>——一题做不完，那题白费，后面的时间也没了。</p>
+
+  <p>拿 2000 场随机比赛分别试四种常见的选题顺序：</p>
+
+  <pre data-lang="python"><code>import random
+
+T = 240
+LEVELS = [
+    ('简单甲', 25, 45, 20, 30),
+    ('简单乙', 25, 45, 20, 30),
+    ('中等', 50, 90, 40, 60),
+    ('偏难', 100, 160, 70, 100),
+    ('超难', 150, 400, 80, 130),
+]
+N = len(LEVELS)
+
+
+def gen_case(rng):
+    """造一场五题的比赛；题面顺序随机打乱，不代表难度顺序。"""
+    ps = [(rng.randint(t_lo, t_hi), rng.randint(v_lo, v_hi))
+          for _, t_lo, t_hi, v_lo, v_hi in LEVELS]
+    rng.shuffle(ps)
+    return ps
+
+
+def play(order, case, budget=T):
+    """按 order 依次做：做完一题才拿分；一题做不完，那题白费，后面的时间也没了。"""
+    used = got = 0
+    done = []
+    stuck = None
+    for i in order:
+        t, v = case[i]
+        if used + t &lt;= budget:
+            used += t
+            got += v
+            done.append(i)
+        else:
+            stuck = (i, t, v, budget - used)
+            break
+    return got, used, done, stuck
+
+
+def best_subset(case, budget=T):
+    """枚举所有「时间装得下」的子集，取分值最高的。这一步就是 0/1 背包。"""
+    best, bsub = -1, None
+    for mask in range(1 &lt;&lt; len(case)):
+        tt = vv = 0
+        sub = []
+        for i in range(len(case)):
+            if mask &gt;&gt; i &amp; 1:
+                tt += case[i][0]
+                vv += case[i][1]
+                sub.append(i)
+        if tt &lt;= budget and vv &gt; best:
+            best, bsub = vv, sub
+    return best, bsub
+
+
+STRATS = [
+    ('按题面顺序', lambda c: list(range(N))),
+    ('先易后难（耗时升序）', lambda c: sorted(range(N), key=lambda i: c[i][0])),
+    ('先难后易（分值降序）', lambda c: sorted(range(N), key=lambda i: -c[i][1])),
+    ('性价比（分值/耗时降序）', lambda c: sorted(range(N), key=lambda i: -c[i][1] / c[i][0])),
+]
+
+ROUNDS = 2000
+rng = random.Random(20260301)
+CASES = [gen_case(rng) for _ in range(ROUNDS)]
+OPT = [best_subset(c)[0] for c in CASES]
+opt_avg = sum(OPT) / ROUNDS
+print(f'   {ROUNDS} 场模拟比赛：每场 5 题、总时长 {T} 分钟、题面顺序随机打乱')
+print('   选题顺序                  平均得分   离上限还差   平均做完几道')
+for name, key in STRATS:
+    tot = done_tot = 0
+    for c in CASES:
+        g, _, done, _ = play(key(c), c)
+        tot += g
+        done_tot += len(done)
+    avg = tot / ROUNDS
+    print(f'   {name:&lt;22} {avg:7.1f}     {opt_avg - avg:6.1f}      {done_tot / ROUNDS:5.2f} 道')
+print(f'   {"上限（枚举可行的子集）":&lt;22} {opt_avg:7.1f}     {0.0:6.1f}      '
+      f'{sum(len(best_subset(c)[1]) for c in CASES) / ROUNDS:5.2f} 道')</code></pre>
+
+  <pre data-lang="text"><code>   2000 场模拟比赛：每场 5 题、总时长 240 分钟、题面顺序随机打乱
+   选题顺序                  平均得分   离上限还差   平均做完几道
+   按题面顺序                     90.6       66.6       1.86 道
+   先易后难（耗时升序）               109.8       47.4       3.11 道
+   先难后易（分值降序）                47.6      109.6       0.46 道
+   性价比（分值/耗时降序）             133.9       23.3       2.93 道
+   上限（枚举可行的子集）              157.2        0.0       2.91 道</code></pre>
+
+  <p><b>同一批题目，只换做题顺序，平均分从 47.6 到 133.9——差 2.8 倍。</b> 这跟算法水平一点关系都没有，纯粹是顺序问题。</p>
+
+  <p>两条最值得记住的：</p>
+
+  <ul>
+    <li><b>「先难后易（按分值挑）」是最差的一种</b>，平均只有 47.6 分，做完 0.46 道。因为分值最高的题往往耗时最长，一道超长题会把 240 分钟全吃掉，后面能做的题一道也碰不到。</li>
+    <li><b>「按题面顺序」排在倒数第二</b>（90.6 分，只做完 1.86 道）。这最危险，因为它是<b>默认行为</b>——不假思索就从第一题开始写，等价于一个很差的策略。</li>
+  </ul>
+
+  <h2>做完的题数不等于得分</h2>
+
+  <p>看块 1 的最后两列，有一件事很反直觉：</p>
+
+  <table>
+    <thead>
+      <tr><th>顺序</th><th>平均得分</th><th>平均做完几道</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>先易后难</td><td>109.8</td><td><b>3.11 道</b></td></tr>
+      <tr><td>上限</td><td><b>157.2</b></td><td>2.91 道</td></tr>
+    </tbody>
+  </table>
+
+  <p><b>「先易后难」做完的题最多，得分却不是最高。</b> 最高分的做法平均少做 0.2 道题，反而多拿 47.4 分。</p>
+
+  <p>原因很直接：<b>题目的分值不一样。</b> 三道 30 分的容易题加起来 90 分，还不如一道 100 分的题。你埋头把三道小题做完，看着进度条很满，总分却落后。</p>
+
+  <p>所以<b>考场上不要用「做完了几道」来判断自己发挥得好不好</b>——那个指标会把你引向错误策略。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "为什么「做完的题数」不能拿来衡量一场比赛发挥得好不好？",
+    "opts": [
+      "因为题目分值不一样，一道大题顶得上三道小题",
+      "做完的题也可能算错，判分的时候会被整道扣掉",
+      "做得多的那套策略，留给自检的时间相对更少",
+      "完成的题数和得分之间，其实并没有必然联系"
+    ],
+    "ans": 0,
+    "why": "本课实测：先易后难平均做完 3.11 道题、得 109.8 分；而分数上限那一套平均只做完 2.91 道题、得 157.2 分。多做了 0.2 道题反而少拿 47.4 分，原因是分值差异——三道 30 分的容易题加起来 90 分，还不如一道 100 分的题。所以在考场上别用「做完几道」判断自己发挥得好不好，那个指标会把你引向错误策略。"
+  }
+]'></div>
+
+  <h2>一题做不完的代价</h2>
+
+  <p>上一节说「一道超长题会把时间全吃掉」。这件事的量级值得单独算：</p>
+
+  <pre data-lang="python"><code>rng = random.Random(7)
+cases = lost = 0
+for _ in range(2000):
+    c = gen_case(rng)
+    over = [i for i in range(N) if c[i][0] &gt; T]
+    if not over:
+        continue
+    bad = over[0]
+    g_bad, _, _, _ = play([bad] + [i for i in range(N) if i != bad], c)
+    g_opt, _ = best_subset(c)
+    cases += 1
+    lost += g_opt - g_bad
+print(f'   {2000} 场里有 {cases} 场存在「单题耗时 &gt; 总时长」的题')
+print(f'   这些场次里，先啃那道题比最高分的做法平均少拿 {lost / cases:.1f} 分')</code></pre>
+
+  <pre data-lang="text"><code>   2000 场里有 1243 场存在「单题耗时 &gt; 总时长」的题
+   这些场次里，先啃那道题比最高分的做法平均少拿 156.4 分</code></pre>
+
+  <p><b>2000 场里有 1243 场存在一道「单题就超过总时长」的题</b>——超过六成。也就是说，<b>考场上你大概率会碰到一道做不完的题</b>，这不是小概率事件。</p>
+
+  <p>而在这些场次里，先啃它的代价是<b>平均少拿 156.4 分</b>。因为它不只是让你少做一道题，而是让<b>后面所有本来能做的题全部作废</b>——时间已经用光了。</p>
+
+  <p>这条对应大纲里的第一个坑：<b>把时间全花在一道难题上。</b> 它的代价不是「少拿那一道题的分数」，而是「整场崩掉」。</p>
+
+  <div class="lesson-warn">
+    <p>判断一道题该不该啃，要在<b>动手之前</b>做。一旦开始写，你会投入十几分钟的沉没成本，那时候再放弃就更难了——这是人都会有的倾向，不靠意志力对抗，靠<b>开工前就把规则定死</b>：比如「超过预计时间 1.5 倍还没写出可运行版本，就立刻跳到下一题」。</p>
+  </div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "先啃一道做不完的难题，代价为什么远不止那一道题的分？",
+    "opts": [
+      "一题做不完就白费，还把后面题的时间也占了",
+      "难题的错误率更高，做出来也未必能拿分",
+      "难题往往要用更复杂的数据结构，写起来慢",
+      "先啃难题会让心态变差，后面发挥不出水平"
+    ],
+    "ans": 0,
+    "why": "本课实测：2000 场模拟里 1243 场存在「单题耗时超过总时长」的题（超过六成），而在这些场次里先啃它的代价是平均少拿 156.4 分。因为一题做不完时，那题的时间全白费，而 240 分钟已经用光，后面本来能做的题一道也碰不到。这是大纲里「把时间全花在一道难题上」那条坑的真正量级——不是少拿一道题，是整场崩掉。"
+  }
+]'></div>
+
+  <h2>选题顺序就是背包</h2>
+
+  <p>现在来看为什么「性价比排序」还是差上限一截（133.9 对 157.2），以及真正的上限是怎么算出来的。</p>
+
+  <p>注意一件事：既然<b>一题做不完就白费</b>，那么你实际完成的题目一定构成一个<b>时间装得下的子集</b>。反过来，任何一个时间装得下的子集，你都能按某个顺序把它全部做完。</p>
+
+  <p><b>所以「选一个做题顺序」本质上就是「选一个时间装得下的题目子集」</b>——而后者正是第 25 课的 0/1 背包：时间是容量，分值是价值，挑一个价值最大又装得下的组合。</p>
+
+  <p>拿块 3 那个具体例子验一下：</p>
+
+  <pre data-lang="python"><code>EX = [(200, 100), (40, 30), (40, 30), (40, 30), (30, 25)]
+og, osub = best_subset(EX)
+print(f'   五题（耗时, 分值）= {EX}，总时长 {T} 分钟')
+print(f'   分值最高的可行子集：第 {osub} 题，共 {og} 分')
+for name, key in STRATS:
+    g, u, done, stuck = play(key(EX), EX)
+    if stuck:
+        tag = f'卡在第 {stuck[0]} 题（只差 {stuck[3]} 分钟，那题值 {stuck[2]} 分）'
+    else:
+        tag = '时间刚好用尽'
+    print(f'   {name:&lt;22} 得分 {g:&gt;4}   做完 {done}   {tag}')</code></pre>
+
+  <pre data-lang="text"><code>   五题（耗时, 分值）= [(200, 100), (40, 30), (40, 30), (40, 30), (30, 25)]，总时长 240 分钟
+   分值最高的可行子集：第 [0, 1] 题，共 130 分
+   按题面顺序                  得分  130   做完 [0, 1]   卡在第 2 题（只差 0 分钟，那题值 30 分）
+   先易后难（耗时升序）             得分  115   做完 [4, 1, 2, 3]   卡在第 0 题（只差 90 分钟，那题值 100 分）
+   先难后易（分值降序）             得分  130   做完 [0, 1]   卡在第 2 题（只差 0 分钟，那题值 30 分）
+   性价比（分值/耗时降序）           得分  115   做完 [4, 1, 2, 3]   卡在第 0 题（只差 90 分钟，那题值 100 分）</code></pre>
+
+  <p><b>这一局最优是 130 分，做法是「做第 0 题和第 1 题」。</b> 注意看这个结局有多紧：<code>200 + 40 = 240</code>，<b>正好把时间用完，一分钟不剩。</b></p>
+
+  <p>而「性价比排序」在这一局只拿 115 分——它按性价比从高到低做，先把三道 30 分的小题和那道 25 分的做完（115 分），轮到第 0 题时<b>只剩 90 分钟，那道题要 200 分钟</b>，只能放弃。它做出了<b>4 道题</b>，却比只做 2 道题的方案少 15 分。</p>
+
+  <p><b>结论：性价比排序是个不错的经验法则（块 1 里它 133.9 分，是四种里最高的），但它不是最优。</b> 差别在于——性价比只看「每一分钟买到多少分」，而背包要看「<b>装得下</b>的组合里哪个总分最高」。前者是贪心，后者才对应问题本身的结构。第 23 课讲过贪心什么时候会失效，这里是同一个道理换了个场景。</p>
+
+  <div class="lesson-note">
+    <p>考场上你当然不会去枚举 <span class="math-inline">2^5</span> 个子集（虽然五道题真枚举也就 32 种，心算都行）。<b>实用的做法是：按性价比从高到低排，然后检查一遍「排在最后那道题，剩下的时间够不够」。</b> 如果不够，就把它换掉，看看换成别的组合总分会不会更高。五道题的规模，这个检查手算就能做完。</p>
+  </div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "为什么说「选题顺序」这个问题本质上就是背包？",
+    "opts": [
+      "做完的题一定构成时间装得下的子集，反之亦然",
+      "题目的耗时和分值都是整数，可以直接套背包模板",
+      "两者都是要在有限预算下做选择，思路当然一样",
+      "因为背包也能用来做排序，两者是同一类问题"
+    ],
+    "ans": 0,
+    "why": "关键在于「一题做不完就白费」这条规则：你实际完成的题目一定构成一个时间装得下的子集；反过来，任何一个时间装得下的子集，都能按某个顺序全部做完。所以选题顺序与「选一个装得下的子集」是一一对应的，而后者正是第 25 课的 0/1 背包——时间是容量，分值是价值。本课块 3 验过：最优顺序得分 130，与分值最高的可行子集得分完全一致。"
+  }
+]'></div>
+
+  <h2>自检时间要算进预算</h2>
+
+  <p>第 30 课讲过「写对但来不及自检」是常见的失分点。这一课把它算进时间预算里看代价：</p>
+
+  <pre data-lang="python"><code>def run_check(reserve, p_wrong, seed=31337, rounds=4000):
+    rng = random.Random(seed)
+    tot = saved_tot = done_tot = 0
+    for _ in range(rounds):
+        c = gen_case(rng)
+        order = sorted(range(N), key=lambda i: c[i][0])
+        _, _, done, _ = play(order, c, budget=T - reserve)
+        done_tot += len(done)
+        eff = min(1.0, reserve / 30)          # 投入越多，救回率越接近上限
+        got = saved = 0
+        for i in done:
+            v = c[i][1]
+            if rng.random() &lt; p_wrong:
+                if rng.random() &lt; 0.85 * eff:
+                    got += v
+                    saved += 1
+            else:
+                got += v
+        tot += got
+        saved_tot += saved
+    return tot / rounds, saved_tot / rounds, done_tot / rounds
+
+
+for pw in (0.28, 0.45):
+    print(f'   假设做出来的题里有 {pw:.0%} 其实是错的，自检最多能救回 85%：')
+    print('      预留自检   平均得分    平均救回几道   平均做完几道')
+    for reserve in (0, 10, 20, 30, 40, 60):
+        g, s, d = run_check(reserve, pw)
+        print(f'      {reserve:&gt;6} 分   {g:7.1f}      {s:6.2f}        {d:6.2f}')</code></pre>
+
+  <pre data-lang="text"><code>   假设做出来的题里有 28% 其实是错的，自检最多能救回 85%：
+      预留自检   平均得分    平均救回几道   平均做完几道
+           0 分      78.6        0.00          3.10
+          10 分      82.9        0.24          3.04
+          20 分      88.8        0.47          3.01
+          30 分      96.0        0.70          3.00
+          40 分      95.9        0.70          3.00
+          60 分      95.9        0.70          3.00
+   假设做出来的题里有 45% 其实是错的，自检最多能救回 85%：
+      预留自检   平均得分    平均救回几道   平均做完几道
+           0 分      60.3        0.00          3.11
+          10 分      69.9        0.38          3.04
+          20 分      81.4        0.77          3.01
+          30 分      93.3        1.14          3.00
+          40 分      93.2        1.14          3.00
+          60 分      93.2        1.14          3.00</code></pre>
+
+  <p><b>留出 30 分钟自检，平均多做不完 0.1 道题，却多拿 17 到 33 分。</b></p>
+
+  <p>注意曲线的形状：从 0 到 30 分钟一直在涨，<b>30 分钟往后就平了</b>（40 分、60 分都是 96.0）。这是因为模型里自检的收益在 30 分钟就饱和了——再多留只是白白少做题。</p>
+
+  <p>所以「自检要留多久」这个问题有实际答案：<b>留到收益饱和的那个点就够，不要预留过多。</b> 具体留多久取决于题目难度和你的出错率，但这个形状是通用的——<b>先陡后平</b>。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "为什么要在做题预算里预先扣掉自检时间？",
+    "opts": [
+      "自检花的是做题的时间，不预先扣出来就会超时",
+      "因为自检必须留满 30 分钟，少了就没有效果",
+      "预留的时间可以顶替一部分做题的时间，结果一样",
+      "因为判分器会检查你有没有老老实实自检"
+    ],
+    "ans": 0,
+    "why": "自检不是额外赠送的时间，它占用的是同一份 240 分钟。本课实测：预留 30 分钟自检，平均只少做 0.1 道题，却多拿 17 到 33 分。但曲线是「先陡后平」——30 分钟往后就饱和了（40 分、60 分预留都是 96.0），预留过多等于白白少做题。所以答案是留到收益饱和那个点，不是越多越好，也不是固定 30 分钟。"
+  }
+]'></div>
+
+  <h2>怎么算过</h2>
+
+  <p>这一课的产物是两份材料，判分看四件事：</p>
+
+  <ol>
+    <li><b>限时是真的限时。</b> 4 小时做完 5 道题，有开始与结束的时间记录。中途可以卡住，但不能停表去查资料、不能事后补做。</li>
+    <li><b>解题记录完整。</b> 每道题都要记：读题用时、定下的算法与理由（要提到数据范围）、写完的时刻、自检做了什么、最后得了几分、<b>丢分丢在哪</b>。</li>
+    <li><b>讲解稿讲清三件事。</b> 对做出来的每题：为什么这个方法是对的、复杂度是多少、<b>多大的规模会把它淘汰掉</b>。第三件是重点——说不出这条，说明你只是记住了这道题。</li>
+    <li><b>至少有一道题是「放弃得对」的。</b> 记录里要能看出你在某道题上做出了放弃的决定，并说清依据（比如「预计耗时超过剩余预算」）。<b>这一条是判断你会不会选题的直接证据。</b></li>
+  </ol>
+
+  <h2>怎么跑</h2>
+
+  <p>在 lab 里按这个顺序走：</p>
+
+  <pre data-lang="sh"><code># 1) 拿题：lab 里给了 5 道省赛难度的题面与样例数据
+# 2) 计时开始，4 小时，中途不要停表
+# 3) 按你自己的选题顺序做，边做边填解题记录模板
+# 4) 时间到，立刻停手（哪怕某题只差一行）
+# 5) 用 lab 的判分脚本对答案，算出得分
+# 6) 写讲解稿
+# 7) 回头复盘：如果换一种选题顺序，这一场能多拿几分？用手算</code></pre>
+
+  <p>第 7 步是这一课最有价值的一步：<b>你不是在复盘算法，是在复盘决策。</b></p>
+
+  <div class="lesson-practice">
+    <div class="lesson-practice__head">
+      <span class="lesson-practice__level">上手做</span>
+      <span class="lesson-practice__title">四件事按这个顺序做</span>
+    </div>
+
+      <p>这一课的动手部分落在 lab 里（任务与断言见 <a href="../lab/0031-lab-04-spaced-repetition-drill/">lab/0031-lab-04-spaced-repetition-drill/</a>，做完对照 <a href="../lab/solutions/">lab/solutions/</a>）。要做的是四件事。</p>
+
+      <ol>
+        <li><b>先通读、先列表，再动手。</b> 打开五道题，只做第 2 节那三步（读范围、读问法、估时间），把表填出来。<b>这一步不许写代码</b>，15 分钟内完成。</li>
+        <li><b>定顺序，并写下理由。</b> 照着上一步的表定出做题顺序，写清为什么这么排——要提到「预计耗时」与「分值」两方面。<b>写完就不再改</b>（中途可以放弃某题，但顺序不许重排，这是为了让你看到自己判断的准确度）。</li>
+        <li><b>限时 4 小时走完。</b> 边做边填记录。卡住超过预计时间 1.5 倍的题，按你自己定的规则放弃，并在记录里写清楚。</li>
+        <li><b>写讲解稿并复盘。</b> 讲解稿讲三件事（为什么对、复杂度、什么规模会淘汰它）。复盘时算一遍：<b>如果按性价比排序，这一场能多拿几分？</b> 用手算，不用写程序。</li>
+      </ol>
+  </div>
+
+  <h2>自查清单</h2>
+
+  <ul>
+    <li>限时是真的限时，4 小时没停表。</li>
+    <li>五道题都填了记录，包括没做出来的那些（<b>没做出来的也要记：卡在哪、什么时候决定放弃</b>）。</li>
+    <li>每道题的「定下的算法」都写到了数据范围，不只是算法名字。</li>
+    <li>讲解稿的三件事齐全，<b>「什么规模会淘汰它」那一条不能空</b>。</li>
+    <li>至少有一道题记录了「放弃」以及依据。</li>
+    <li>复盘那一步做了，并且算出了「换顺序能多拿几分」。</li>
+    <li>提交前用第 30 课那份清单过了一遍（尤其是格式与调试输出）。</li>
+  </ul>
+
+  <h2>最可能卡在哪</h2>
+
+  <ul>
+    <li><b>一坐下就开始写第一题。</b> 这是「按题面顺序」那个 90.6 分的默认行为。强制自己先通读 15 分钟。</li>
+    <li><b>估时估得太乐观。</b> 估计值乘 1.5 再填表。宁可高估。</li>
+    <li><b>舍不得放弃。</b> 已经写了 20 分钟，觉得再撑一下就好了——这正是 156.4 分代价的来源。<b>开工前把放弃规则定死</b>，到点就跳。</li>
+    <li><b>复盘时只复盘算法。</b> 这一课复盘的是<b>决策</b>：顺序对不对、估时准不准、放弃得对不对。算法错了是第 16 到 26 课的事。</li>
+    <li><b>讲解稿写成题解。</b> 「先这样再那样」是题解；「为什么这样是对的、什么规模不行」才是讲解稿。</li>
+  </ul>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "「按题面顺序做」这个默认行为，为什么成绩那么差？",
+    "opts": [
+      "题面顺序是出题人排的，和难度、耗时都没有关系",
+      "题面顺序一定是从易到难，等于把大题放在了最后",
+      "第一题通常是压轴题，出题人故意这样安排",
+      "按顺序做会让你不知不觉在一道题上耗太久"
+    ],
+    "ans": 0,
+    "why": "本课模拟里题面顺序是随机打乱的，而实测「按题面顺序」平均只有 90.6 分、只做完 1.86 道，排在四种策略的倒数第二。它吃亏的原因是：题面顺序与难度、耗时都没有关系，所以这个顺序等价于随机决定先啃哪道题——而随机遇到一道超长题的概率并不低（1243/2000）。它最危险的地方在于它是默认行为：不假思索就从第一题开始写，等于默默选择了一个很差的策略。"
+  }
+]'></div>
+
+  <h2>卡壳顺序</h2>
+
+  <ol>
+    <li>先确认时间是<b>真的限时</b>。超时了这场模拟就没意义了，重来。</li>
+    <li>顺序定了之后不许重排——<b>这一条是纪律，不是建议</b>。重排了就看不出你的判断准不准。</li>
+    <li>某道题卡住，先看<b>是不是数据范围读错了</b>（第 28 课那套）。范围读错会导致算法选错，那是根本性的。</li>
+    <li>算法选对了但写不出来，看<b>是不是边界没想清</b>。用小数据手推一遍，别硬想。</li>
+    <li>到了放弃规则触发的时间点，<b>立刻跳</b>。跳之前把记录填完，别等到最后凭记忆补。</li>
+    <li>讲解稿写不下去，说明那道题你其实没真懂——回课件对应那一课重看。</li>
+  </ol>
+
+  <h2>做完之后</h2>
+
+  <p>这一场模拟的结果<b>不是分数，是一份关于你自己的数据</b>：</p>
+
+  <ul>
+    <li><b>估时准确度</b>：你预计的和实际用的差多少？如果系统性偏低，下次乘的系数要调大。</li>
+    <li><b>选题判断</b>：如果按性价比重排能多拿多少分？差得多说明你的直觉顺序需要改。</li>
+    <li><b>放弃果断度</b>：有没有在该跳的时候没跳？</li>
+    <li><b>讲解稿的完成度</b>：哪些题你能讲清「什么规模会淘汰它」，哪些讲不出？</li>
+  </ul>
+
+  <p>把这份数据带到第 33 课的综合实战里去——那一课是这套流程的最后一次完整演练。</p>
+
+  <ul class="lesson-resources">
+    <li><a href="https://www.lanqiao.cn/problems/">蓝桥杯官方练习系统</a><span class="lesson-resources__meta">官方 · 历年真题，按难度分组练限时</span></li>
+    <li><a href="https://oi-wiki.org/contest/strategy/">OI Wiki · 比赛策略</a><span class="lesson-resources__meta">社区 · 选题、分配时间与放弃时机的常见经验</span></li>
+    <li><a href="0025-dp-knapsack.html">第 25 课：背包：选与不选</a><span class="lesson-resources__meta">本课「选题顺序等于背包」那一节的正主</span></li>
+    <li><a href="0028-problem-pattern-recognition.html">第 28 课：看数据规模挑算法</a><span class="lesson-resources__meta">通读那 15 分钟里要用的第一步</span></li>
+    <li><a href="0030-stress-test-and-review.html">第 30 课：交卷之前你要检查什么</a><span class="lesson-resources__meta">本课自检环节用的就是那一份清单</span></li>
+  </ul>
+
+  <!-- ── 提问提示：固定写法，别删 ── -->
+
+  <div class="lesson-ask">
+    <b>没看懂？随时问</b>
+    把看不懂的段落（或报错）原样复制回会话，说一句哪里不懂就行，我只解释这一段，不打断你的进度。
+  </div>
+
+  <!-- ── 上/下节课指针由渲染器按 curriculum.yaml 的 nodes 顺序算（第一课无 --prev、最后一课无 --next） ── -->
+
+  <nav class="lesson-nav" aria-label="上一课 / 下一课">
+    <a class="lesson-nav__link lesson-nav__link--prev" href="0030-stress-test-and-review.html">
+      <span class="lesson-nav__dir">上节课</span>
+      <span class="lesson-nav__title">交卷之前你要检查什么</span>
+    </a>
+    <a class="lesson-nav__link lesson-nav__link--next" href="0032-explain-like-a-teacher.html">
+      <span class="lesson-nav__dir">下节课</span>
+      <span class="lesson-nav__title">把算法讲给别人听</span>
+    </a>
+  </nav>
+
+  <footer class="lesson-footer">
+    StudyMate · 0031 实验四：一次完整的赛前模拟 · 本地学习工作区
+  </footer>
+
+</article>
+
+<script src="../../../assets/sayo/sayo.js"></script>
+<link rel="stylesheet" href="../../../assets/katex/katex.min.css">
+<script src="../../../assets/katex/katex.min.js" defer></script>
+<script src="../../../assets/lesson-math.js" defer></script>
+<script src="../assets/quiz.js" defer></script>
+<script src="../assets/lesson-toc.js" defer></script>
+<script>LearnTheme.wire(document.getElementById('lesson-theme-checkbox'));</script>
+</body>
+</html>

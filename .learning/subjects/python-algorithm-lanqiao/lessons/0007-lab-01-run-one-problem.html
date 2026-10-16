@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>实验一：把一道题跑通 · Python 算法与蓝桥杯</title>
+
+<!-- 共享层在 .learning/assets/，课件在 .learning/subjects/<slug>/lessons/ 下，所以是 ../../../assets/ -->
+<link rel="stylesheet" href="../../../assets/sayo/sayo.css">
+<link rel="stylesheet" href="../../../assets/learn-theme.css">
+<link rel="stylesheet" href="../assets/style.css">
+
+<!-- 主题要在首帧前应用，避免闪白/闪黑 -->
+<script src="../../../assets/learn-theme.js"></script>
+<script>LearnTheme.apply();</script>
+</head>
+
+<body class="lesson-body">
+
+<nav class="lesson-bar">
+  <a href="../index.html">← 返回课程</a>
+  <span>Python 算法与蓝桥杯</span>
+  <span class="lesson-bar__no">0007</span>
+  <!-- 课件页自带主题开关：学生从文件管理器直接打开课件时也能切暗色 -->
+  <label class="syo-toggle syo-toggle--theme lesson-bar__toggle" title="切换深浅主题" aria-label="切换深浅主题">
+    <input type="checkbox" id="lesson-theme-checkbox" checked>
+    <span class="syo-toggle-track"></span>
+    <span class="syo-toggle-knob">
+      <svg class="syo-toggle-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.5" stroke="#f57c00" stroke-width="1.5"/><path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.34 4.34l1.77 1.77M13.89 13.89l1.77 1.77M4.34 15.66l1.77-1.77M13.89 6.11l1.77-1.77" stroke="#f57c00" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <svg class="syo-toggle-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.5 12.5A6 6 0 019 4.5a6 6 0 007.5 8z" stroke="#5c6bc0" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </span>
+  </label>
+</nav>
+
+<article class="lesson">
+
+  <header class="lesson-header">
+    <span class="lesson-header__eyebrow">0007 · 实验一：把一道题跑通</span>
+    <h1>实验一：把一道题跑通</h1>
+    <p class="lesson-goal"><b>本节目标：</b>交出一份能读入题目输入、给出答案、并用样例自动判定对错的脚本，让分层判分五层全过。</p>
+  </header>
+
+  <!-- ── 正文：渲染器按内容文件（lessons/<序号>-<节点id>.md）产出，块词汇见 docs/规范/课件内容格式.md ── -->
+
+  <p>第 6 课结束时，你手上有几类零件：循环与 <code>range</code>、函数与返回值、推导式与常用内置、列表/集合/字典之间的选择，以及「先读完、再算」的输入解析规矩。这次实验不讲新语法—— 它要你把零件装成一样<b>能跑的东西</b>：一份能读入题目输入、把答案打印出来，而且自己就能判定对错的脚本。</p>
+
+  <p>这一步为什么不能跳过去：零件不装成机器，就不知道自己哪一块是空的。样例跑出错误答案时，是输入读错了、解析解析错了，还是求解算错了？这三件事在没有分段、没有自测脚本的代码里是糊在一起的，只能靠到处 <code>print</code> 猜。这次要交的正是把它们分开的东西—— <b>两个 solve 脚本、一组样例文件、一份你自己的自测脚本</b>，外加一次规模对照。</p>
+
+  <p>任务、断言与判分脚本在 <a href="../lab/0007-lab-01-run-one-problem/">lab/0007-lab-01-run-one-problem/</a>；题目材料是 <a href="../lab/0007-lab-01-run-one-problem/problems.md">problems.md</a>；四个任务都做完、判分全过之后，再对照 <a href="../lab/solutions/">lab/solutions/</a>。</p>
+
+  <h2>这次要做出什么</h2>
+
+  <p>四样产物，都在 lab 目录里。文件名与函数名是判分接口，别改；函数体里怎么写随你。</p>
+
+  <table>
+    <thead>
+      <tr><th>产物</th><th>长什么样</th><th>怎么算做出来了</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>solve_a.py</code></td><td>三段：一次读完输入 → 解析成 <code>(n, a)</code> → 求解并打印</td><td>四组样例全对，而且换行被改过的那一组也给出同一个答案</td></tr>
+      <tr><td><code>solve_b.py</code></td><td>五个函数：读入、解析成 <code>n</code> 行 <code>m</code> 列的矩阵、每行最大值、最多出现的分数、打印</td><td>两组样例逐字一致，300×100 的数据 2 秒内跑完</td></tr>
+      <tr><td><code>selfcheck.py</code></td><td>跑样例 → 与 <code>.out</code> 逐字比 → 每组一行 <code>样例 A1 PASS</code>，最后一行 <code>自测通过 4/4 组</code></td><td>判分把 <code>solve_a.py</code> 换成故意写错的解以后，它会报 FAIL</td></tr>
+      <tr><td><code>scale_check.py</code></td><td>同一份数据上量「列表查重」与「集合查重」，再打印放大 10 倍的预计耗时</td><td>两行秒数差 20 倍以上；预计值超过 1 秒时限</td></tr>
+    </tbody>
+  </table>
+
+  <p>给好的东西（别改）：题面 <code>problems.md</code>、判分脚本 <code>run_tests.py</code>、四组样例 <code>sample_*.in</code> / <code>sample_*.out</code>、判分数据 <code>tests/</code>、故意写错的解 <code>probe_wrong_a.py</code>。留白版原样跑是<b>不通过</b>的：<code>solve_a.py</code> 打出 <code>0</code>、<code>solve_b.py</code> 打出 <code>0 0</code>、 <code>selfcheck.py</code> 一组都不报、<code>scale_check.py</code> 两行的秒数都小到 <code>0.000000</code>（函数还空着，根本没量到东西）。那是起点，不是 bug。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "这次实验要交的四样产物里，哪一样的验收方式是「故意换一份错解，看它报不报 FAIL」？",
+    "opts": [
+      "自测脚本：判分把解换成错的后它必须报 FAIL",
+      "两份 solve 脚本：四组样例全对就算过",
+      "规模对照脚本：两行秒数差到二十倍就算过",
+      "题面材料：样例的输出与标准答案逐字一致"
+    ],
+    "ans": 0,
+    "why": "判分第 4 层有一个探针：把 solve_a.py 临时换成故意写错的 probe_wrong_a.py，自测脚本必须报 FAIL——不报就说明它没真的比对，只是把「跑完了」当成了「对了」。规模对照脚本验的是量级：两种查重的秒数要差二十倍以上，而且放大十倍时比较次数涨约一百倍而不是十倍。"
+  }
+]'></div>
+
+  <h2>两道题</h2>
+
+  <p>题目材料一共两道，<b>输入格式不一样</b>——这正是这次要练的地方。完整题面（含样例原文）在 <a href="../lab/0007-lab-01-run-one-problem/problems.md">problems.md</a>。</p>
+
+  <p>题目 A · 不一样的数（样例是 <code>sample_a1.in</code> 与 <code>sample_a2.in</code>）：</p>
+
+  <pre data-lang="text"><code>【输入格式】
+第一行一个整数 n；接下来给定 n 个整数，数与数之间用空白（空格或换行）隔开。
+题面只约定这 n 个整数的个数与先后顺序，不约定折行位置。
+【输出格式】
+一行一个整数：这 n 个数里不同数值的个数。
+【规模】1 ≤ n ≤ 2×10^5，1 ≤ a_i ≤ 10^9；时限 1 秒。</code></pre>
+
+  <p>题目 B · 成绩单（样例是 <code>sample_b1.in</code> 与 <code>sample_b2.in</code>）：</p>
+
+  <pre data-lang="text"><code>【输入格式】
+第一行两个整数 n 与 m；接下来是 n×m 个整数（每个学生的 m 门课成绩）。
+按题面排版是 n 行、每行 m 个，但题面只约定这些整数的个数与先后顺序，不约定换行位置。
+【输出格式】
+第一行 n 个整数：每个学生的最高分，数与数之间用一个空格隔开。
+第二行两个整数：出现次数最多的分数、它出现的次数；并列时取较小的那个分数。
+【规模】1 ≤ n, m ≤ 1000，n×m ≤ 10^5，0 ≤ 成绩 ≤ 100；时限 1 秒。</code></pre>
+
+  <p>两道题的规模都写得很大（<span class="math-inline">2 \times 10^5</span>、<span class="math-inline">10^5</span>），而样例只有几行——这不是为难你，是第 2 课那条规律的应用场合：<b>样例永远跑得飞快，能不能过由数据规模决定。</b></p>
+
+  <h2>怎么算过</h2>
+
+  <p>算不算过，看下面这些<b>跑得出来的东西</b>，不看「我觉得我懂了」。每一条都来自前六课里被这次实验验收的那一课。</p>
+
+  <table>
+    <thead>
+      <tr><th>这条来自哪一课</th><th>做到什么算过</th><th>怎么自查</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>0006 · 读完输入再动手</td><td>两个 solve 脚本里标准输入只被读一次；解析交出的数据结构与题面一致；换行被改过的 <code>tests/a3.in</code>、<code>tests/b3.in</code> 与样例给出同一个答案</td><td>把 <code>tests/a3.in</code> 接到 <code>solve_a.py</code> 上，打印 <code>4</code>，与 <code>sample_a2.out</code> 一致</td></tr>
+      <tr><td>0004 · 把一段代码变成函数</td><td>按给定函数名分段，每个函数只做一件事：拿什么进来、交回什么出去；<code>print</code> 只出现在 <code>solve</code> 里</td><td>指着每个函数，能用一句话说出它的输入与输出</td></tr>
+      <tr><td>0005 · 推导式与常用内置工具</td><td>矩阵按 <code>m</code> 个一段切开、每行取 <code>max</code>、在「次数最多且分数最小」上取第一条——用推导式与内置函数收尾，而不是堆循环</td><td><code>solve_b.py</code> 里看得到至少一处推导式或内置函数的收尾写法</td></tr>
+      <tr><td>0003 · 列表与字典的隐藏价格</td><td>查重、计数用集合或字典；<code>scale_check.py</code> 量出列表比集合慢 20 倍以上</td><td>跑 <code>py scale_check.py</code>：两行「不同元素」一样，秒数差两个数量级</td></tr>
+      <tr><td>0002 · 按数据规模估算时间</td><td>说得出「十万个数、1 秒时限，我的循环要跑多少次」，并算出规模放大 10 倍后的耗时</td><td><code>scale_check.py</code> 第三行的预计值超过 1 秒时限，且接近实测的 100 倍</td></tr>
+      <tr><td>本次实验自己加的</td><td>四组样例逐字一致（不是只测一组）；自测脚本抓得住错解；判分五层全过</td><td><code>py run_tests.py</code> 最后一行是「五层都过了」，退出码 0</td></tr>
+    </tbody>
+  </table>
+
+  <h2>怎么跑</h2>
+
+  <p>先 <code>cd</code> 进 lab 目录，再按下面的顺序来。<code>cat</code> 在 PowerShell 里就是 <code>Get-Content</code>； CMD 里读文件写 <code>py solve_a.py &lt; sample_a1.in</code>。</p>
+
+  <pre data-lang="text"><code>cd lab/0007-lab-01-run-one-problem
+
+cat sample_a1.in | py solve_a.py     # 先手动跑一组样例，看它到底打印了什么
+py selfcheck.py                      # 你自己的自测脚本：四组样例逐组 PASS / FAIL
+py scale_check.py                    # 任务 4 的耗时对照（要跑一秒左右）
+py run_tests.py                      # 判分：五层一起判，逐条给 PASS / FAIL</code></pre>
+
+  <p>判分为什么分五层：<b>每一层的失败指向不同的原因</b>，别只拿到一个笼统的「不通过」。第 1、2 层没过时，第 3–5 层会直接跳过——样例都没过，大数据组的失败信息没有参考价值。</p>
+
+  <table>
+    <thead>
+      <tr><th>层</th><th>跑什么</th><th>没过通常说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>1 · 样例</td><td>题面给的四组样例</td><td>读入 / 解析 / 求解 / 打印，哪一段还没接上</td></tr>
+      <tr><td>2 · 折行组</td><td>同一份数、换行换了排版的两组</td><td>输入解析层：用 <code>input()</code> 逐行读，读的位置与数据的行绑死了</td></tr>
+      <tr><td>3 · 大数据</td><td>题目 A 十万个数、题目 B 300×100，限时 2 秒</td><td>复杂度：容器选错（列表查重是 <span class="math-inline">O(n^2)</span>），不是「写错了」</td></tr>
+      <tr><td>4 · 自测脚本</td><td>你的 <code>selfcheck.py</code>，外加一次探针</td><td>自测脚本没有真的比对（探针把 <code>solve_a.py</code> 换成错解试它）</td></tr>
+      <tr><td>5 · 规模对照</td><td><code>scale_check.py</code> 的三行输出</td><td>两种容器的量级没量出来，或把「放大 10 倍」推成了 10 倍</td></tr>
+    </tbody>
+  </table>
+
+  <p>留白版原样跑，看到的会是这样的东西（这正是「指名缺哪一步」的样子）：</p>
+
+  <pre data-lang="term"><code>$ py run_tests.py
+第 1 层 · 样例（题面给的四组，小数据）
+  FAIL  A1  期望 3，实际 0
+        把「读入解析」与「求解」分开各打印一次（第 6 课的定位手法）……
+第 2 层 · 换行被打乱的小数据（同一份数、另一种排版）
+  FAIL  A3  期望 4，实际 0
+第 3 层 · 大数据（题目 A 十万个数；限时 2.0 秒）
+  ----  跳过：先把第 1、2 层过了再看大数据
+五层：0 层通过，2 层还没过，3 层跳过</code></pre>
+
+  <p>退出码：五层都过是 0，还有没过的（或跳过的）是 1。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "判分脚本在第 1、2 层没过时会跳过第 3 到 5 层，为什么这样安排？",
+    "opts": [
+      "小数据都没过，大数据上跑出来的信息指不到病因",
+      "大数据的测试文件还没生成，只能先测小数据",
+      "跳过的层算通过，这样整体进度看起来更完整",
+      "第 3 层以后要花很久，先跳过去省下等待时间"
+    ],
+    "ans": 0,
+    "why": "第 1、2 层问的是「读入解析求解这一段接上没有」，第 3 层问的是「容器选得对不对」。前两层没过时，大数据给出的超时或答案错误无法区分是哪种病因，所以先跳过。正确的顺序是先用 py selfcheck.py 把样例过掉，再看折行组，最后才看大数据。"
+  }
+]'></div>
+
+  <div class="lesson-practice">
+    <div class="lesson-practice__head">
+      <span class="lesson-practice__level">上手做</span>
+      <span class="lesson-practice__title">四个任务按这个顺序做</span>
+    </div>
+
+      <p><b>第 1 步 · 题目 A 跑通。</b> 在 <code>solve_a.py</code> 里补三段：<code>read_all()</code> 一次读完输入、 <code>parse_input(text)</code> 交出 <code>(n, a)</code>、<code>count_distinct(a)</code> 交出答案。写完手动跑一组样例（<code>cat sample_a1.in | py solve_a.py</code>），答案是 <code>3</code> 就继续。</p>
+
+      <p><b>第 2 步 · 题目 B 跑通。</b> 在 <code>solve_b.py</code> 里补四个函数，重点是把 <span class="math-inline">n \times m</span> 个数解析成 <code>n</code> 行 <code>m</code> 列的二维列表。样例 2 是特意造的：每个分数出现次数一样多时，要输出<b>最小的</b>那个分数。</p>
+
+      <p><b>第 3 步 · 写自己的自测脚本。</b> 在 <code>selfcheck.py</code> 里补三个函数，把「跑脚本 → 比对 <code>.out</code>」这条链路写出来。写完先 <code>py selfcheck.py</code> 看四组是不是全 PASS——这一步做完，以后每次改代码都只要敲这一行，不用再手工比对。</p>
+
+      <p><b>第 4 步 · 量一量再判断。</b> 在 <code>scale_check.py</code> 里补两种查重写法与那个预计值，跑一次看两行秒数差多少。然后回看题目 A 的规模（<span class="math-inline">n</span> 到 <span class="math-inline">2 \times 10^5</span>）：你的写法跑得完吗？</p>
+
+      <p><b>第 5 步 · 交判分。</b> 四样都写完再 <code>py run_tests.py</code>。哪一层没过就回哪一步—— 按层的失败信息改，别一次改五个地方。</p>
+  </div>
+
+  <h2>自查清单</h2>
+
+  <ul>
+    <li>四组样例是不是<b>都</b>跑过了？不是只跑 <code>sample_a1.in</code> 就认为对。</li>
+    <li><code>tests/a3.in</code>、<code>tests/b3.in</code> 这两组换行被打乱的，是不是也给出<b>与样例相同</b>的答案？</li>
+    <li>标准输入是不是只读了一次（都在 <code>read_all()</code> 里），算法函数里没有 <code>input()</code>？</li>
+    <li>每个函数是不是只做一件事？<code>print</code> 是不是只在 <code>solve()</code> 里？</li>
+    <li>代码里有没有留下的调试 <code>print</code>？标准输出应当只有题面要求的那几行。</li>
+    <li><code>py selfcheck.py</code> 是不是四组全 PASS、最后一行是 <code>自测通过 4/4 组</code>？</li>
+    <li>把 <code>solve_a.py</code> 临时换成 <code>probe_wrong_a.py</code> 的内容，<code>selfcheck.py</code> 会不会报 FAIL？（判分就是这么试你的；试完记得换回来。）</li>
+    <li><code>py scale_check.py</code> 的两行「不同元素」是不是一样、秒数是不是差两个数量级？</li>
+    <li><code>py run_tests.py</code> 是不是五层全过、退出码 0？</li>
+  </ul>
+
+  <h2>最可能卡在哪</h2>
+
+  <p><b>坑一：写完直接扔进大测试，样例错在哪都看不出。</b> 表现是：代码刚写完就 <code>py run_tests.py</code>，看到第 3 层超时或答案不对，却不知道样例是哪一组错的。判分脚本对此的处理是 <b>第 1、2 层没过就跳过第 3–5 层</b>；正确的顺序是：先用 <code>py selfcheck.py</code> 把四组样例过掉，再看折行组，最后才看大数据。</p>
+
+  <p><b>坑二：只测一组样例就认为通过。</b> 表现是：改完只跑 <code>sample_a1.in</code>，看到 <code>3</code> 就收工。这次有四组样例、两组换行不同的数据：<code>sample_b2.in</code> 专门用来抓「并列时取最小」这类边界（写成 <code>max(counts, key=counts.get)</code> 会打出 <code>10 2</code>，正确答案是 <code>5 2</code>）， <code>tests/a3.in</code>、<code>tests/b3.in</code> 专门用来抓「逐行读」。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "用 input() 一行一行读输入，遇到「同一份数、换行位置被改过」的数据会怎样？",
+    "opts": [
+      "读到的数会错位，后面解析出错误答案或直接报错",
+      "读得慢一些，但结果与按空白切分完全一样",
+      "只会影响最后一行的数据，前面的都不受影响",
+      "输入流会自动把折行拼回去，所以没有任何影响"
+    ],
+    "ans": 0,
+    "why": "读指针只能往前，读的位置与数据的行绑死了：题面只约定整数的个数与先后顺序，不约定折行位置。tests/a3.in 打出 2 而正确答案是 4，tests/b3.in 报 ValueError: too many values to unpack，都是同一个原因。正确做法是 sys.stdin.read() 一次读完，再按空白切分成 token 表。"
+  }
+]'></div>
+
+  <p><b>坑三：把「打印调试」当成唯一手段。</b> 表现是：在 <code>solve</code> 里到处插 <code>print</code> 看变量，改一次重跑一遍手工命令，最后忘了删调试输出——于是四组样例全部 FAIL（评测机逐字比）。更好的做法就是把第 3 步那份 <code>selfcheck.py</code> 写出来：一次写好，之后每次改完跑一行，它替你比对并指出是哪一组、期望什么、实际什么。</p>
+
+  <p>按经验，卡住的地方通常是这几个（按出现频率排）：</p>
+
+  <table>
+    <thead>
+      <tr><th>现象或报错</th><th>一般缺哪一步</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>tests/a3.in</code> 打出 <code>2</code>（应是 <code>4</code>）</td><td>用 <code>input()</code> 一行一行读了：读指针只能往前，换行一变就读错。改成「一次读完 → 按空白切分」</td></tr>
+      <tr><td><code>tests/b3.in</code> 报 <code>ValueError: too many values to unpack</code></td><td>同一处：<code>n, m = map(int, input().split())</code> 把行列数与数据的行绑在一起了</td></tr>
+      <tr><td><code>IndexError: list index out of range</code>，行号指在 <code>int(tokens[0])</code></td><td><code>read_all()</code> 还没真的读进来（留白版是 <code>return ''</code>），于是 token 表是空的</td></tr>
+      <tr><td>第 3 层「超过 2.0 秒还没跑完」</td><td>容器选错：题目 A 用列表查重是 <span class="math-inline">O(n^2)</span>，十万个数要几十亿次比较；集合或字典是 <span class="math-inline">O(n)</span></td></tr>
+      <tr><td><code>sample_b2.in</code> 打出 <code>10 2</code></td><td>并列取最小没处理：写成一个键 <code>(-次数, 分数)</code> 再取第一条</td></tr>
+      <tr><td>样例打出「答案是：3」这类多余的一行</td><td>调试 <code>print</code> 没删：标准输出要只剩题面要求的那几行</td></tr>
+      <tr><td>第 4 层「探针……仍然报 PASS」</td><td>自测脚本没真的比对，或者路径写死了绝对路径（探针在副本目录里跑它）</td></tr>
+      <tr><td>第 5 层「预计值偏小」</td><td>放大 10 倍规模，列表查重的比较次数涨约 100 倍（不是 10 倍）</td></tr>
+    </tbody>
+  </table>
+
+  <h2>卡壳顺序</h2>
+
+  <p>按这五步来，别一上来就问：</p>
+
+  <ol>
+    <li><b>读错误信息。</b> 判分脚本会把它跑出来的报错最后几行贴出来，并指到脚本里的那一行；先按那一行看过去（<code>ValueError</code> 后面那句话往往直接说明了原因）。</li>
+    <li><b>自己跑一遍。</b> <code>cat sample_a1.in | py solve_a.py</code> 单独跑一次，看你到底打印了什么：打出 <code>0</code> 就是 <code>count_distinct</code> 还没接上，一行都不打印就是 <code>solve()</code> 没接上。</li>
+    <li><b>看 FAIL 行。</b> 每一行 FAIL 后面都写了期望、实际，以及「这一层指向哪一段」；顺着那一句改。</li>
+    <li><b>再对线索。</b> 折行组错 → 输入解析层；大数据超时 → 容器复杂度；探针报 PASS → 自测脚本没真比对；预计值偏小 → 操作次数按平方级算。</li>
+    <li><b>对照参考解。</b> 五层都过了，再打开 <a href="../lab/solutions/">lab/solutions/</a> 比一比——重点比「分段的方式」和「那一行决定快慢的代码」，不是比谁的代码短。</li>
+  </ol>
+
+  <h2>做完之后</h2>
+
+  <p>这份骨架就是配套项目「AI 刷题助手」最底下的一环：后面的实验（对样例、对拍、跑验证）都是在这个「读入 → 求解 → 打印 → 用样例自动判对错」的骨架上长出来的。交完之后用一句话回答：<b>这两份脚本里，哪一行决定了题目 A 能不能跑完十万个数？</b></p>
+
+  <ul class="lesson-resources">
+    <li>题目材料 problems.md（在 lab/0007-lab-01-run-one-problem/ 里）<span class="lesson-resources__meta">两道题的完整题面、样例与数据规模，判分数据一览</span></li>
+    <li>lab 说明 lab/README.md<span class="lesson-resources__meta">载体与环境依赖、任务表、写法边界、卡壳顺序（先读这一份）</span></li>
+    <li><a href="https://docs.python.org/zh-cn/3/library/sys.html">Python 官方文档 · sys</a><span class="lesson-resources__meta"><code>sys.stdin</code> 是常规文本文件对象，<code>read()</code> 一次读完；第 6 课的依据，这次用来写 <code>read_all()</code></span></li>
+    <li><a href="https://docs.python.org/zh-cn/3/library/subprocess.html">Python 官方文档 · subprocess</a><span class="lesson-resources__meta"><code>run()</code> 的 <code>input</code>、<code>stdout</code>、<code>timeout</code> 参数：任务 3 的自测脚本按它写</span></li>
+    <li><a href="https://docs.python.org/zh-cn/3/library/time.html">Python 官方文档 · time</a><span class="lesson-resources__meta"><code>perf_counter()</code> 是测耗时用的单调时钟，任务 4 用它前后相减</span></li>
+  </ul>
+
+  <!-- ── 提问提示：固定写法，别删 ── -->
+
+  <div class="lesson-ask">
+    <b>没看懂？随时问</b>
+    把看不懂的段落（或报错）原样复制回会话，说一句哪里不懂就行，我只解释这一段，不打断你的进度。
+  </div>
+
+  <!-- ── 上/下节课指针由渲染器按 curriculum.yaml 的 nodes 顺序算（第一课无 --prev、最后一课无 --next） ── -->
+
+  <nav class="lesson-nav" aria-label="上一课 / 下一课">
+    <a class="lesson-nav__link lesson-nav__link--prev" href="0006-python-io-and-debug.html">
+      <span class="lesson-nav__dir">上节课</span>
+      <span class="lesson-nav__title">读完输入再动手</span>
+    </a>
+    <a class="lesson-nav__link lesson-nav__link--next" href="0008-brute-force-to-optimization.html">
+      <span class="lesson-nav__dir">下节课</span>
+      <span class="lesson-nav__title">先把暴力写对</span>
+    </a>
+  </nav>
+
+  <footer class="lesson-footer">
+    StudyMate · 0007 实验一：把一道题跑通 · 本地学习工作区
+  </footer>
+
+</article>
+
+<script src="../../../assets/sayo/sayo.js"></script>
+<link rel="stylesheet" href="../../../assets/katex/katex.min.css">
+<script src="../../../assets/katex/katex.min.js" defer></script>
+<script src="../../../assets/lesson-math.js" defer></script>
+<script src="../assets/quiz.js" defer></script>
+<script src="../assets/lesson-toc.js" defer></script>
+<script>LearnTheme.wire(document.getElementById('lesson-theme-checkbox'));</script>
+</body>
+</html>

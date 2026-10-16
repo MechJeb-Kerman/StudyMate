@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>一维数据的两种走法 · Python 算法与蓝桥杯</title>
+
+<!-- 共享层在 .learning/assets/，课件在 .learning/subjects/<slug>/lessons/ 下，所以是 ../../../assets/ -->
+<link rel="stylesheet" href="../../../assets/sayo/sayo.css">
+<link rel="stylesheet" href="../../../assets/learn-theme.css">
+<link rel="stylesheet" href="../assets/style.css">
+
+<!-- 主题要在首帧前应用，避免闪白/闪黑 -->
+<script src="../../../assets/learn-theme.js"></script>
+<script>LearnTheme.apply();</script>
+</head>
+
+<body class="lesson-body">
+
+<nav class="lesson-bar">
+  <a href="../index.html">← 返回课程</a>
+  <span>Python 算法与蓝桥杯</span>
+  <span class="lesson-bar__no">0009</span>
+  <!-- 课件页自带主题开关：学生从文件管理器直接打开课件时也能切暗色 -->
+  <label class="syo-toggle syo-toggle--theme lesson-bar__toggle" title="切换深浅主题" aria-label="切换深浅主题">
+    <input type="checkbox" id="lesson-theme-checkbox" checked>
+    <span class="syo-toggle-track"></span>
+    <span class="syo-toggle-knob">
+      <svg class="syo-toggle-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.5" stroke="#f57c00" stroke-width="1.5"/><path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.34 4.34l1.77 1.77M13.89 13.89l1.77 1.77M4.34 15.66l1.77-1.77M13.89 6.11l1.77-1.77" stroke="#f57c00" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <svg class="syo-toggle-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.5 12.5A6 6 0 019 4.5a6 6 0 007.5 8z" stroke="#5c6bc0" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </span>
+  </label>
+</nav>
+
+<article class="lesson">
+
+  <header class="lesson-header">
+    <span class="lesson-header__eyebrow">0009 · 一维数据的两种走法</span>
+    <h1>一维数据的两种走法</h1>
+    <p class="lesson-goal"><b>本节目标：</b>能把两层循环的区间求和改成前缀和与双指针，说清前缀和下标为什么从 0 起、双指针依赖哪条前提，并用实测耗时对照三种走法。</p>
+  </header>
+
+  <!-- ── 正文：渲染器按内容文件（lessons/<序号>-<节点id>.md）产出，块词汇见 docs/规范/课件内容格式.md ── -->
+
+  <p>前面八课练的是三件事：估复杂度、写函数、按容器选操作。这些都是在同一段代码里做替换——把列表换成集合、把三行循环压成一行、把结果用 <code>return</code> 交出去。</p>
+
+  <p>这一课处理的是另一种局面：换容器、压写法都已经做到位了，程序还是超时。蓝桥杯里最常见的超时写法是两层循环——「对每个区间求一次和」「对每对元素判断一次条件」。遇到这种题，多数时候只要<b>换一种走法</b>：同样的数据、同样的下标，扫过它的顺序换一下，两层循环就能降成一层。前缀和让区间和一步算出来，双指针让左右两个下标都只往前走、不回头。</p>
+
+  <p>这两种走法是后面所有优化技巧的起点。二分、单调队列、滑动窗口最大值、差分，学的都是把某一种「重复用同一批数据」的动作摊平成一遍扫描。这一课先把最基础的两种练熟：一道区间求和的题，写三个版本，把耗时量出来。</p>
+
+  <h2>一道题，三种走法</h2>
+
+  <p>题目本身很短。给定 <span class="math-inline">n</span> 个整数组成的数组 <span class="math-inline">a</span> 与一个整数 <span class="math-inline">S</span>，求和<b>恰好等于 <span class="math-inline">S</span></b> 的连续区间有多少个。</p>
+
+  <p>先约定记号。<b>连续区间</b>（子数组）指 <span class="math-inline">a[l], a[l+1], \dots, a[r]</span> 这一段，用闭区间 <span class="math-inline">[l, r]</span> 表示，<span class="math-inline">0 \le l \le r \le n-1</span>。要求的是满足 <span class="math-inline">\sum_{i=l}^{r} a[i] = S</span> 的 <span class="math-inline">(l, r)</span> 有多少对。</p>
+
+  <p>最直接的写法是枚举所有区间，每对 <span class="math-inline">(l, r)</span> 都把区间里的数加一遍。下面这个版本换了个加法顺序——固定左端点 <span class="math-inline">l</span>，右端点 <span class="math-inline">r</span> 一路往右扩，边扩边累加——省掉了每个区间重头再算一遍的开销：</p>
+
+  <pre data-lang="python"><code>def count_brute(a, S):
+    n = len(a)
+    count = 0
+    for l in range(n):
+        s = 0
+        for r in range(l, n):
+            s += a[r]
+            if s == S:
+                count += 1
+    return count</code></pre>
+
+  <p>内层循环体跑一次的代价是常数（一次加法、一次比较），跑的次数是所有区间的个数 <span class="math-inline">\frac{n(n+1)}{2}</span>，所以这一版的时间复杂度是 <span class="math-inline">O(n^2)</span>。规模小的时候看不出问题。取 <span class="math-inline">a</span> 为 16 个 <code>1</code>、<span class="math-inline">S = 4</span>，内层一共走 136 步，答案是 13——这个数可以手工数出来：长度 4 的区间有 <span class="math-inline">16-4+1 = 13</span> 个。数据规模换成 <span class="math-inline">n = 16000</span>，区间个数涨到 <span class="math-inline">1.28</span> 亿，本机实测 3.05 秒（本节末尾的表格里）；蓝桥杯常见的 1 秒时限下，这一版交上去就是超时。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "下面这段数「和恰好等于 S 的区间有几个」。\n\n```python\ndef count_brute(a, S):\n    n = len(a)\n    count = 0\n    for l in range(n):\n        s = 0\n        for r in range(l, n):\n            s += a[r]\n            if s == S:\n                count += 1\n    return count\n```\n\nn 从 8000 变成 16000，这一版的耗时大约变成原来的几倍？",
+    "opts": [
+      "大约 4 倍：区间个数按平方涨，规模翻倍就是四倍",
+      "大约 2 倍：循环只走两层，规模翻倍耗时跟着翻倍",
+      "大约 8 倍：内外两层各翻一倍，再乘上比较的代价",
+      "基本不变：内层只做一次加法与比较，代价是常数"
+    ],
+    "ans": 0,
+    "why": "内层循环体的代价是常数，跑的次数是所有区间的个数 n(n+1)/2，\n所以这一版是 O(n²)。\n规模翻倍时 n² 变成 4n²，耗时约四倍——\n本机实测 n=8000 是 0.68 秒，\nn=16000 是 3.82 秒，约 5.6 倍\n（接近四倍，多出来的零头是内存访问的常数项）。\n两个下标都要动，是这一版慢的原因：\n区间个数本身就是 n 的平方那么多。\n第 2 项把「两层」当成了「两倍」，那是对循环层数与复杂度的混淆。"
+  }
+]'></div>
+
+  <h2>前缀和：一次减法出区间和</h2>
+
+  <p>两个下标 <span class="math-inline">l</span> 与 <span class="math-inline">r</span> 都要动，是这一版慢的原因——区间个数本身就是 <span class="math-inline">n</span> 的平方那么多。要把它降下来，得找一个只需要动一个下标的说法。</p>
+
+  <p>数列的前 <span class="math-inline">i</span> 项和是算法竞赛里常用的预处理，叫<b>前缀和</b>。它的定义直接照字面写：</p>
+
+  <div class="math-block">\text{pre}[i] = a[0] + a[1] + \dots + a[i-1], \qquad \text{pre}[0] = 0</div>
+
+  <p>前 <span class="math-inline">i</span> 项和与「下标 <span class="math-inline">i</span>」的关系要看准：<code>pre[i]</code> 是<b>前 <span class="math-inline">i</span> 项</b>的和，所以它装着的是 <span class="math-inline">a[0]</span> 到 <span class="math-inline">a[i-1]</span>。这个约定多出了一个不装任何元素的 <code>pre[0]</code>，表的长度是 <span class="math-inline">n + 1</span>。它的来历可以用递推式说清：既然每一项都由前一项加上一个 <span class="math-inline">a</span> 里的元素得到，</p>
+
+  <div class="math-block">\text{pre}[0] = 0, \qquad \text{pre}[i] = \text{pre}[i-1] + a[i-1]</div>
+
+  <p>要让这个式子对 <span class="math-inline">i = 0</span> 也成立，就必须有 <code>pre[0] = 0</code> 这个起点。前缀和数组的第 0 位是「还没开始累加」的状态，与列表下标从 0 起是同一件事。</p>
+
+  <p>按这个约定，区间 <span class="math-inline">[l, r]</span> 的和是：</p>
+
+  <div class="math-block">a[l] + \dots + a[r] = \text{pre}[r+1] - \text{pre}[l]</div>
+
+  <p>理由是两段前缀和相抵：<code>pre[r+1]</code> 是前 <span class="math-inline">r+1</span> 项的和，比区间和多了前 <span class="math-inline">l</span> 项；<code>pre[l]</code> 正好就是那多出来的前 <span class="math-inline">l</span> 项，减掉即可。这个式子里 <span class="math-inline">l</span> 和 <span class="math-inline">r</span> 的地位都一样，不需要为 <span class="math-inline">l = 0</span> 或 <span class="math-inline">r = n-1</span> 补任何特判。若把 <code>pre[i]</code> 定义成「<span class="math-inline">a[0]</span> 到 <span class="math-inline">a[i]</span> 的和」，公式就成了 <code>pre[r] - pre[l-1]</code>，<span class="math-inline">l = 0</span> 时 <code>pre[-1]</code> 会绕到列表末尾——这是最常踩的一处。</p>
+
+  <pre data-lang="python"><code>def build_pre(a):
+    pre = [0]
+    for x in a:
+        pre.append(pre[-1] + x)
+    return pre
+
+
+a = [3, 1, 4, 1, 5]
+pre = build_pre(a)
+print(pre)                  # [0, 3, 4, 8, 9, 14]
+print(pre[2] - pre[0])      # 4 = a[0] + a[1]
+print(pre[5] - pre[2])      # 10 = a[2] + a[3] + a[4]</code></pre>
+
+  <pre data-lang="text"><code>[0, 3, 4, 8, 9, 14]
+4
+10</code></pre>
+
+  <p><code>pre[-1]</code> 在 <code>build_pre</code> 里出现时是个合法用法：它是 Python 里「最后一个元素」的写法，指的是刚追加进去的那一项。这与上面那个「<code>pre[-1]</code> 会绕到末尾」是同一个机制的两面，写 <code>a[l-1]</code> 这类下标时一定要确认 <span class="math-inline">l</span> 不会取到 0。</p>
+
+  <figure class="lesson-figure lesson-figure--inline" role="img" aria-label="原数组的每一项与前缀和数组各项的对应关系">
+<svg viewBox="0 0 528 210" role="img" aria-hidden="true">
+  <g stroke="currentColor" fill="none">
+    <rect x="48" y="26" width="64" height="36"/>
+    <rect x="116" y="26" width="64" height="36"/>
+    <rect x="184" y="26" width="64" height="36"/>
+    <rect x="252" y="26" width="64" height="36"/>
+    <rect x="320" y="26" width="64" height="36"/>
+    <rect x="48" y="106" width="64" height="36"/>
+    <rect x="116" y="106" width="64" height="36"/>
+    <rect x="184" y="106" width="64" height="36"/>
+    <rect x="252" y="106" width="64" height="36"/>
+    <rect x="320" y="106" width="64" height="36"/>
+    <rect x="388" y="106" width="64" height="36"/>
+    <path d="M388 106 L388 98 L48 98" stroke-dasharray="4 3"/>
+    <path d="M48 98 L48 68" stroke-dasharray="4 3"/>
+    <path d="M116 98 L116 68" stroke-dasharray="4 3"/>
+    <path d="M184 98 L184 68" stroke-dasharray="4 3"/>
+    <path d="M252 98 L252 68" stroke-dasharray="4 3"/>
+    <path d="M320 98 L320 68" stroke-dasharray="4 3"/>
+    <path d="M388 98 L388 68" stroke-dasharray="4 3"/>
+    <path d="M144 44 L168 44" stroke-dasharray="3 3"/>
+    <path d="M280 44 L304 44" stroke-dasharray="3 3"/>
+    <path d="M112 124 L156 124" stroke-dasharray="3 3"/>
+    <path d="M248 124 L292 124" stroke-dasharray="3 3"/>
+  </g>
+  <g font-family="sans-serif" fill="currentColor" text-anchor="middle">
+    <g font-size="13">
+      <text x="36" y="49">a</text>
+      <text x="36" y="129">pre</text>
+    </g>
+    <g font-size="12">
+      <text x="80" y="20">0</text>
+      <text x="148" y="20">1</text>
+      <text x="216" y="20">2</text>
+      <text x="284" y="20">3</text>
+      <text x="352" y="20">4</text>
+      <text x="80" y="100">0</text>
+      <text x="148" y="100">1</text>
+      <text x="216" y="100">2</text>
+      <text x="284" y="100">3</text>
+      <text x="352" y="100">4</text>
+      <text x="420" y="100">5</text>
+      <text x="420" y="20">下标</text>
+    </g>
+    <g font-size="15">
+      <text x="80" y="50">3</text>
+      <text x="148" y="50">1</text>
+      <text x="216" y="50">4</text>
+      <text x="284" y="50">1</text>
+      <text x="352" y="50">5</text>
+      <text x="80" y="130">0</text>
+      <text x="148" y="130">3</text>
+      <text x="216" y="130">4</text>
+      <text x="284" y="130">8</text>
+      <text x="352" y="130">9</text>
+      <text x="420" y="130">14</text>
+    </g>
+    <g font-size="12">
+      <text x="216" y="166">pre[i] 是 a 的前 i 项和，第 0 项是起点</text>
+      <text x="264" y="192">a[l..r] = pre[r+1] − pre[l]，两段前缀和相抵</text>
+    </g>
+  </g>
+</svg>
+    <figcaption>图 1 · pre[i] 是前 i 项的和，因此 a[i] 落在 pre[i] 与 pre[i+1] 之间</figcaption>
+  </figure>
+
+  <p>建这张表的代价是 <span class="math-inline">O(n)</span>：一趟循环，每次只做一次加法与一次追加。建好之后，任意区间和的查询只要一次减法，代价 <span class="math-inline">O(1)</span>，与区间有多长无关。</p>
+
+  <p>这一步换来的东西可以用第 3 课那张操作价格表说清。那里的结论是列表按下标取元素 <span class="math-inline">O(1)</span>、切片复制 <span class="math-inline">O(k)</span>；这里的对照是：多花 <span class="math-inline">O(n)</span> 的空间存下一张表，把「每个区间各自求和」的 <span class="math-inline">O(k)</span> 换成了一次 <span class="math-inline">O(1)</span> 的减法。空间换时间，换来的是查询次数的上限被抬高了几个数量级。</p>
+
+  <pre data-lang="python"><code>import random
+import time
+
+a = [random.randint(1, 100) for _ in range(100000)]
+t0 = time.perf_counter()
+pre = build_pre(a)
+t1 = time.perf_counter()
+print('建前缀和表', t1 - t0, '秒')</code></pre>
+
+  <pre data-lang="text"><code>建前缀和表 0.004 秒</code></pre>
+
+  <h2>用前缀和把两层循环降成一层</h2>
+
+  <p>表已经建好，接下来是「恰好等于 <span class="math-inline">S</span>」这个条件。把区间和公式代进去：</p>
+
+  <div class="math-block">\text{pre}[r+1] - \text{pre}[l] = S \quad \Longleftrightarrow \quad \text{pre}[l] = \text{pre}[r+1] - S</div>
+
+  <p><span class="math-inline">S</span> 是题目给定的，右端点 <span class="math-inline">r</span> 是我们正在扫到的位置，于是 <span class="math-inline">r</span> 固定时右边那个值完全确定：<b>要找的左端点 <span class="math-inline">l</span>，就是那些前缀和等于 <span class="math-inline">\text{pre}[r+1] - S</span> 的位置。</b> 剩下的问题是有几个这样的 <span class="math-inline">l</span>，以及它们各出现了几次。</p>
+
+  <p>数「某个值出现过几次」正是第 3 课学的哈希查找：字典的按键查找平均 <span class="math-inline">O(1)</span>，比列表 <code>in</code> 的 <span class="math-inline">O(n)</span> 便宜。一边往右扫，一边把已经见过的前缀和记进字典，每扫到一个 <span class="math-inline">r</span> 就查一次字典：</p>
+
+  <pre data-lang="python"><code>def count_prefix(a, S):
+    pre = build_pre(a)
+    seen = {0: 1}
+    count = 0
+    for r in range(len(a)):
+        need = pre[r + 1] - S
+        count += seen.get(need, 0)
+        seen[pre[r + 1]] = seen.get(pre[r + 1], 0) + 1
+    return count</code></pre>
+
+  <p>几处细节都要交代清楚：</p>
+
+  <ul>
+    <li><code>seen</code> 里存的是「某个前缀和值在此之前出现过几次」。字典的键是前缀和的值，值是出现次数；键相同的多个 <span class="math-inline">l</span> 会累加在同一个计数里。</li>
+    <li>初值要写 <code>seen = {0: 1}</code>，不能留一个空字典。含义是 <code>pre[0] = 0</code> 已经在字典里出现过一次，对应左端点 <span class="math-inline">l = 0</span>（区间从数组开头算起）。少了这一项，所有从开头开始的区间都会被漏掉。</li>
+    <li><code>seen.get(need, 0)</code> 在键不存在时给出 0，省掉一次 <code>if need in seen</code> 的判断。这两句等价，只是前者更短。</li>
+    <li>每轮先查后记。如果写反了，<span class="math-inline">l = r+1</span> 这种空区间会被算进来。</li>
+  </ul>
+
+  <p>换成这个走法，两层循环降成了一层：<code>for r</code> 扫一遍，循环体里是常数次字典操作。总代价是「<span class="math-inline">O(n)</span> 建表 + <span class="math-inline">O(n)</span> 次查找」，也就是 <span class="math-inline">O(n)</span>。这一版不受数组内容的限制，元素是负数、是零、数组无序，公式都照样成立。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "把上面那个两层循环版改成前缀和加字典版。\n\n课件约定的记号为 pre[0] = 0、\npre[i] = a[0] + … + a[i-1]。\n\n① 先用这个记号写出区间和公式：\na[l] + … + a[r] 等于什么？\n② 循环版里「边扩边累加」，改写后一遍扫描里要维护哪张表？\n怎么用它定出左端点？\n③ 改完之后总代价从多少降到多少？那张表多花了多少空间？",
+    "answer": "① 区间和等于两段前缀和相减：\n\n$$\na[l] + \\dots + a[r] = \\text{pre}[r+1] - \\text{pre}[l]\n$$\n\n因为 pre[r+1] 是前 r+1 项的和，比区间和多算了前 l 项，\n而 pre[l] 正好是那多出来的前 l 项。\n这个式子里 l 与 r 地位一样，l = 0 或 r = n-1 都不需要特判，\n两个下标都在 0 到 n 之间，不会取到 -1。\n\n② 一边往右扫，一边把已经见过的前缀和记进字典 seen。\n字典的键是前缀和的值，值是它出现过几次。\n扫到 r 时把区间和公式代进条件：\n\n```python\ndef count_prefix(a, S):\n    pre = [0]\n    for x in a:\n        pre.append(pre[-1] + x)\n    seen = {0: 1}\n    count = 0\n    for r in range(len(a)):\n        need = pre[r + 1] - S\n        count += seen.get(need, 0)\n        seen[pre[r + 1]] = seen.get(pre[r + 1], 0) + 1\n    return count\n```\n\npre[r+1] 与 S 都已知，\n所以 need = pre[r+1] - S 完全确定；\n要找的左端点 l，就是那些前缀和恰好等于 need 的位置。\n数「某个值出现过几次」用 seen.get(need, 0)。\n初值 seen = {0: 1} 不能省：\n它代表 pre[0] = 0 已经出现过一次，\n对应左端点 l = 0，也就是区间从数组开头算起；\n少了它，所有从开头开始的区间都会漏掉。\n\n③ 原来是「n(n+1)/2 次加法」，也就是 O(n²)；\n改完是 O(n) 建表加 O(n) 次字典查找，仍然是 O(n)。\n空间上多花一张长度 n+1 的表，也就是 O(n) 的额外空间。\n这是空间换时间：把「每个区间各自求和」的 O(k) 换成一次 O(1) 的减法。",
+    "criteria": "① 公式必须写成 pre[r+1] - pre[l]（下标是 r+1 与 l）。\n写成 pre[r] - pre[l-1]、\npre[r+1] - pre[l+1]、\npre[r] - pre[l] 都算错：\n它们与课件那个 pre[0]=0 的约定对不上，l=0 时会绕到列表末尾。\n② 必须同时给出三件事：建表；边扫边把见过的前缀和记进字典\n（键是前缀和的值、值是出现次数）；\n用 need = 某前缀和 - S 去字典里查左端点。\n缺「先查后记」的顺序、\n或用 seen = {} 而漏掉初值 {0: 1} 的，都算错：\n前者会把空区间算进来，后者会漏掉所有从数组开头算起的区间。\n③ 总代价从 O(n²) 降到 O(n)，额外空间 O(n)。\n只答「更快了」而不给出这个量级变化的，不算过。"
+  }
+]'></div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "下面这个函数按「pre[i] 是 a[0] 到 a[i] 的和」来写，\n区间和用 pre[r] - pre[l-1]。\n小数据上都对，但交上去有一组用例答案小了。\n\n```python\ndef build_pre(a):\n    pre = []\n    s = 0\n    for x in a:\n        s += x\n        pre.append(s)\n    return pre\n\n\ndef count_prefix(a, S):\n    pre = build_pre(a)\n    seen = {0: 1}\n    count = 0\n    for r in range(len(a)):\n        need = pre[r] - S\n        count += seen.get(need, 0)\n        seen[pre[r]] = seen.get(pre[r], 0) + 1\n    return count\n```\n\n① 根因是什么？说清楚哪一处的下标在作怪。\n② 给出两种改法。\n③ 下次写这类题时怎么躲开它？",
+    "answer": "① 根因是这张表的长度与下标含义都和别人以为的不一样。\n这份 build_pre 交回的表长度是 n，pre[0] 是 a[0]，\npre[i] 是 a[0] 到 a[i] 的和：它没有「还没开始累加」的那一位。\n课件约定的那张表长度是 n+1，pre[0] = 0、\npre[i] 是 a[0] 到 a[i-1]，\n于是 a[l] 到 a[r] 的和是 pre[r+1] - pre[l]，\nl 与 r 都在 0 到 n 之间，取不到 -1。\n\n换成这套「从 0 起」的约定后，need 与查表那两处都得跟着动，\n而这份代码只动了公式、没动下标：\n它查的是 pre[r] 而不是 pre[r+1]，\n记进 seen 的也是 pre[r]。\n漏的正是那些从数组开头算起的区间，它们要的是 pre[0] = 0，\n可这张表里根本没有这一位：\n循环走到 r = 0 时先把 pre[0] 记了下来，\n而 pre[0] = a[0] 通常不是 0，\n所以「前缀和为 0」这件事在 seen 里始终是空的，\n从开头算起的区间一个都没数上。答案因此偏小。\n\n② 两种改法。\n\n改法一（照课件：让表多一位，pre[0] = 0）：\n\n```python\ndef build_pre(a):\n    pre = [0]\n    for x in a:\n        pre.append(pre[-1] + x)\n    return pre\n```\n\n配套把 count_prefix 里两处下标改成 pre[r + 1]：\n\n```python\n    need = pre[r + 1] - S\n    seen[pre[r + 1]] = seen.get(pre[r + 1], 0) + 1\n```\n\n改法二（保留「从 0 起」的表，那就得为 l = 0 补特判）：\n\n```python\ndef count_prefix(a, S):\n    pre = build_pre(a)\n    seen = {}\n    count = 0\n    for r in range(len(a)):\n        if pre[r] == S:\n            count += 1\n        need = pre[r] - S\n        count += seen.get(need, 0)\n        seen[pre[r]] = seen.get(pre[r], 0) + 1\n    return count\n```\n\n注意第二版里 seen 的初值不能写 {0: 1}，\n否则 l = 0 会被数两遍；\nl = 0 由那一句特判单独处理。\n这正是课件说「不需要特判」的那个代价：少写一位，就多欠一笔要还的账。\n\n③ 躲开它的办法是把两件事固定成一条随身口径：\npre 的长度永远是 n+1、pre[0] 永远是 0，\n区间和永远是 pre[r+1] - pre[l]。\n写的时候先看表长对不对（n 还是 n+1），\n再看取值处写的是 pre[r] 还是 pre[r+1]，两处必须配套。\n另外记住 Python 的 a[-1] 是「最后一个元素」而不是报错，\n所以 pre[l-1] 在 l = 0 时不会抛异常，只会悄悄绕到表尾，\n给出一个看着像数的错答案。",
+    "criteria": "① 必须点到根因是「这张表少了一位」：\n它是按 pre[i] = a[0] 到 a[i] 建的、长度 n，\n而课件约定的是 pre[0] = 0、\npre[i] 是前 i 项和、长度 n+1；\n配套的取值处也该写 pre[r+1] 而不是 pre[r]。\n只说「下标从 0 起」或只说「数组越界」都不算过：\n这一处的要害是 pre[0] = 0 这一位不存在，\n「前缀和为 0」在字典里查不到，从数组开头算起的区间全被漏掉，所以答案偏小。\n② 两种改法都可用，但必须与所选的表配套：\n要么把 build_pre 改成 pre = [0] 后\nappend(pre[-1] + x)，\n并把 need 与记录处都改成 pre[r+1]；\n要么保留长度 n 的表，改成对 l = 0 单独特判，\n并把 seen 的初值写成空字典（写 {0: 1} 会把 l = 0 数两遍）。\n只改 build_pre 而不改取值处、\n只改取值处而不改 build_pre，都不算过。\n③ 有可执行的口径即可：\n表长永远是 n+1、pre[0] 永远是 0、\n区间和永远是 pre[r+1] - pre[l]，三项配套；\n并指出 pre[l-1] 在 l=0 时不会报错，只会绕到表尾给一个错答案\n（Python 的负下标是合法用法）。"
+  }
+]'></div>
+
+  <h2>双指针：两个下标都只往前走</h2>
+
+  <p>前缀和版已经把两层循环降成一层，代价是额外拿出了一张 <span class="math-inline">n+1</span> 项的表。如果数组里的元素全是正数，还有一条更省的路：<b>双指针</b>，也叫<b>滑动窗口</b>——用两个下标 <span class="math-inline">l \le r</span> 框住一段连续的区间，让它们在数组上同步往右滑。</p>
+
+  <p>它的想法是：固定右端点时，区间和随左端点向右移动而变小。既然「和」这个量随两个下标各自单调变化，那就不必为每个区间重新计算，只维护当前窗口的和，按三种情形调整：</p>
+
+  <ul>
+    <li>和小于 <span class="math-inline">S</span>，把 <span class="math-inline">r</span> 往右移一格，把新元素加进来；</li>
+    <li>和等于 <span class="math-inline">S</span>，答案加一，随后把 <span class="math-inline">l</span> 往右移一格，减掉左边那个元素，看下一个位置是否也等于 <span class="math-inline">S</span>；</li>
+    <li>和大于 <span class="math-inline">S</span>，把 <span class="math-inline">l</span> 往右移一格，减掉左边那个元素。</li>
+  </ul>
+
+  <pre data-lang="python"><code>def count_window(a, S):
+    n = len(a)
+    r = 0
+    s = 0
+    count = 0
+    for l in range(n):
+        while r &lt; n and s &lt; S:
+            s += a[r]
+            r += 1
+        if s == S:
+            count += 1
+        s -= a[l]
+    return count</code></pre>
+
+  <p>这段代码里 <span class="math-inline">l</span> 由 <code>for</code> 循环一路往右，<span class="math-inline">r</span> 只在 <code>while</code> 里往右，两个下标都不回头。<span class="math-inline">l</span> 走 <span class="math-inline">n</span> 步，<span class="math-inline">r</span> 最多走 <span class="math-inline">n</span> 步，所以循环体一共执行 <span class="math-inline">O(n)</span> 次——两层循环真正降成了一层。<code>while</code> 的条件里除了 <code>s &lt; S</code> 还有 <code>r &lt; n</code>，这是防止 <span class="math-inline">r</span> 越过数组末尾。</p>
+
+  <p>双指针省掉了前缀和表那 <span class="math-inline">O(n)</span> 的额外空间，代码也更短。代价是它多了一条前提，这条前提在题目里看不出来，只能自己去判断。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "下面这个双指针版本，右边那个下标只在一种情形下往右走。\n\n```python\ndef count_window(a, S):\n    n = len(a)\n    r = 0\n    s = 0\n    count = 0\n    for l in range(n):\n        while r &lt; n and s &lt; S:\n            s += a[r]\n            r += 1\n        if s == S:\n            count += 1\n        s -= a[l]\n    return count\n```\n\n① 两个下标各自往哪个方向走？\n② 为什么这样走一圈还是 O(n)，而不是还藏着一层循环？\n③ while 的条件里为什么必须带上 r &lt; n？\n去掉它，取 a = [1, 2]、S = 100 会怎样？",
+    "answer": "① l 由 for 循环一路往右，每轮走一格，绝不回头；\nr 只在 while 里往右，也绝不回头。两个下标的移动方向都是「只往右」。\n所以它们框住的那段区间只会整体往右滑，不会往回缩到左边去。\n\n② 每一轮 while 都会让 r 加一，\n而 r 从 0 出发、越过 n 就再也不动了，\n所以 while 的循环体在整个 for 的 n 轮里加起来最多执行 n 次。\n整个函数的总代价是「l 走 n 步 + r 最多走 n 步」，也就是 O(n)。\n这里的要害是 r 不回头：如果每一轮 for 都把 r 重置回 l，\nwhile 就变成嵌套循环，代价立刻回到 O(n²)。\n\n③ while 的条件里除了 s &lt; S 还有 r &lt; n，\n这是防止 r 越过数组末尾。\n取 a = [1, 2]、S = 100：\n和永远到不了 100（两个数加起来才 3），\n只靠 s &lt; S 这个条件，r 会一直往右加到 2、再加到 3，\n可 a 只有下标 0 与 1，r 等于 2 时取 a[r] 就报\nIndexError: list index out of range。\n带上 r &lt; n 之后，while 在 r 到 2 时停下，\n底下判一次 s == S 不成立、减掉 a[l]，循环正常走完，交回 0。",
+    "criteria": "① 必须说清两个下标都只往右、都不回头\n（l 由 for 每轮推进一格，r 只在 while 里往右）。\n答「l 往右、r 往左」或「两个往中间收」都不算过：\n那是另一种走法（对撞指针），不是这一课的滑动窗口。\n② 必须落到「r 在整个函数里总共只加 n 次」这条依据上：\nwhile 的循环体累计最多 n 次，所以总代价是 O(n)，\n两层循环真正降成了一层。\n只说「看着像一层循环」不算过；\n能点出「r 不能重置回 l，一重置就退回 O(n²)」的更好。\n③ 必须指出 r &lt; n 是防止下标越过数组末尾，\n并给出 a = [1, 2]、S = 100 时的后果：\nr 一路加下去，最终取 a[r] 报\nIndexError: list index out of range\n（下标越界），而不是死循环、也不是算错。"
+  }
+]'></div>
+
+  <h2>前提：和必须随窗口单调</h2>
+
+  <p>上面的调整规则里，藏着一个用得很顺、却很容易忘掉的前提。</p>
+
+  <p>「和小于 <span class="math-inline">S</span> 就把 <span class="math-inline">r</span> 往右移」之所以有效，是因为右边新加进来的元素会让和<b>变大</b>。「和大于 <span class="math-inline">S</span> 就把 <span class="math-inline">l</span> 往右移」之所以有效，是因为左边丢掉的那个元素会让和<b>变小</b>。两条都成立，才保证和这个量随着窗口滑动有规律地变化，可以用「现在偏小就右扩、现在偏大就左缩」这套规则逼近 <span class="math-inline">S</span>。这在元素全为正数时恒成立：加一个正数一定变大，减一个正数一定变小。</p>
+
+  <p>元素里出现负数，这两条都不再成立。加一个负数会让和变小，减一个负数会让和变大，于是窗口要么偏小、要么偏大，都不在原地的调整方向上。更直接的后果在下标上：左指针必须往右走，那么原来已经被右指针扔在身后、在左指针左边的那些位置，就再也回不来了；而某些答案恰恰要从那里取左端点。<b>「右指针只加不减」这个约束，在有负数时会把解漏掉。</b></p>
+
+  <p>本机实测的三个反例，三个版本各自的答案：</p>
+
+  <table>
+    <thead>
+      <tr><th>数组</th><th><span class="math-inline">S</span></th><th>正确答案</th><th>前缀和版</th><th>双指针版</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>[3, -1, 1]</code></td><td>3</td><td>2（<code>[3]</code>、<code>[3,-1,1]</code>）</td><td>2</td><td>1（漏了后面的）</td></tr>
+      <tr><td><code>[5, -2, -2, 7]</code></td><td>3</td><td>2（<code>[5,-2]</code>、<code>[5,-2,-2,7]</code>）</td><td>2</td><td>1（漏了后面的）</td></tr>
+      <tr><td><code>[-1, 3]</code></td><td>3</td><td>1（<code>[-1,3]</code>）</td><td>1</td><td>1</td></tr>
+    </tbody>
+  </table>
+
+  <p>前两组里双指针都少算了一个：开头那个元素是正数，左指针很快把它丢掉了；等到右端点扩到能让总和等于 <span class="math-inline">S</span> 的位置时，那个必需的左端点已经在左指针左边。第三组恰好蒙对——检查代码可以发现，它靠的是循环末尾那次减法之后和正好等于 <span class="math-inline">S</span>，也就是<b>先减后判</b>；把这一步的顺序改一改，它同样会漏。这类「有时对、有时错」的版本比稳定的错版更难查，因为样例上跑出来是对的。</p>
+
+  <p>前缀和版没有这条前提：它用减法定义区间和，与元素的正负、数组有没有序都无关。代价是那张 <span class="math-inline">O(n)</span> 的表。</p>
+
+  <figure class="lesson-figure lesson-figure--inline" role="img" aria-label="前缀和随下标增长的趋势，以及有负数时的反例">
+<svg viewBox="0 0 528 258" role="img" aria-hidden="true">
+  <g stroke="currentColor" fill="none">
+    <rect x="20" y="24" width="34" height="26"/>
+    <rect x="58" y="24" width="34" height="26"/>
+    <rect x="96" y="24" width="34" height="26"/>
+    <rect x="134" y="24" width="34" height="26"/>
+    <rect x="172" y="24" width="34" height="26"/>
+    <rect x="20" y="104" width="34" height="26"/>
+    <rect x="58" y="104" width="34" height="26"/>
+    <rect x="96" y="104" width="34" height="26"/>
+    <rect x="20" y="184" width="34" height="26"/>
+    <rect x="58" y="184" width="34" height="26"/>
+    <rect x="96" y="184" width="34" height="26"/>
+    <path d="M44 50 L122 71 L200 92" stroke-dasharray="4 3"/>
+    <path d="M113 130 L191 151" stroke-dasharray="4 3"/>
+    <path d="M44 210 L122 231 L200 252" stroke-dasharray="4 3"/>
+    <path d="M23 200 L23 88" stroke-dasharray="3 3"/>
+  </g>
+  <g font-family="sans-serif" fill="currentColor">
+    <g font-size="15" text-anchor="middle">
+      <text x="37" y="43">1</text>
+      <text x="75" y="43">2</text>
+      <text x="113" y="43">3</text>
+      <text x="151" y="43">4</text>
+      <text x="189" y="43">5</text>
+      <text x="37" y="123">3</text>
+      <text x="75" y="123">-1</text>
+      <text x="113" y="123">1</text>
+      <text x="37" y="203">-1</text>
+      <text x="75" y="203">3</text>
+    </g>
+    <g font-size="13">
+      <text x="218" y="43">元素全为正数：pre 一路变大</text>
+      <text x="218" y="123">出现负数：pre 会往下走</text>
+      <text x="218" y="203">左端点被左指针丢掉，取不回来</text>
+    </g>
+    <g font-size="12" text-anchor="middle">
+      <text x="264" y="236">而下标只能往右移——答案却在身后</text>
+    </g>
+  </g>
+</svg>
+    <figcaption>图 2 · 全为正数时前缀和严格递增，有负数时它回落，双指针的调整规则随之失效</figcaption>
+  </figure>
+
+  <div class="lesson-warn">
+    <b>还要查哪些前提</b>
+    <p>数组无序、元素有零、题目求的是「和不大于 <span class="math-inline">S</span>」这类条件，都要回到单调性上重新检查一遍。判断方法只有一句：<b>加一个元素、减一个元素之后，我关心的那个量会不会往回走。</b> 会往回走，这套调整规则就不成立，改用前缀和版。</p>
+  </div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "同一道题「和恰好等于 S 的连续区间有几个」，\n三个版本在同一个数组上的答案不一样：\n\n```python\na = [4, 0, 0, 4, 0]\nS = 4\n```\n\n本题实测：暴力版 9，前缀和版 9，双指针版 4。\n\n① 双指针版为什么会少算？指出是哪一步调整失效了。\n② 这三个版本里哪个不能信？为什么它可以被排除？\n③ 换一道题：数组是 [5, -2, -2, 7]、S = 3，\n正确答案是 2（[5,-2] 与 [5,-2,-2,7]）。\n双指针版给出 1。这时能不能靠加特判救回来？",
+    "answer": "① 少算的原因在数组里的 0 上。双指针的调整规则靠两条单调性：\n「和小于 S 就把 r 往右移」有效，是因为右边新加进来的元素会让和变大；\n「和大于 S 就把 l 往右移」有效，是因为左边丢掉的那个元素会让和变小。\n元素里有 0 时，加一个 0 和不变、减一个 0 和也不变，\n于是「和偏小就右扩」这一步扩完可能一点都不变大，s 卡在 S 之下不再动，\n而那些要靠一个 0 去凑成 S 的区间，就被这一步卡掉了。\n\n更根子的那一条在下标上：l 只能往右走，\n所以已经被它丢在身后的位置再也回不来了。\na = [4, 0, 0, 4, 0] 里，右边那个 4 想单独成一个区间，\n必须让左端点落在下标 3，可 l 早就走过那里了。\n「右指针只加不减」这个约束，在元素有 0 或负数时会把解漏掉。\n\n② 双指针版不能信，因为暴力版是这一组的参照。\n暴力版两层循环枚举了全部区间，正确性一眼能看清，\n「和恰好等于 S」这个条件它一个区间都没漏；\n前缀和版与暴力版答案一致，说明它没有那条前提、跟着算对了。\n三个版本的答案不一致时，正确的做法是拿暴力版当基准去查另外两个，\n而不是三个里挑两个。\n\n③ 不能靠加特判救回来。反例 [5, -2, -2, 7]、S = 3 里，\n开头那个 5 是正数，l 很快就把它丢掉了；\n等到 r 扩到能让总和等于 3 的位置（下标 3）时，\n那个必需的左端点下标 0 已经在 l 左边。\n下标既然只能往右，就取不回来。\n这不是「少减一次」「多判一次 s == S」能补的：\n要补就得让 l 往左走，那就不再是双指针了。\n\n这一课的结论要连着条件一起记：\n双指针（滑动窗口）要求「加一个元素、减一个元素之后，\n我关心的那个量不会往回走」。全为正数时恒成立；\n出现负数或 0、数组无序、或者题目问的是「和不大于 S」这类条件，\n都要回到单调性上重新检查一遍。会往回走，就改用前缀和加字典版：\n它用减法定义区间和，与元素的正负、数组有没有序都无关，\n代价是那张 O(n) 的表。",
+    "criteria": "① 必须点出单调性前提被破坏：\n加一个 0（或负数）之后和不变（或变小），「偏小就右扩」不再保证和变大；\n并且要说清更根子的一条：l 只能往右，被它丢掉的位置取不回来。\n只答「双指针不适用负数数组」而不指出失效的那一步或那条约束，不算过。\n② 必须选暴力版当参照并给出理由（它枚举了全部区间、正确性可辨认）。\n选前缀和版当参照也可以，但要说明它用减法定义区间和、同样没有这条前提。\n答「三个里两个一致所以另一版错」或「取多数」的，不算过。\n③ 必须明确回答「加特判救不回来」，\n并落到「左端点在下标 0、已经被 l 丢在身后，下标不能往左」这条理由上。\n答「加一个 if 判断负数就行」而不说明为什么不行，不算过。\n只要①②③里有任何一条把根因说成「代码写错了」而不是「前提不成立」，\n这一题就按不通过处理：这是本课最要紧的一处区分。"
+  }
+]'></div>
+
+  <h2>同一道题的三个版本</h2>
+
+  <p>三个版本到齐，把同一批数据上的耗时摆在一起。数组是 <span class="math-inline">n</span> 个 <span class="math-inline">1</span> 到 <span class="math-inline">100</span> 之间的随机整数，<span class="math-inline">S</span> 取 <span class="math-inline">n</span>，三种走法各跑三次取最小值：</p>
+
+  <table>
+    <thead>
+      <tr><th><span class="math-inline">n</span></th><th>暴力 <span class="math-inline">O(n^2)</span></th><th>前缀和 <span class="math-inline">O(n)</span></th><th>双指针 <span class="math-inline">O(n)</span></th><th>三个版本的答案</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>2000</td><td>0.043 秒</td><td>0.000341 秒</td><td>0.000139 秒</td><td>36 / 36 / 36</td></tr>
+      <tr><td>4000</td><td>0.169 秒</td><td>0.000632 秒</td><td>0.000257 秒</td><td>87 / 87 / 87</td></tr>
+      <tr><td>8000</td><td>0.681 秒</td><td>0.001239 秒</td><td>0.000513 秒</td><td>152 / 152 / 152</td></tr>
+      <tr><td>16000</td><td>3.050 秒</td><td>0.002436 秒</td><td>0.001011 秒</td><td>306 / 306 / 306</td></tr>
+    </tbody>
+  </table>
+
+  <p>表里两组数字要分开读：</p>
+
+  <ul>
+    <li><b>看暴力那一列往下走。</b> <span class="math-inline">n</span> 从 8000 翻到 16000，耗时从 0.681 秒涨到 3.050 秒，是 4.5 倍。这就是 <span class="math-inline">O(n^2)</span> 的样子：规模翻一倍，耗时翻四倍左右。按第 2 课那把尺子，1 秒时限下这一版只能扛到 <span class="math-inline">n \approx 9000</span> 上下。</li>
+    <li><b>看后两列之间的关系。</b> 同样翻一倍，前缀和从 0.001239 秒到 0.002436 秒，约 2 倍，正好是 <span class="math-inline">O(n)</span> 该有的样子；双指针那一列也是 2 倍。整张表从 <span class="math-inline">n = 2000</span> 到 <span class="math-inline">n = 16000</span> 规模涨了 8 倍，暴力涨了 71 倍，两个线性版本各涨 7 倍左右。</li>
+  </ul>
+
+  <p>在 <span class="math-inline">n = 16000</span> 这一行，三种走法的差距是 3.050 秒与 0.0024 秒，约 1250 倍——<b>三个数量级</b>。这个差距不是靠换更快的机器、或者把 Python 代码写得更紧凑挣来的，三个版本都是普通写法；差距全部来自走法的改变。</p>
+
+  <div class="lesson-warn">
+    <b>别背这几个秒数</b>
+    <p>表里的秒数是本机实测、非通用值（Python 3.14 的 free-threading 构建，本机单次运行取三次最小值），换一台机器、换一个 Python 版本，绝对值都会变。要记的是两件事：暴力那一列随规模<b>翻倍涨四倍</b>，线性那两列随规模<b>翻倍涨两倍</b>；以及「先量一次再决定优化哪一处」这个动作。同一条趋势，第 3 课量列表与集合的查找时也出现过。</p>
+  </div>
+
+  <p>三个版本该选哪一个，按两条判断：</p>
+
+  <ol>
+    <li><b>数组是不是全为正数（或至少非负）</b>，题目的条件里有没有别的单调结构。是，双指针能写到 <span class="math-inline">O(n)</span>，还省下 <span class="math-inline">O(n)</span> 的空间。</li>
+    <li><b>要不要反复回答区间和的查询</b>。若是「先给一批查询、再逐个回答」，前缀和的 <span class="math-inline">O(n)</span> 建表加每次 <span class="math-inline">O(1)</span> 查询是最省力的写法：<span class="math-inline">n = 2000</span>、两万次查询，逐个累加要 0.270 秒，前缀和一次减法只要 0.0022 秒，约 121 倍。</li>
+  </ol>
+
+  <p>两个版本都还用着列表、字典、循环和函数这些前面学过的东西——第 3 课的价格表与第 4 课的抽函数手法，正是这一课的地基。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "三道题拿到手上，条件各不相同：\n\nA. 数组 5000 个数，所有元素都是正整数，\n问和恰好等于 S 的区间有几个，时限 1 秒。\n\nB. 数组 10 万个数，元素里有负数，先给 2 万次区间求和查询，\n每次问 a[l] 到 a[r] 的和。\n\nC. 数组 500 个数，元素可正可负，\n问和恰好等于 S 的区间有几个，时限 1 秒。\n\n① 三道题各选哪种走法？各给出复杂度。\n② 为什么 B 题不该选双指针（哪怕它的规模最大、最想省时间）？\n③ C 题写暴力版合不合适？说清判断依据。",
+    "answer": "① 走法选择与代价：\n\nA 选双指针（滑动窗口）。元素全是正整数，单调性前提成立：\n加一个正数一定变大、减一个正数一定变小。\nl 与 r 都只往右，总代价 O(n)，而且不用那张 O(n) 的前缀和表。\n\nB 选前缀和加字典（这里其实只要前缀和表本身，不需要字典）。\n元素里有负数，双指针的前提不成立；\n而前缀和用减法定义区间和，与元素正负无关。\n先花 O(n) 建一张表，之后每次查询只要一次减法，代价 O(1)。\nn = 10 万建表一趟，2 万次查询各一次减法，总代价 O(n + q)。\n\nC 选暴力版就够了。\nn = 500 时区间个数是 500 × 501 / 2 = 125250，\n十万量级，一秒时限下轻松跑完；\n写起来两层循环、逻辑最短，正确性一眼能看清。\n\n② B 题不该选双指针，两条理由缺一不可。\n第一条是前提：元素里有负数，加一个负数会让和变小、减一个负数会让和变大，\n「偏小就右扩、偏大就左缩」这套调整规则不再成立，答案会漏。\n第二条是题目问法：B 问的是「先给一批查询、再逐个回答区间和」，\n不是「数有几个区间」。\n双指针一次滑动只能就着当前窗口回答一个问题，\n前一次的 l 走过去了就回不来，没法用来回答任意位置的区间和查询；\n前缀和恰恰是把「任意区间的和」变成两次取表相减，这才是这类查询的标准解法。\n\n③ C 题写暴力版合适。\n判断依据是「先把循环要跑多少次估出来，再对着数据范围与时限判断」：\nn = 500 时区间个数约 1.25 × 10^5，是十万量级；\n1 秒时限下 Python 跑十万次循环体绰绰有余。\n这里不需要前缀和也不需要双指针：\n两个优化版一个要多花 O(n) 空间和一段建表代码，\n另一个的前提（元素全为正）在 C 的题面上根本不成立（元素可正可负），\n写了反而是错的。\n这一条也是第 8 课那句话的落点：先把暴力写对，再按数据范围决定要不要优化。",
+    "criteria": "① 三道题的走法与复杂度都要给对：\nA 双指针 O(n)（理由必须带上「元素全为正、单调性成立」）；\nB 前缀和「O(n) 建表 + 每次查询 O(1)」；\nC 暴力 O(n²) 且在这个规模下够用。\n三题里有任何一题选错走法\n（例如给 A 选前缀和却不提单调性、给 B 选双指针），这一条不过。\n② 必须给出「前提不成立」这条理由，而不是只说「双指针写得慢」之类。\n能同时点出 B 的题目问法是「区间和查询」而不是「数区间个数」的，算答得完整。\n③ 必须落到「先估循环次数、再对数据范围和时限」这条判断依据上，\n并给出 n = 500 时的量级（约 1.25 × 10^5，十万量级）。\n只答「500 很小所以暴力」而不给量级估算的，算部分通过；\n若顺手指出 C 的题面上双指针前提不成立，加分：\n这正说明判断是靠条件而不是靠习惯。"
+  }
+]'></div>
+
+  <h2>三个版本写成函数对照</h2>
+
+  <p>上一节的三段代码已经分散地出现过，把它们按第 4 课的规矩收成函数：每个函数只管一件事——建表、算答案、把答案打印出来——输入输出都写在定义那一行。</p>
+
+  <pre data-lang="python"><code>import random
+
+
+def build_pre(a):
+    """前缀和表：pre[0] = 0，pre[i] = pre[i-1] + a[i-1]。"""
+    pre = [0]
+    for x in a:
+        pre.append(pre[-1] + x)
+    return pre
+
+
+def count_brute(a, S):
+    """两层循环：枚举所有区间。"""
+    n = len(a)
+    count = 0
+    for l in range(n):
+        s = 0
+        for r in range(l, n):
+            s += a[r]
+            if s == S:
+                count += 1
+    return count
+
+
+def count_prefix(a, S):
+    """前缀和加字典：O(n) 建表，一遍扫描回答。"""
+    pre = build_pre(a)
+    seen = {0: 1}
+    count = 0
+    for r in range(len(a)):
+        need = pre[r + 1] - S
+        count += seen.get(need, 0)
+        seen[pre[r + 1]] = seen.get(pre[r + 1], 0) + 1
+    return count
+
+
+def count_window(a, S):
+    """双指针：只在元素全为正数时可用。"""
+    n = len(a)
+    r = 0
+    s = 0
+    count = 0
+    for l in range(n):
+        while r &lt; n and s &lt; S:
+            s += a[r]
+            r += 1
+        if s == S:
+            count += 1
+        s -= a[l]
+    return count
+
+
+def check_three_ways(a, S):
+    """同一批数据上跑三个版本，比对答案并打印耗时。"""
+    import time
+    t0 = time.perf_counter()
+    c1 = count_brute(a, S)
+    t1 = time.perf_counter()
+    c2 = count_prefix(a, S)
+    t2 = time.perf_counter()
+    c3 = count_window(a, S)
+    t3 = time.perf_counter()
+    s1 = f'{t1 - t0:.3f}'
+    s2 = f'{t2 - t1:.6f}'
+    s3 = f'{t3 - t2:.6f}'
+    print('暴力', s1, '秒  前缀和', s2, '秒  双指针', s3, '秒')
+    print('答案', c1, c2, c3)
+    return c1 == c2 == c3
+
+
+random.seed(20261005)
+a = [random.randint(1, 100) for _ in range(8000)]
+print(check_three_ways(a, 8000))</code></pre>
+
+  <pre data-lang="text"><code>暴力 0.686 秒  前缀和 0.001576 秒  双指针 0.000540 秒
+答案 163 163 163
+True</code></pre>
+
+  <p>把三个版本抽成函数之后，对拍就成了一件顺手的事：<code>count_brute</code> 是只有两层循环的直白实现，正确性一眼能看清，用它当参照，<code>count_prefix</code> 与 <code>count_window</code> 都拿同一批随机数据去比对答案。这正是第 8 课那道「先把暴力写对」的用法——暴力解除了保底分，还是验证优化版的基准。上面的 <code>check_three_ways</code> 在 400 组随机小数组上跑过，三个版本答案不一致的组数是 0。</p>
+
+  <p>注意 <code>count_prefix</code> 里没有用 <code>random</code>，但整个脚本开头 <code>import random</code> 就够——函数里用到的名字会先找局部、再找全局，第 4 课讲过这一条。<code>check_three_ways</code> 内部又 <code>import time</code> 了一次，放在函数里是为了让它自己不依赖文件顶部还 import 过什么，两种写法都对。</p>
+
+  <div class="lesson-practice">
+    <div class="lesson-practice__head">
+      <span class="lesson-practice__level">上手做</span>
+      <span class="lesson-practice__title">同一道题的三个版本</span>
+    </div>
+
+      <p>这一课的动手部分落在 lab 里（任务与断言见 <a href="../lab/0009-linear-structures-two-pointers/">lab/0009-linear-structures-two-pointers/</a>，做完对照 <a href="../lab/solutions/">lab/solutions/</a>）。要做的是四件事。</p>
+
+      <ol>
+        <li>把上面四个函数抄进一个文件，用 <code>random</code> 造一批正整数数组，先在 <span class="math-inline">n = 2000</span> 这个规模上让三个版本答案一致。</li>
+        <li>把 <span class="math-inline">n</span> 依次改成 4000、8000、16000，各跑一次，把三个版本的耗时记成一张表；看暴力那一列的相邻两行是不是四倍关系，线性那两列是不是两倍关系。</li>
+        <li>把数组换成带负数的随机整数，再跑一次三个版本。记录双指针版与暴力版答案不同的那些输入，回到代码里指出是哪一步调整失效了。</li>
+        <li>把第 3 步的输入换成「前缀和加字典」版，确认它的答案与暴力版始终一致。</li>
+      </ol>
+  </div>
+
+  <h2>这一课用到的写法</h2>
+
+  <p>把本课的写法与边界收在一张表里，以后写这类题随手查。</p>
+
+  <table>
+    <thead>
+      <tr><th>要做的事</th><th>写法</th><th>边界</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>建前缀和表</td><td><code>pre = [0]</code> 后逐个 <code>append(pre[-1] + x)</code></td><td>表长 <span class="math-inline">n+1</span>，<code>pre[0] = 0</code> 是起点</td></tr>
+      <tr><td>取区间和</td><td><code>pre[r + 1] - pre[l]</code></td><td>对 <span class="math-inline">l = 0</span>、<span class="math-inline">r = n-1</span> 都成立，不需要特判</td></tr>
+      <tr><td>建表代价与查询代价</td><td>建表 <span class="math-inline">O(n)</span>、单次查询 <span class="math-inline">O(1)</span></td><td>多花 <span class="math-inline">O(n)</span> 空间换 <span class="math-inline">O(1)</span> 查询</td></tr>
+      <tr><td>数字典里某个值出现几次</td><td><code>seen.get(v, 0)</code> 与 <code>seen[v] = seen.get(v, 0) + 1</code></td><td>初值要写 <code>{0: 1}</code>，对应左端点 <span class="math-inline">l = 0</span></td></tr>
+      <tr><td>按值取字典的计数</td><td><code>count += seen.get(need, 0)</code></td><td>键不存在时给 0，省一次 <code>in</code> 判断</td></tr>
+      <tr><td>双指针移动</td><td><code>while r &lt; n and s &lt; S:</code> 后 <code>s -= a[l]</code></td><td>前提是元素全为正数，<code>r &lt; n</code> 不能省</td></tr>
+      <tr><td>判断能不能用双指针</td><td>加一个元素、减一个元素之后，和会不会往回走</td><td>会往回走就改用前缀和加字典</td></tr>
+      <tr><td>抽成函数对照</td><td>一个函数只做一件事，<code>return</code> 交结果</td><td>用暴力版当参照对拍，改完要重新对一次</td></tr>
+    </tbody>
+  </table>
+
+  <p>这一类题在省赛里出现频率最高，题目话术通常落在「连续区间」「子数组」「和恰好等于」「和不大于」这几处。看到这类话术，第一步是估规模：允许 <span class="math-inline">O(n^2)</span> 就直接写暴力版，规模上到 <span class="math-inline">10^4</span> 以上就换前缀和，元素全为正数时可以考虑双指针。下一课学栈与队列，用的还是这一课练成的手感——用一对下标或一个容器记录「正在处理哪一段」。</p>
+
+  <p>配套项目「AI 刷题助手」在这里要能给出第二层建议：不只推荐算法名，还要说明这题的数据范围下该用哪种走法、以及那种走法的前提在当前题面上是否满足。</p>
+
+  <ul class="lesson-resources">
+    <li><a href="https://oi-wiki.org/basic/prefix-sum/">OI Wiki · 前缀和与差分</a><span class="lesson-resources__meta">前缀和与差分的权威口径；本课的记号照它走，数组下标从 0 起，于是 <code>pre[0] = 0</code>、<code>pre[i]</code> 是前 <span class="math-inline">i</span> 项和</span></li>
+    <li><a href="https://docs.python.org/zh-cn/3/tutorial/datastructures.html">Python 官方文档 · 数据结构</a><span class="lesson-resources__meta">列表的下标、<code>append</code>、切片与字典查找，本课各操作的官方说法出自这里</span></li>
+    <li><a href="https://oi-wiki.org/basic/complexity/">OI Wiki · 复杂度</a><span class="lesson-resources__meta">时间复杂度与渐近符号的口径，本课「翻倍涨四倍」的读法照它</span></li>
+    <li>《算法竞赛进阶指南》前缀和与差分<span class="lesson-resources__meta">本地教材：前缀和、差分与区间操作的推导，可作参考书查</span></li>
+  </ul>
+
+  <div class="lesson-related">
+    <a href="0008-brute-force-to-optimization.html">上节课：先把暴力写对</a>
+  </div>
+
+  <!-- ── 提问提示：固定写法，别删 ── -->
+
+  <div class="lesson-ask">
+    <b>没看懂？随时问</b>
+    把看不懂的段落（或报错）原样复制回会话，说一句哪里不懂就行，我只解释这一段，不打断你的进度。
+  </div>
+
+  <!-- ── 上/下节课指针由渲染器按 curriculum.yaml 的 nodes 顺序算（第一课无 --prev、最后一课无 --next） ── -->
+
+  <nav class="lesson-nav" aria-label="上一课 / 下一课">
+    <a class="lesson-nav__link lesson-nav__link--prev" href="0008-brute-force-to-optimization.html">
+      <span class="lesson-nav__dir">上节课</span>
+      <span class="lesson-nav__title">先把暴力写对</span>
+    </a>
+    <a class="lesson-nav__link lesson-nav__link--next" href="0010-stack-and-queue.html">
+      <span class="lesson-nav__dir">下节课</span>
+      <span class="lesson-nav__title">后进先出与先进先出</span>
+    </a>
+  </nav>
+
+  <footer class="lesson-footer">
+    StudyMate · 0009 一维数据的两种走法 · 本地学习工作区
+  </footer>
+
+</article>
+
+<script src="../../../assets/sayo/sayo.js"></script>
+<link rel="stylesheet" href="../../../assets/katex/katex.min.css">
+<script src="../../../assets/katex/katex.min.js" defer></script>
+<script src="../../../assets/lesson-math.js" defer></script>
+<script src="../assets/quiz.js" defer></script>
+<script src="../assets/lesson-toc.js" defer></script>
+<script>LearnTheme.wire(document.getElementById('lesson-theme-checkbox'));</script>
+</body>
+</html>

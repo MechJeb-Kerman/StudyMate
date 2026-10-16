@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>把一段代码变成函数 · Python 算法与蓝桥杯</title>
+
+<!-- 共享层在 .learning/assets/，课件在 .learning/subjects/<slug>/lessons/ 下，所以是 ../../../assets/ -->
+<link rel="stylesheet" href="../../../assets/sayo/sayo.css">
+<link rel="stylesheet" href="../../../assets/learn-theme.css">
+<link rel="stylesheet" href="../assets/style.css">
+
+<!-- 主题要在首帧前应用，避免闪白/闪黑 -->
+<script src="../../../assets/learn-theme.js"></script>
+<script>LearnTheme.apply();</script>
+</head>
+
+<body class="lesson-body">
+
+<nav class="lesson-bar">
+  <a href="../index.html">← 返回课程</a>
+  <span>Python 算法与蓝桥杯</span>
+  <span class="lesson-bar__no">0004</span>
+  <!-- 课件页自带主题开关：学生从文件管理器直接打开课件时也能切暗色 -->
+  <label class="syo-toggle syo-toggle--theme lesson-bar__toggle" title="切换深浅主题" aria-label="切换深浅主题">
+    <input type="checkbox" id="lesson-theme-checkbox" checked>
+    <span class="syo-toggle-track"></span>
+    <span class="syo-toggle-knob">
+      <svg class="syo-toggle-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.5" stroke="#f57c00" stroke-width="1.5"/><path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.34 4.34l1.77 1.77M13.89 13.89l1.77 1.77M4.34 15.66l1.77-1.77M13.89 6.11l1.77-1.77" stroke="#f57c00" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <svg class="syo-toggle-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.5 12.5A6 6 0 019 4.5a6 6 0 007.5 8z" stroke="#5c6bc0" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </span>
+  </label>
+</nav>
+
+<article class="lesson">
+
+  <header class="lesson-header">
+    <span class="lesson-header__eyebrow">0004 · 把一段代码变成函数</span>
+    <h1>把一段代码变成函数</h1>
+    <p class="lesson-goal"><b>本节目标：</b>能把重复代码抽成带参数的函数，说清位置参数、默认参数、关键字参数与返回值，并知道函数内外各自能看见哪些名字。</p>
+  </header>
+
+  <!-- ── 正文：渲染器按内容文件（lessons/<序号>-<节点id>.md）产出，块词汇见 docs/规范/课件内容格式.md ── -->
+
+  <p>前面三课把「算法要跑多久」这件事说清楚了：数基本操作、写 <span class="math-inline">O</span> 记号、按数据规模反推上限，也量过了列表与字典各操作的代价。这三课里写的代码有一个共同点：全部摊在一个文件里，从上往下跑一遍。样例只要三五个数，这样写没问题；数据范围一上到 <span class="math-inline">10^6</span>，同一段逻辑往往要在几个地方各写一遍——读数据时要扫一遍，统计时要扫一遍，输出前还要再数一次。</p>
+
+  <p>算法题的真实形态不是这样。深度优先搜索、广度优先搜索、二分查找这些算法，写下去必然要反复调用同一段逻辑，而且要在不同数据上调用它：小样例上自测一次，正式数据上再跑一次。同一段逻辑写两遍，就多了一处改一处忘一处的地方；改一处逻辑要翻三遍代码，正是这种写法带来的。</p>
+
+  <p>这一课要做的事只有一件：把一段代码包起来、给它起个名字、需要时用不同的数据调用它。这就是<b>函数</b>。它是后面每一课的地基——接下来学的每一种算法，都要先写成函数，才能在小样例和正式数据上共用同一份实现。</p>
+
+  <h2>函数这个名字从哪来</h2>
+
+  <p>函数这个词是从数学里借来的。数学上的函数 <span class="math-inline">f(x)</span> 描述一种对应关系：给一个输入 <span class="math-inline">x</span>，得到唯一确定的输出 <span class="math-inline">f(x)</span>。编程语言借用了这个意思，但把它落到代码上：<b>函数是一段有名字的代码块，可以按名字调用，调用时把数据交进去，执行完把结果交出来。</b></p>
+
+  <p>把「一段代码」和「一个函数」对照着看，差别在三处：</p>
+
+  <table>
+    <thead>
+      <tr><th></th><th>一段摊开的代码</th><th>一个函数</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>怎么找到它</td><td>靠记得它在这个文件的中段</td><td>靠名字，<code>odd_count</code> 一眼看出它做什么</td></tr>
+      <tr><td>换一份数据再用一次</td><td>把这段复制一遍、改里面的变量名</td><td>调用它，把新数据作为实参传进去</td></tr>
+      <tr><td>结果怎么给出去</td><td>直接打印，或者留在某个变量里</td><td>用 <code>return</code> 送到调用处，调用处决定怎么用</td></tr>
+    </tbody>
+  </table>
+
+  <p>第三行是后面所有内容的关键。摊开的代码把结果打印出来，就结束了；函数把结果<b>返回</b>出来，调用处才能拿它继续算——小样例上比对答案、正式数据上写进输出，用的是同一份实现。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "摊平的代码把结果打印出来就结束。\n函数把结果 return 回调用处，好处是什么？",
+    "opts": [
+      "函数把结果交回调用处，调用处能拿它接着算",
+      "函数把结果直接打印出来，所以调用处不用再算",
+      "函数把重复的代码复制一份，所以运行得更快",
+      "函数把代码藏进名字里，所以别人读不懂它"
+    ],
+    "ans": 0,
+    "why": "摊平版 print 完这件事就结束了，调用处再也拿不到那个值；return 把值送到调用处，调用处才能拿它继续算——小样例上比对答案、正式数据上写进输出，用的是同一份实现。「靠名字找到它」与「换一份数据再调用一次」这两处差别只是方便，第三行才是后面所有内容的关键。"
+  }
+]'></div>
+
+  <h2>怎么写一个函数，怎么调用它</h2>
+
+  <p>定义函数用关键字 <code>def</code>（define 的缩写），后面跟函数名、一对括号、一个冒号，函数体在下一行开始并缩进：</p>
+
+  <pre data-lang="python"><code>def odd_count(n):
+    count = (n + 1) // 2
+    print(count)
+
+odd_count(10)
+odd_count(1)</code></pre>
+
+  <p>这段代码的读法：<code>def odd_count(n):</code> 把 <code>odd_count</code> 这个名字与一段代码关联起来，此后读到这个名字，指的就是那段代码；括号里的 <code>n</code> 是运行这段代码时需要交给它的数据；冒号与随后的缩进决定了这段代码到哪里结束。<code>odd_count(10)</code> 是<b>调用</b>：按名字找到那段代码，把 <code>10</code> 交给它，从头执行一遍。运行结果是两行 <code>5</code> 和 <code>1</code>。</p>
+
+  <pre data-lang="text"><code>5
+1</code></pre>
+
+  <p>括号不能省。定义时不带参数的函数写成 <code>def show():</code>，调用时写成 <code>show()</code>，两个括号都在。名字后面没有括号时，<code>odd_count</code> 只是这个名字本身，代码一行都不会执行。</p>
+
+  <p>定义与调用的次序也有要求：Python 从上往下读文件，读到 <code>def</code> 才把名字与代码块关联起来，所以调用必须写在定义之后。把 <code>odd_count(10)</code> 写在 <code>def</code> 之前，会报 <code>NameError</code>。</p>
+
+  <p>再来一个例子，它接收两个数并返回较大的那个：</p>
+
+  <pre data-lang="python"><code>def bigger(a, b):
+    if a &gt; b:
+        return a
+    return b
+
+print(bigger(3, 9))
+print(bigger(9, 3))</code></pre>
+
+  <p>输出是 <code>9</code> 和 <code>9</code>。两次调用传进去的实参顺序不同，函数内部按形参的名字取值，所以两种顺序都能得到正确结果。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "下面这段运行会怎样？\n\n```python\nprint(odd_count(10))\n\ndef odd_count(n):\n    return (n + 1) // 2\n```",
+    "opts": [
+      "报 NameError：读到调用那行这个名字还没建立",
+      "报 TypeError：调用时括号里的实参个数不对",
+      "打印 5：Python 先把整个文件读完了才开始执行",
+      "打印函数对象：这个名字后面没有括号就不会调用"
+    ],
+    "ans": 0,
+    "why": "Python 从上往下读文件，读到 def 那一行才把名字与那段代码关联起来，所以调用必须写在定义之后——这里 print(odd_count(10)) 在 def 之前，读到它时 odd_count 还不存在，报 NameError。补一句：调用时括号不能省，写成 print(odd_count) 只会打出这个名字本身（一个函数对象），代码一行都不执行；定义时的括号与冒号也不能省。"
+  }
+]'></div>
+
+  <h2>传进去的数据叫什么</h2>
+
+  <p>上一节的 <code>n</code>、<code>a</code>、<code>b</code> 出现在函数定义里，<code>10</code>、<code>3</code>、<code>9</code> 出现在调用处。这两类东西在教材里有各自的正式名字，混用会让后面的讨论没法进行。</p>
+
+  <p><b>形参</b>（parameter）是函数定义括号里的变量名，表示这个函数完成任务需要哪些信息；<b>实参</b>（argument）是调用时括号里给出的具体值，表示这次调用真的交给了它什么。调用 <code>bigger(3, 9)</code> 时，实参 <code>3</code> 与 <code>9</code> 按位置分别赋给形参 <code>a</code> 与 <code>b</code>，函数体里读到的就是这两个值。</p>
+
+  <p>按位置对应，是最直接的传参方式。它的代价是顺序写错时不会报错，只会算出另一个结果：<code>bigger(9, 3)</code> 与 <code>bigger(3, 9)</code> 的返回值恰好一样，但如果换成一个「求 a 除以 b」的函数，两个参数写反就会算出 <span class="math-inline">3/9</span> 而不是 <span class="math-inline">9/3</span>。这类错误在数值上看着像对的一半，最难查。</p>
+
+  <p>给形参写上默认值，调用时可以省掉它：</p>
+
+  <pre data-lang="python"><code>def count_in_range(lo, hi, step=1):
+    count = 0
+    for x in range(lo, hi, step):
+        count += 1
+    return count
+
+print(count_in_range(1, 9))         # step 用默认值 1，输出 8
+print(count_in_range(1, 9, 2))      # 显式给出 step，输出 4
+print(count_in_range(lo=1, hi=9))   # 两个都用关键字给，输出 8</code></pre>
+
+  <p>三条调用规则，记下来能省很多调试时间：</p>
+
+  <ul>
+    <li><b>没有默认值的形参必须在前</b>。<code>def count_in_range(lo=1, hi)</code> 是语法错误，原因在位置参数按顺序匹配：<code>count_in_range(9)</code> 交出的那个值该给谁，必须能唯一确定。</li>
+    <li><b>调用时先位置、后关键字</b>。<code>count_in_range(1, step=2, 9)</code> 是语法错误；写成 <code>count_in_range(1, 9, step=2)</code> 合法，位置实参 <code>1</code>、<code>9</code> 按顺序给 <code>lo</code>、<code>hi</code>，关键字实参 <code>step=2</code> 指名给 <code>step</code>。</li>
+    <li><b>关键字实参必须匹配真实的形参名</b>，名字拼错会报 <code>TypeError</code>。好处也在这里：<code>count_in_range(lo=1, hi=9)</code> 这种写法把每个值对应谁写在调用处，读数的人不必回头查定义。</li>
+  </ul>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "def count_in_range(lo, hi, step=1): 定义如上。\n下面四行调用里，哪一行是语法错误？",
+    "opts": [
+      "count_in_range(lo=1, hi=9)",
+      "count_in_range(1, step=2, 9)",
+      "count_in_range(1, 9, step=2)",
+      "count_in_range(hi=9, lo=1)"
+    ],
+    "ans": 1,
+    "why": "规则是「调用时先位置、后关键字」：第 2 行那个 9 是位置实参，却排在关键字实参 step=2 之后，Python 无法确定它给谁，是语法错误。第 3 行合法（1→lo、9→hi、step=2 指名给 step），第 1、4 行都用关键字指名给值，也合法。另外两条规则一并记住：没有默认值的形参必须写在前面（def count_in_range(lo=1, hi) 是语法错误）；关键字实参的名字必须与真实形参名逐字一致，拼错会报 TypeError。"
+  }
+]'></div>
+
+  <h2>结果怎么交出来</h2>
+
+  <p>函数把结果交回调用处，用 <code>return</code> 语句：</p>
+
+  <pre data-lang="python"><code>def odd_count(n):
+    count = (n + 1) // 2
+    return count
+
+print(odd_count(10))          # 5
+print(odd_count(10) * 2)      # 10</code></pre>
+
+  <p><code>return</code> 做两件事：把右边的值送到调用处，并立刻结束函数的执行。所以它后面的语句不再运行。<code>print(odd_count(10) * 2)</code> 这一行能算出 <code>10</code>，说明 <code>odd_count(10)</code> 交回来的是可以继续参与运算的值；<code>print</code> 只是把文字写到屏幕上，交不回来任何东西。</p>
+
+  <p><code>return</code> 只能带一个值。要一次交回两样东西（比如「正数有几个」和「最大的那个」），把它们写成一个<b>元组</b>——用逗号隔开的几个值：</p>
+
+  <pre data-lang="python"><code>def count_and_max(nums):
+    count = 0
+    best = nums[0]
+    for x in nums:
+        if x &gt; 0:
+            count += 1
+        if x &gt; best:
+            best = x
+    return count, best
+
+print(count_and_max([3, -1, 4, 0, 7]))     # (3, 7)
+count, best = count_and_max([3, -1, 4, 0, 7])
+print(count, best)                          # 3 7</code></pre>
+
+  <p><code>return count, best</code> 写起来是两样东西，实际交回来的是一个 <span class="math-inline">(3, 7)</span> 形式的元组。调用处可以直接整体接住当元组用，也可以写成 <code>count, best = ...</code> 一次拆成两个变量——这种写法叫解包赋值，元组里有几个元素，左边就写几个名字。</p>
+
+  <p>两个容易踩的空档：</p>
+
+  <ul>
+    <li><b>不加 <code>return</code> 的函数交回来的是 <code>None</code>。</b><code>None</code> 是 Python 里表示「没有值」的专用值，它不等于 0、也不是空字符串，拿它去参与运算会报 <code>TypeError</code>。</li>
+    <li><b>有的分支有 <code>return</code>、有的分支没有</b>。下面的 <code>maybe</code> 在参数不小于 0 时直接走到函数末尾，没有返回值，所以交回来的是 <code>None</code>：</li>
+  </ul>
+
+  <pre data-lang="python"><code>def maybe(x):
+    if x &gt; 0:
+        return x
+
+print(maybe(5))    # 5
+print(maybe(-1))   # None</code></pre>
+
+  <p>写带条件的函数时，回到每一个分支问一句：这条路交回来的值，调用处拿它继续算会不会出错。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "下面这段是一道题的摊平版：\n\n```python\nn = int(input())\nif n &lt; 0:\n    n = 0\ncount = (n + 1) // 2\nprint(count)\n```\n\n① 按「每个函数只做一件事」拆成三个函数加一个 solve，写出每个函数的签名与它交回什么。\n② 改写完之后，怎么确认新版本与原版等价？",
+    "answer": "① 按读数据、算、输出各一个函数，solve 串起来：\n\n```python\ndef read_n():\n    n = int(input())\n    if n &lt; 0:\n        n = 0\n    return n\n\ndef odd_count(n):\n    return (n + 1) // 2\n\ndef show(count):\n    print(count)\n\ndef solve():\n    n = read_n()\n    show(odd_count(n))\n\nsolve()\n```\n\nread_n 交回检查过的 n，odd_count 交回答案，show 只负责打印、不交回东西。\n\n② 用同一批输入把两版各跑一遍，输出必须逐字一致：$0 \\to 0$、$1 \\to 1$、$10 \\to 5$、$1234567 \\to 617284$。抽函数只改代码的组织方式、不改算法，所以负数归零那一步与那一行算法都不能顺手改动。",
+    "criteria": "① 三个函数的分工必须对：读入并检查数据、算出答案、输出；read_n 里要有负数归零，odd_count 用 return 交回值，show 负责打印，solve 把三者串起来并在文件底部调用。四段逻辑揉成一个函数、或漏掉负数归零，都不算过。\n② 必须给出「同一批输入跑两版、输出逐字一致」这个动作，并至少举一组输入与对应输出（如 $10 \\to 5$）。只说「跑一下看看对不对」不算过。"
+  }
+]'></div>
+
+  <h2>函数里能看见哪些名字</h2>
+
+  <p>函数体里用到的名字，Python 按固定的顺序去找。这个顺序是<b>先在当前函数的局部名字里找，再往外找全局名字，最后找内置名字</b>（<code>print</code>、<code>len</code>、<code>range</code> 这些就是内置名字）。同时有一条补充规定：函数体内部被赋值的名字，从函数开始执行起就算这个函数<b>局部</b>的名字。</p>
+
+  <p>这条规定的直接后果，是下面这段代码会报错：</p>
+
+  <pre data-lang="python"><code>count = 7
+
+def broken():
+    print(count)
+    count = 1
+
+broken()</code></pre>
+
+  <p>报的是 <code>UnboundLocalError: cannot access local variable 'count' where it is not associated with a value</code>。原因：函数体里出现了 <code>count = 1</code> 这个赋值，<code>count</code> 因此成了局部的名字；而 <code>print(count)</code> 在它被赋值之前就要读它，此时局部还没有这个值。让函数只读全局名字，去掉那行赋值，代码就正常：</p>
+
+  <pre data-lang="python"><code>count = 7
+
+def peek():
+    print(count)    # 7
+
+peek()</code></pre>
+
+  <p>函数里改了局部名字，函数外的同名变量不受影响，反过来也一样。这就是<b>作用域</b>：一个名字在程序的哪一段里有效。参数与函数体内新建的变量都是局部的，函数一返回就消失；全局变量在文件顶层建立，能活到程序结束。</p>
+
+  <p>要让函数改到全局变量，得用 <code>global</code> 声明：</p>
+
+  <pre data-lang="python"><code>total = 0
+
+def add(n):
+    global total
+    total += n
+
+add(1000000)
+print(total)     # 1000000</code></pre>
+
+  <p>这段代码能跑，但竞赛代码里应当躲开这种写法。全局变量是函数之间的暗线：看 <code>add</code> 的定义，完全看不出它动了哪个变量，也看不出调用它之前必须先把谁初始化好；等到程序里有两三个函数共用同一个全局变量时，谁在什么时候改了它就成了只能靠通读全文回答的问题。要交出去的东西写进 <code>return</code>，要传进来的东西写进形参——函数的输入输出都在定义那一行写得清清楚楚。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "下面这段报 UnboundLocalError，为什么？\n\n```python\ncount = 7\n\ndef broken():\n    print(count)\n    count = 1\n\nbroken()\n```",
+    "opts": [
+      "函数里赋过值的名字算局部的，读它的时候还没值",
+      "全局变量不能被函数读到，只能读函数自己的参数",
+      "print 写在赋值之前，函数里不允许这样写",
+      "count 被赋值两次，Python 不知道用哪个"
+    ],
+    "ans": 0,
+    "why": "函数体里出现了 count = 1 这个赋值，count 从函数开始执行起就算这个函数的局部名字；而 print(count) 在它被赋值之前就要读它，此时局部的 count 还没有值，于是报 UnboundLocalError。让函数只读全局名字（去掉那行赋值），这段代码就正常。函数里改局部名字不会影响函数外的同名变量，反过来也一样——这就是作用域。"
+  }
+]'></div>
+
+  <h2>默认值只算一次</h2>
+
+  <p>默认参数有一个与直觉相反的细节，官方文档把它单独标成「重要警告」：<b>默认值只在函数定义的时候计算一次</b>，之后每次调用都用同一个对象。</p>
+
+  <p>先看一个与陷阱无关、但把这条规则说得最白的例子：</p>
+
+  <pre data-lang="python"><code>i = 5
+
+def f(arg=i):
+    print(arg)
+
+i = 6
+f()      # 输出 5，不是 6</code></pre>
+
+  <p><code>i</code> 改成 6 之后再调用 <code>f()</code>，打印的仍是 5。原因是 <code>def f(arg=i)</code> 这一行在执行到的时候就把 <code>i</code> 当时的值（5）记下来了，形参的默认值与后来的全局变量 <code>i</code> 再也没有关系。</p>
+
+  <p>这条规则碰到可变对象就出问题。函数在定义时记下的是那个列表本身，于是所有「没给这个实参」的调用共用它：</p>
+
+  <pre data-lang="python"><code>def f(a, L=[]):
+    L.append(a)
+    return L
+
+print(f(1))    # [1]
+print(f(2))    # [1, 2]
+print(f(3))    # [1, 2, 3]</code></pre>
+
+  <p>三次调用都没有给 <code>L</code>，按「默认值是空列表」的想法，每次该拿到一个只装了自己那个新元素的列表；实际输出是累加的。<code>f(2)</code> 拿到的是已经装过 1 的那个列表，再往里追加 2。也就是说，三次调用共享了同一个列表对象，第一次调用做的修改留在了第二、三次调用里。</p>
+
+  <figure class="lesson-figure lesson-figure--inline" role="img" aria-label="三次调用共用一个默认列表对象">
+<svg viewBox="0 0 480 252" role="img" aria-hidden="true">
+  <g stroke="currentColor" fill="none">
+    <rect x="8" y="36" width="148" height="48"/>
+    <rect x="166" y="36" width="148" height="48"/>
+    <rect x="324" y="36" width="148" height="48"/>
+    <rect x="196" y="186" width="128" height="38"/>
+    <path d="M82 84 L82 108 L320 108 L320 186" stroke-dasharray="4 3"/>
+    <path d="M240 84 L240 186" stroke-dasharray="4 3"/>
+    <path d="M398 84 L398 108 L320 108" stroke-dasharray="4 3"/>
+  </g>
+  <g font-family="sans-serif" fill="currentColor">
+    <g font-size="14" text-anchor="middle">
+      <text x="82" y="66">f(1)</text>
+      <text x="240" y="66">f(2)</text>
+      <text x="398" y="66">f(3)</text>
+    </g>
+    <g font-size="12" text-anchor="middle">
+      <text x="100" y="104">调用时都没给 L</text>
+    </g>
+    <g font-size="14" text-anchor="middle">
+      <text x="240" y="176">同一个列表对象 L</text>
+      <text x="260" y="212">[1, 2, 3]</text>
+    </g>
+    <g font-size="13">
+      <text x="8" y="240">三次调用依次追加 1、2、3，都追加到这一个列表里</text>
+    </g>
+  </g>
+</svg>
+    <figcaption>图 1 · 三次调用都没有给 L，三次用的是同一个列表对象，改动依次叠加上去</figcaption>
+  </figure>
+
+  <p>更糟的是，这个列表在函数之外仍然存在，所以从两次调用的返回值就能看出它们是同一个对象：</p>
+
+  <pre data-lang="python"><code>def f(a, L=[]):
+    L.append(a)
+    return L
+
+r1 = f(1)
+r2 = f(2)
+r3 = f(3)
+print(r1)          # [1, 2, 3]，不是 [1]
+print(r1 is r2)    # True</code></pre>
+
+  <p><code>r1</code> 打印出 <code>[1, 2, 3]</code>：第一次调用的返回值被后面两次调用改掉了。<code>is</code> 判断两个名字指的是不是一个对象，这里给出 <code>True</code>，与打印结果互相印证。</p>
+
+  <p>修法是把默认值写成 <code>None</code>，在函数体里判断：真的没给，才新建一个空列表。</p>
+
+  <pre data-lang="python"><code>def f(a, L=None):
+    if L is None:
+        L = []
+    L.append(a)
+    return L
+
+print(f(1), f(2), f(3))    # [1] [2] [3]</code></pre>
+
+  <p><code>None</code> 是不可变对象，无论定义时记下多少次都是同一个「没有值」，不会累积任何东西。新建列表这一步在每一次调用里执行，所以每次调用都得到一个属于自己的空列表。这个模式在需要「默认为空容器」的函数里用得很频繁，看到 <code>L=None</code> 与随后的 <code>if L is None</code> 就能认出它。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "下面这段打出 [1] [1, 2] [1, 2, 3]，与「每次拿一个只装自己的空列表」的预期不符：\n\n```python\ndef f(a, L=[]):\n    L.append(a)\n    return L\n\nr1 = f(1)\nr2 = f(2)\nr3 = f(3)\nprint(r1, r2, r3)\n```\n\n① 根因是什么？为什么三次调用的结果是叠加的？\n② 怎么改？\n③ 下次写函数时怎么避免再踩这个坑？",
+    "answer": "① 默认值只在函数定义的时候求值一次，之后每次调用都用同一个对象。执行到 def f(a, L=[]) 那一行时建立了一个空列表并记下来，三次都没给 L，拿到的是同一个列表，所以第一次 append 的结果留在第二、三次调用里。r1 最终打印 [1, 2, 3] 也印证了这一点（r1 is r2 是 True）。\n\n② 把默认值改成 None，在函数体里判断：\n\n```python\ndef f(a, L=None):\n    if L is None:\n        L = []\n    L.append(a)\n    return L\n```\n\nNone 不可变、不会累积；新建列表这一步每次调用都执行一遍，所以每次调用得到自己的空列表。\n\n③ 见到「默认为空容器」就写 L=None 加 if L is None:；默认值只放不可变对象（数、字符串、None）。",
+    "criteria": "① 必须点到「默认值只在定义时求值一次／三次调用共用同一个列表对象」，并说出叠加的原因：前一次 append 的改动留在同一个列表里。只说「列表是可变对象」、不点共用同一个对象，不算过。\n② 必须给出 L=None 加 if L is None: L = [] 这个改法。答「每次调用前手工把列表清空」不算过。\n③ 给出一个可执行的习惯即可：默认为空容器写 None／默认值只放不可变对象／看到 L=[] 就警觉。"
+  }
+]'></div>
+
+  <h2>函数里别改传进来的列表</h2>
+
+  <p>还有一类问题是同一个根源的另一面。把列表交给函数，函数内部对它的修改会留在调用处。下面这个函数想把列表里的元素加起来，顺手把第 0 个元素改成了 99：</p>
+
+  <pre data-lang="python"><code>def total(nums):
+    nums[0] = 99
+    s = 0
+    for x in nums:
+        s += x
+    return s
+
+a = [1, 2, 3]
+print(total(a))    # 104
+print(a)           # [99, 2, 3]，调用处的 a 被改坏了</code></pre>
+
+  <p>调用处只看得到 <code>total(a)</code> 这一行，看不出自己的 <code>a</code> 会被改。官方文档把这件事的机制写得很清楚：调用函数时，实参是<b>按值传递</b>的，但这个「值」是对象的<b>引用</b>，不是对象的内容。也就是说，函数拿到的是「那个列表」这个指路牌，顺着它改内容，改动就落在同一个列表上。</p>
+
+  <p>要保护调用处的数据，在函数开头复制一份，后面都对着副本改：</p>
+
+  <pre data-lang="python"><code>def total(nums):
+    nums = nums[:]
+    nums[0] = 99
+    s = 0
+    for x in nums:
+        s += x
+    return s
+
+b = [1, 2, 3]
+print(total(b))    # 104
+print(b)           # [1, 2, 3]，b 没被改</code></pre>
+
+  <p><code>nums[:]</code> 是上一课学过的切片：它复制出一个新列表，复制 k 个元素的代价是 <span class="math-inline">O(k)</span>。这里 <code>nums = nums[:]</code> 把局部的名字 <code>nums</code> 重新指向那份副本，之后的 <code>nums[0] = 99</code> 改的是副本。顺便留一句：<code>nums = nums[:]</code> 只是让函数内的名字换了对象；如果写的是 <code>nums[:] = ...</code>，那是就地改内容，调用处照样会变。</p>
+
+  <p>在函数内改传进来的列表，有时正是想要的效果——把数据按类分到两个列表里，用函数完成搬运，比在调用处摊开写要清楚得多。要记住的是<b>默认不改</b>：函数拿到一个列表，除非它的名字与文档说明了它会改，否则改动调用处的数据都属于越界。判断方法是回到调用处读一行——只看调用行，能不能知道传进去的列表会被改？答不上来，就该在函数里复制。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "下面这两行 print 分别打出什么？\n\n```python\ndef total(nums):\n    nums[0] = 99\n    s = 0\n    for x in nums:\n        s += x\n    return s\n\na = [1, 2, 3]\nprint(total(a))\nprint(a)\n```",
+    "opts": [
+      "104 和 [99, 2, 3]：函数内改的是调用处的那个列表",
+      "104 和 [1, 2, 3]：函数拿到的是列表的一份副本",
+      "104 和 [1, 2, 3]：函数内的赋值出不了函数体",
+      "6 和 [1, 2, 3]：nums[0] 的修改没有生效"
+    ],
+    "ans": 0,
+    "why": "调用函数时实参是按值传递的，但这个「值」是对象的引用，不是对象的内容：函数拿到的是「那个列表」这个指路牌，顺着它改内容，改动就落在调用处的同一个列表上。所以 nums[0] = 99 之后求和是 99+2+3=104，调用处的 a 也变成 [99, 2, 3]。要保护调用处的数据，在函数开头写 nums = nums[:] 复制一份，后面都对着副本改。"
+  }
+]'></div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "一位同学把数据都放在全局变量里：\n\n```python\ntotal = 0\n\ndef add(n):\n    global total\n    total += n\n\ndef show():\n    print(total)\n\nadd(1000000)\nshow()\n```\n\n① 这段能跑出正确结果，为什么课件还是说该躲开这种写法？\n② 改成靠参数与 return 传数据，怎么改？",
+    "answer": "① 全局变量是函数之间的暗线：看 add 的定义那一行，完全看不出它动了哪个变量，也看不出调用它之前必须先把谁初始化好；等到程序里有两三个函数共用同一个全局变量，谁在什么时候改了它就成了只能靠通读全文回答的问题。\n\n② 要传进来的东西写进形参，要交出去的东西写进 return：\n\n```python\ndef add(total, n):\n    return total + n\n\nprint(add(0, 1000000))\n```\n\n这样函数的输入输出都写在定义那一行，读调用行就能知道数据从哪来、到哪去。",
+    "criteria": "① 必须点到「从函数定义那一行看不出它动了哪些数据／看不出调用它之前要先初始化谁」，并说出后果：函数一多，谁在什么时候改了它只能靠通读全文回答。只说「全局变量不好」不算过。\n② 必须给出形参加 return 的改法（数据从参数进、结果从 return 出）。答「把 global 那行删掉」不算过——删掉之后 total += n 里的 total 成了局部名字，会报 UnboundLocalError。"
+  }
+]'></div>
+
+  <h2>函数调用也有代价</h2>
+
+  <p>上一课给列表与字典的每个操作都标了价格，函数调用同样不免费。每次调用都要做几件事：把这次调用的形参与局部变量安置好、记住执行到哪一行、执行完再回到调用处把返回值接上。这些动作与函数体里做了多少运算无关，是每次调用一笔固定的开销。</p>
+
+  <p>本机（Python 3.14.7，free-threading 构建）用 <code>timeit</code> 实测的三个数：</p>
+
+  <table>
+    <thead>
+      <tr><th>循环体里做的事</th><th>每次迭代耗时</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>空循环（只写 <code>pass</code>）</td><td>约 8.5 纳秒</td></tr>
+      <tr><td><code>total += i</code>，直接写在循环里</td><td>约 24.6 纳秒</td></tr>
+      <tr><td>调用一个空函数（函数体只有 <code>return None</code>）</td><td>约 22.9 纳秒</td></tr>
+    </tbody>
+  </table>
+
+  <p>第三行是函数调用本身的价格：约 14 纳秒，与第二行和第一行之间的差（一条加法加一次赋值，约 16 纳秒）几乎相等，两者是同一个量级。把这两笔钱放在一起看，结论就出来了：<b>函数体里做的事越多，这笔固定开销占的比例越小。</b> 函数体只有一两行、又在一个上百万次的循环里被调用时，这笔钱能占到总耗时的一半左右；函数体是一次统计、一遍扫描这类实事时，它就是一个可以忽略的零头。这与上一课「常数因子会叠加、但相对主项会变小」是同一条判断。</p>
+
+  <p>另有一处与调用相关的开销现在只记一句话：<b>递归调用</b>——函数在自身内部调用自己——的调用次数会随问题规模急剧增加，代价不只是每次调用的固定开销，还与调用层数有关。递归是后面单独一课的主题，这一课先把普通函数的调用代价看清楚。</p>
+
+  <div class="lesson-note">
+    <b>别背这几个纳秒</b>
+    <p>表里的数字是本机实测的，换一台机器、换一个 Python 版本都会变。要记的是「函数调用有一笔固定的常数开销」这个事实，以及它相对于函数体工作量的比例关系；具体数字自己用 <code>timeit</code> 量。</p>
+  </div>
+
+  <h2>把摊平的题改成函数</h2>
+
+  <p>理论说完了，用一道做过的题走一遍完整过程。题目是第 1 课那道款式的填空题：读入 <span class="math-inline">N</span>，求 <span class="math-inline">1</span> 到 <span class="math-inline">N</span> 之间的奇数个数。学生写出来的版本通常是这样，一个文件从上往下：</p>
+
+  <pre data-lang="python"><code>n = int(input())
+if n &lt; 0:
+    n = 0
+count = (n + 1) // 2
+print(count)</code></pre>
+
+  <p>改写成函数版，按「每个函数只做一件事」分三个：读入并检查数据、算出答案、把答案输出。</p>
+
+  <pre data-lang="python"><code>def read_n():
+    n = int(input())
+    if n &lt; 0:
+        n = 0
+    return n
+
+def odd_count(n):
+    return (n + 1) // 2
+
+def show(count):
+    print(count)
+
+def solve():
+    n = read_n()
+    show(odd_count(n))
+
+solve()</code></pre>
+
+  <p>两个版本的代码各存一个文件跑，输入 <code>10</code>，本机实测：</p>
+
+  <pre data-lang="text"><code>$ echo 10 | python flat.py
+5
+$ echo 10 | python func.py
+5</code></pre>
+
+  <p>输出一个字符都不差。拿边界与较大规模各测一遍，结果同样一致：</p>
+
+  <table>
+    <thead>
+      <tr><th>输入</th><th>函数版输出</th><th>摊平版输出</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>0</code></td><td><code>0</code></td><td><code>0</code></td></tr>
+      <tr><td><code>1</code></td><td><code>1</code></td><td><code>1</code></td></tr>
+      <tr><td><code>10</code></td><td><code>5</code></td><td><code>5</code></td></tr>
+      <tr><td><code>1234567</code></td><td><code>617284</code></td><td><code>617284</code></td></tr>
+    </tbody>
+  </table>
+
+  <p>改写要守的规矩就一条：<b>输出必须与原版逐字一致</b>。抽函数是重组代码的组织方式，不是改算法，所以改写完成之后不能「顺手」改掉哪一步的判断或哪一处边界。</p>
+
+  <p>改写带来的东西没法从输出上看出来，要从使用上看：小样例自测时，直接调用 <code>odd_count(10)</code> 比对 <code>5</code> 就够，不必准备输入文件让整个程序跑一遍；正式提交时，同一份 <code>odd_count</code> 被 <code>solve</code> 用一次，两条路径共用同一个实现。要改「奇数个数怎么算」，只改 <code>odd_count</code> 这一个地方。</p>
+
+  <div class="lesson-practice">
+    <div class="lesson-practice__head">
+      <span class="lesson-practice__level">练习</span>
+      <span class="lesson-practice__title">把一道做过的题改成三四个函数</span>
+    </div>
+
+      <p>这一课的动手部分落在 lab 里（任务与断言见 <a href="../lab/0004-python-function-basics/">lab/0004-python-function-basics/</a>，做完对照 <a href="../lab/solutions/">lab/solutions/</a>）。要做的是三件事。</p>
+
+      <ol>
+        <li>挑一道自己从头写过、规模在二十行左右的题，先把它的摊平版存好，记录几组输入对应的输出。</li>
+        <li>把它改写成三到四个函数，每个函数只管一件事（读数据、算、输出），再写一个 <code>solve</code> 把它们串起来；对照原来的几组输入，输出必须逐字一致。</li>
+        <li>再写一版故意用全局变量在几个函数之间传状态的，两份都跑一遍同样的输入，看输出是否还对得上、以及从函数定义那一行还能不能看出它动了哪些数据。</li>
+      </ol>
+  </div>
+
+  <h2>这一课用到的 Python</h2>
+
+  <table>
+    <thead>
+      <tr><th>要做的事</th><th>写法</th><th>边界</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>定义函数</td><td><code>def odd_count(n):</code></td><td>括号与冒号都不能省，函数体要缩进</td></tr>
+      <tr><td>调用函数</td><td><code>odd_count(10)</code></td><td>必须先定义后调用，写名字不带括号不会执行</td></tr>
+      <tr><td>形参与实参</td><td>定义里的 <code>n</code> 是形参，调用里的 <code>10</code> 是实参</td><td>按位置对应，顺序写错不报错但结果不同</td></tr>
+      <tr><td>给参数一个默认值</td><td><code>def count_in_range(lo, hi, step=1):</code></td><td>没有默认值的形参必须排在前面；默认值只在定义时算一次</td></tr>
+      <tr><td>按名字传参</td><td><code>count_in_range(lo=1, hi=9)</code></td><td>关键字实参要放在位置实参之后，名字必须与形参一致</td></tr>
+      <tr><td>把结果交回调用处</td><td><code>return count</code></td><td>不带 <code>return</code>、或某个分支没走到 <code>return</code>，交回的是 <code>None</code></td></tr>
+      <tr><td>一次交回两个值</td><td><code>return count, best</code></td><td>实际是一个元组，调用处可写成 <code>count, best = ...</code> 拆开</td></tr>
+      <tr><td>函数里的变量</td><td>直接写名字，就是局部的</td><td>函数内赋过值的名字是局部的，赋值之前就读它会报 <code>UnboundLocalError</code></td></tr>
+      <tr><td>默认空容器</td><td><code>def f(a, L=None):</code> 加 <code>if L is None:</code></td><td>直接写 <code>L=[]</code> 会让所有调用共用同一个列表</td></tr>
+      <tr><td>保护调用处的列表</td><td>在函数里先写 <code>nums = nums[:]</code></td><td>切片复制是 <span class="math-inline">O(k)</span>；<code>nums[i] = v</code> 会改到调用处的数据</td></tr>
+    </tbody>
+  </table>
+
+  <p>这门课后面写的每一个算法都会是一个函数：深度优先搜索写成 <code>dfs</code>、广度优先搜索写成 <code>bfs</code>、二分写成 <code>check</code> 加二分主体。它们都要在两种场合被调用——造出来的小数据上验证思路，正式数据上求答案。这一课练的就是这件事，抽函数的手感熟了，后面每一课都是在往这个骨架里填内容。</p>
+
+  <ul class="lesson-resources">
+    <li><a href="https://docs.python.org/zh-cn/3/tutorial/controlflow.html#defining-functions">Python 官方文档 · 定义函数</a><span class="lesson-resources__meta">形参与实参、按值传递的官方说法，默认值只计算一次与可变默认参数的重要警告都出自这一节</span></li>
+    <li>《Python 编程：从入门到实践（第 2 版）》第 8 章 函数<span class="lesson-resources__meta">本地教材：定义函数、传参方式、返回值、传递列表与「每个函数只负责一项工作」，本课的组织顺序照它走</span></li>
+  </ul>
+
+  <!-- ── 提问提示：固定写法，别删 ── -->
+
+  <div class="lesson-ask">
+    <b>没看懂？随时问</b>
+    把看不懂的段落（或报错）原样复制回会话，说一句哪里不懂就行，我只解释这一段，不打断你的进度。
+  </div>
+
+  <!-- ── 上/下节课指针由渲染器按 curriculum.yaml 的 nodes 顺序算（第一课无 --prev、最后一课无 --next） ── -->
+
+  <nav class="lesson-nav" aria-label="上一课 / 下一课">
+    <a class="lesson-nav__link lesson-nav__link--prev" href="0003-python-list-dict-cost.html">
+      <span class="lesson-nav__dir">上节课</span>
+      <span class="lesson-nav__title">列表与字典的隐藏价格</span>
+    </a>
+    <a class="lesson-nav__link lesson-nav__link--next" href="0005-python-comprehension-builtins.html">
+      <span class="lesson-nav__dir">下节课</span>
+      <span class="lesson-nav__title">推导式与常用内置工具</span>
+    </a>
+  </nav>
+
+  <footer class="lesson-footer">
+    StudyMate · 0004 把一段代码变成函数 · 本地学习工作区
+  </footer>
+
+</article>
+
+<script src="../../../assets/sayo/sayo.js"></script>
+<link rel="stylesheet" href="../../../assets/katex/katex.min.css">
+<script src="../../../assets/katex/katex.min.js" defer></script>
+<script src="../../../assets/lesson-math.js" defer></script>
+<script src="../assets/quiz.js" defer></script>
+<script src="../assets/lesson-toc.js" defer></script>
+<script>LearnTheme.wire(document.getElementById('lesson-theme-checkbox'));</script>
+</body>
+</html>

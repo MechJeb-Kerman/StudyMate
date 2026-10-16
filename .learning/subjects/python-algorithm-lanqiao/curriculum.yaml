@@ -1,0 +1,803 @@
+# Python 算法与蓝桥杯 · 课程大纲（DAG）
+#
+# 位次规则：nodes 的书写顺序即教学位次；prerequisites 与 edges 只允许指向前面的节点。
+# 课型：概念=只讲不落 lab；实操=带自己的小 lab；实验=里程碑验收课（必须有非空 prerequisites）。
+# 依据说明见同目录报告；未核实的来源不写进 resources。
+
+nodes:
+  # ===== 第一部分：什么叫算法，以及写算法要用的 Python =====
+
+  - id: 'intro-what-is-algorithm'
+    title: '从一道蓝桥杯题说起'
+    kind: '概念'
+    objective: '说出问题到程序的四步，并解释规模变大后暴力解为何失效'
+    problem: '开场直接抛一道蓝桥杯填空题：从 1 加到一亿，手算不可能，写三行循环一秒出结果。再把这题改一个字——数据规模从一亿变成十亿——同一份代码就从"一秒出结果"变成"等到关闭窗口"。同一段代码，为什么这次不行了？这课的价值在讲清一件事：算法不是"会写循环"，而是在动手之前就知道这段代码要跑多久。'
+    practice: '以讲为主：学生自己提出一个"想用程序算"的真实问题，当场把它拆成输入、处理、输出三段，并猜一猜数据变大十倍会怎样。'
+    prerequisites: []
+    concepts: ['问题建模', '输入与输出', '算法的定义', '数据规模与可行性']
+    pitfalls: ['以为"能写出循环"就等于会算法', '第一次接触就以"我数学不好"自我劝退']
+    realworld: '同一道题在评测机上通过或超时，区别常不在这段代码对不对，而在它属于哪一档复杂度。'
+    resources:
+      - title: '《Python 编程：从入门到实践（第 2 版）》第 4 章 操作列表（用循环处理一批数据）'
+        type: 'book'
+        url: 'reference/python-crash-course-2e.md'
+      - title: '《算法（第 4 版）》第 1 章 基础（算法与数据结构的关系）'
+        type: 'book'
+    status: '未开始'
+    mastery: 0
+
+  - id: 'complexity-basics'
+    title: '同一道题，两种写法'
+    kind: '概念'
+    objective: '能按数据规模估算运行时间，并判断一种写法会不会超时'
+    problem: '蓝桥杯填空题常见形态：n 最大到 10 的 9 次方，时限 1 秒。学生写完代码的第一步通常是"拿样例试试"，而样例永远只有三五个数，永远跑得飞快——真正的问题在提交那一刻才暴露。这课的价值在讲清一套动手之前就能算的粗估办法：一秒能跑多少条基本操作，你的循环总共跑多少次。'
+    practice: '以讲为主：给三道不同数据规模的题，学生先各自估"能不能在一秒内跑完"，再实际跑一遍对答案，估错的当场找出错在哪一步。'
+    prerequisites: ['intro-what-is-algorithm']
+    concepts: ['时间复杂度', '大 O 记号', '常数与数量级的区别', '空间复杂度', '数据规模反推复杂度上限']
+    pitfalls: ['把 O(2n) 和 O(n) 当成两档不同复杂度', '只看样例通过就认为不会超时']
+    realworld: '蓝桥杯每题都写明数据范围与时限，能否通过几乎在选题那一刻就定了。'
+    resources:
+      - title: '《算法导论（第 3 版）》第 3 章 函数的增长'
+        type: 'book'
+      - title: 'Python 官方文档 timeit —— 用实测验证你的估算'
+        type: 'official-doc'
+        url: 'https://docs.python.org/3/library/timeit.html'
+      - title: '洛谷题单：入门与普及-（按数据规模挑题练估算）'
+        type: 'article'
+    status: '未开始'
+    mastery: 0
+
+  - id: 'python-list-dict-cost'
+    title: '列表与字典的隐藏价格'
+    kind: '实操'
+    objective: '说出列表与字典各操作的复杂度，并在实现里选对容器'
+    problem: '学生写题时最顺手的两件事是往列表末尾追加、在列表里查找某个元素，而这两件事在数据大十倍之后差别巨大。很多"代码没错但超时"的题，问题就出在一行 in 或者一次 pop(0) 上。这课的价值在练熟一个动作：写每行代码时心里知道它要花多少代价。'
+    practice: '讲练并重：在 lab 里写一份小脚本，同一份数据用列表 in、集合 in 和字典查分别跑一遍，打印耗时并做成对照表；再用 pop(0) 与 deque 对照一次。'
+    prerequisites: ['complexity-basics']
+    concepts: ['列表索引与追加', '插入删除的代价', '集合与字典的哈希查找', '切片与拷贝的代价', '用实测对照估算']
+    pitfalls: ['在循环里反复用列表 in 做查重', '把 pop(0) 当队列用', '忘了切片会复制一份新列表']
+    realworld: '同一道统计题，把中间容器从列表换成一个集合，运行时间能差出两个数量级。'
+    resources:
+      - title: 'Python 官方文档 数据结构 —— 列表、集合、字典操作的时间复杂度'
+        type: 'official-doc'
+        url: 'https://docs.python.org/3/tutorial/datastructures.html'
+    status: '未开始'
+    mastery: 0
+
+  - id: 'python-function-basics'
+    title: '把一段代码变成函数'
+    kind: '实操'
+    objective: '能把重复代码抽成带参函数，说清参数、返回与作用域'
+    problem: '算法题的题解动辄一百行，学生现在的写法是全部摊在一个文件里从上往下跑，改一处逻辑要翻三遍。DFS、BFS、二分这些算法写下去必然要反复调用同一段逻辑——没有函数，算法在手上根本伸不开。这课的价值在练熟一个动作：看见重复就抽成函数，看见参数就传进去、看见结果就返回回来。'
+    practice: '讲练并重：把一道已做过的题从"一个文件从上往下"改写成"三四个函数各管一件事"，运行结果必须与原版完全一致；再故意用全局变量改一版，观察两种写法的差别。'
+    prerequisites: ['python-list-dict-cost']
+    concepts: ['函数定义与调用', '位置参数、默认参数与关键字参数', '返回值与元组返回', '局部与全局作用域', '函数内不要悄悄改外部列表']
+    pitfalls: ['用全局变量在函数之间传状态', '可变默认参数被跨调用共享', '在函数里就地改传入的列表导致调用处数据被改坏']
+    realworld: '同一份算法逻辑要同时用在小样例自测和正式提交上，只有抽成函数才能两边共用。'
+    resources:
+      - title: '《Python 编程：从入门到实践（第 2 版）》第 8 章 函数'
+        type: 'book'
+        url: 'reference/python-crash-course-2e.md'
+      - title: 'Python 官方文档 定义函数'
+        type: 'official-doc'
+        url: 'https://docs.python.org/3/tutorial/controlflow.html#defining-functions'
+    status: '未开始'
+    mastery: 0
+
+  - id: 'python-comprehension-builtins'
+    title: '推导式与常用内置工具'
+    kind: '实操'
+    objective: '能用推导式与常用内置函数把一段循环压到一行'
+    problem: '题解里常见 a = [int(x) for x in data]、sum(1 for x in a if x > 0) 这类写法，学生看得懂单个词却不敢自己写。这不是炫技：少写一层循环，就少一处下标写错的机会，题意也更清楚。这课的价值在练熟一批高频工具，并把最常用的十几个内置函数变成手感。'
+    practice: '讲练并重：收集自己过去写过的十段循环，逐段改写成推导式或内置函数版本，结果必须一致；enumerate、zip、sorted(key=)、sum、max、any、all、map 各至少改一处。'
+    prerequisites: ['python-function-basics']
+    concepts: ['列表推导式', '带条件的推导式与嵌套推导式', '生成器表达式与惰性求值', 'zip 与 enumerate', 'sorted 的 key 参数', 'any 与 all']
+    pitfalls: ['为了短把逻辑挤成一行看不懂的推导式', '对无穷生成器直接套 sum', 'sorted 与 list.sort 的返回值搞混（前者返回新表，后者返回 None）']
+    realworld: '一道需要按第二关键字排序的模拟题，写对 key 只需要一行，写错比较函数要调半小时。'
+    resources:
+      - title: '《Python 编程：从入门到实践（第 2 版）》第 4 章 操作列表（列表解析）'
+        type: 'book'
+        url: 'reference/python-crash-course-2e.md'
+      - title: 'Python 官方文档 内置函数'
+        type: 'official-doc'
+        url: 'https://docs.python.org/3/library/functions.html'
+    status: '未开始'
+    mastery: 0
+
+  - id: 'python-io-and-debug'
+    title: '读完输入再动手'
+    kind: '实操'
+    objective: '能稳定解析多行多元素输入，并用样例自查提交前的错误'
+    problem: '蓝桥杯的输入格式千奇百怪：一行多个整数、多行若干元素、矩阵、带空行的数据块。学生现在大多靠 input() 一行一行处理，遇到"第一行 n m，接下来 n 行每行 m 个整数"就卡在第一步，算法一个字都没写到。这课的价值在练熟一个动作：先让输入完整、正确地落进数据结构，再谈算法。'
+    practice: '讲练并重：备五组不同格式的样例（单行多整数、多行整数、矩阵、混合行列、末尾空行），每组都要求解析成指定的数据结构；再故意写错一处下标，用 print 定位并修好。'
+    prerequisites: ['python-comprehension-builtins']
+    concepts: ['sys.stdin 整体读入', '按空白切分与按行切分', '矩阵与二维列表的读法', '多组测试数据的循环处理', '用打印定位错误而不是靠猜']
+    pitfalls: ['边读边算导致读指针错位', '把字符串当数字比较（"10" 小于 "9"）', '输入末尾有空行导致崩在最后一行']
+    realworld: '同一道题在自测脚本里读文件和提交时读标准输入是两条路径，输入层写错会让人误以为是算法错了。'
+    resources:
+      - title: 'Python 官方文档 输入与输出'
+        type: 'official-doc'
+        url: 'https://docs.python.org/3/tutorial/inputoutput.html'
+    status: '未开始'
+    mastery: 0
+
+  - id: 'lab-01-run-one-problem'
+    title: '实验一：把一道题跑通'
+    kind: '实验'
+    objective: '做出 solve 脚本：解析输入、求解、跑通样例并打印结果'
+    problem: '前六课学的是零件：循环、函数、推导式、输入解析、复杂度估算。零件不组装成一台能跑的机器，就不知道自己哪一块是空的。这次要把零件装起来，做出本课程第一个可运行产物——一份能读入题目输入、给出答案、并用样例自动判定对错的脚本。'
+    practice: '以练为主：验收为主，代码与自测脚本都要交，讲解只针对卡住的那一步。'
+    prerequisites: ['python-io-and-debug', 'python-function-basics', 'complexity-basics', 'python-list-dict-cost', 'python-comprehension-builtins']
+    concepts: ['从题目到脚本的完整流程', '样例驱动的自测', '提交前自检']
+    pitfalls: ['写完直接扔进大测试，样例错在哪都看不出', '只测一组样例就认为通过', '把"打印调试"当成唯一手段']
+    realworld: '这份脚本正是 AI 刷题助手最底层的那一环：助手最后的验证能力，就是这个骨架长出来的。'
+    resources:
+      - title: '洛谷题单：入门与普及-（挑三道不同输入格式的题）'
+        type: 'article'
+    status: '未开始'
+    mastery: 0
+
+  - id: 'brute-force-to-optimization'
+    title: '先把暴力写对'
+    kind: '概念'
+    objective: '能写出正确答案的暴力解，并据此估出可接受的复杂度上限'
+    problem: '拿到一道题，很多人的第一反应是想最佳解法，结果既没写出最优解，也没写出能过小数据的暴力解，最后交了零分。考场上的正确顺序是反过来的：先用最直白的枚举拿到一个正确答案，再按数据范围决定它够不够快、要不要优化。这课的价值在讲清"暴力解既是保底分、也是对拍时的参考答案"这个双重身份。'
+    practice: '以讲为主：挑两道题先各写一版暴力解，估出它的复杂度，再对照题目给的数据范围判断能拿几成分，最后才讨论优化方向。'
+    prerequisites: ['lab-01-run-one-problem', 'complexity-basics']
+    concepts: ['暴力枚举的写法', '用数据范围反推能拿多少分', '暴力解作为对拍参考', '部分分的价值']
+    pitfalls: ['跳过暴力直接追最优解，最后两者都没写成', '暴力解复杂度都不估就交上去', '认为暴力解没有价值，其实它是对拍的基准']
+    realworld: '蓝桥杯按测试点给分，暴力解往往能先拿到可观的分数，剩下一部分再靠优化挣。'
+    resources:
+      - title: '洛谷题单：入门与普及-（同一题的不同数据范围版本）'
+        type: 'article'
+    status: '未开始'
+    mastery: 0
+
+  # ===== 第二部分：两把基本武器——线性结构与递归 =====
+
+  - id: 'linear-structures-two-pointers'
+    title: '一维数据的两种走法'
+    kind: '实操'
+    objective: '能用前缀和与双指针把两层循环降成一层'
+    problem: '蓝桥杯里最常见的超时写法就是两层循环——"对每个区间求一次和""对每对元素判断一次条件"。这些题的正确写法往往不是换更高级的算法，而是换一种走法：前缀和让区间和一步算出来，双指针让左右两个下标只往前不回头。这课的价值在练熟这两种走法，它们是后面所有优化技巧的起点。'
+    practice: '讲练并重：同一道区间求和题分别写暴力版、前缀和版、双指针版，对照运行时间；再补两道真题确认自己能独立判断该用哪种走法。'
+    prerequisites: ['python-function-basics', 'python-list-dict-cost']
+    concepts: ['数组与顺序表', '前缀和与差分', '双指针与滑动窗口', '原地修改与额外空间']
+    pitfalls: ['前缀和数组下标从 0 还是 1 开始搞混', '双指针在元素有负数时仍按单调性移动', '滑动窗口的右指针只加不减导致漏解']
+    realworld: '子数组求和、连续区间计数这类题在省赛里出现频率最高，前缀和是它们的标准解法。'
+    resources:
+      - title: '《算法竞赛进阶指南》前缀和与差分（待核实具体章节）'
+        type: 'book'
+      - title: '洛谷题单：前缀和与差分（模板题起步）'
+        type: 'article'
+    status: '未开始'
+    mastery: 0
+
+  - id: 'stack-and-queue'
+    title: '后进先出与先进先出'
+    kind: '实操'
+    objective: '能用栈与队列解题，并说出各自适用的题目特征'
+    problem: '括号匹配为什么要用栈，滑动窗口最大值为什么要用队列——学生在没学之前只能靠背。一旦看清"最近进来的先处理"和"最早进来的先处理"这两种顺序，很多题的解法是自己冒出来的。这课的价值在讲清这两种顺序分别对应哪类题目，并亲手实现一遍。'
+    practice: '讲练并重：用 Python 列表手写一个栈、用 collections.deque 写一个队列；再做括号匹配、表达式求值、滑动窗口最大值三题，其中滑动窗口必须用单调队列写。'
+    prerequisites: ['linear-structures-two-pointers']
+    concepts: ['栈的后进先出', '队列的先进先出与 deque', '单调栈', '单调队列', '用两个栈模拟队列']
+    pitfalls: ['用 list.pop(0) 当队列用导致超时', '单调栈该弹出时没弹，栈里留下永远用不到的旧值', '忘记清空每轮之间的容器']
+    realworld: '表达式求值、括号合法性校验是历年真题里的常客，编译器与计算器都靠这两条结构。'
+    resources:
+      - title: '《算法导论（第 3 版）》第 10 章 基本数据结构（栈与队列）'
+        type: 'book'
+      - title: 'Python 官方文档 collections.deque'
+        type: 'official-doc'
+        url: 'https://docs.python.org/3/library/collections.html#collections.deque'
+    status: '未开始'
+    mastery: 0
+
+  - id: 'two-pointers-applications'
+    title: '双指针：两个下标的配合'
+    kind: '实操'
+    objective: '能用对撞指针与快慢指针解去重、判定与配对类题目'
+    problem: '一个下标不够用时学生往往再套一层循环，而很多题只需要第二个下标：有序数组里找一对和为目标值的数、原地去掉重复元素、判断是不是回文——多一个下标，循环就从平方降到线性。这课的价值在把"两个下标怎么配合"练成手感，并说清每个指针各自保证什么。'
+    practice: '讲练并重：在有序数组里做两数之和、原地去重、回文判定、合并两个有序数组四题，每题都要写清两个指针各自的移动条件。'
+    prerequisites: ['linear-structures-two-pointers']
+    concepts: ['对撞指针', '快慢指针', '有序数组上的配対查找', '原地操作与额外空间', '与哈希解法的取舍']
+    pitfalls: ['指针移动条件写成 if 而不是 while 导致漏解', '有序前提不成立时仍用对撞指针', '原地去重时忘记维护写入位置']
+    realworld: '有序数据上的配对与去重是省赛的低难度高频题，写熟这两招能省下大量调试时间。'
+    resources:
+      - title: '《算法竞赛进阶指南》双指针与尺取法（待核实具体章节）'
+        type: 'book'
+      - title: '洛谷题单：双指针（模板题起步）'
+        type: 'article'
+    status: '未开始'
+    mastery: 0
+
+  - id: 'recursion-and-stack'
+    title: '递归：函数调用自己'
+    kind: '概念'
+    objective: '能写出带正确基例与递归关系的递归函数，并说清调用过程'
+    problem: '汉诺塔三根柱子六十四个盘子，手工列出步骤是不可能的，但递归解法只有六行——学生第一次看到通常会怀疑"它真的把每一步都做了吗"。这课的价值在讲清函数调用栈：递归每一步在栈里留下什么，基例为什么必须存在，以及为什么递归深度一超就崩。'
+    practice: '以讲为主：手推汉诺塔三层与四层的完整调用过程（画出栈的变化），再亲手写出阶乘、斐波那契、递归求和三个函数并对照循环版。'
+    prerequisites: ['stack-and-queue']
+    concepts: ['递归三要素（基例、递归关系、向基例收敛）', '函数调用栈', '递归的返回路径', '递归与迭代的等价', 'Python 的递归深度上限']
+    pitfalls: ['缺基例或基例覆盖不全导致无限递归', '递归关系没有向基例收敛', '把指数级递归当作"能跑"，不估复杂度']
+    realworld: '树、图、分治、动态规划的代码骨架全部是递归，这一课没过，后面每一课都会卡。'
+    resources:
+      - title: '《算法导论（第 3 版）》第 4 章 分治策略（递归式引入）'
+        type: 'book'
+      - title: 'Python 官方文档 sys.setrecursionlimit'
+        type: 'official-doc'
+        url: 'https://docs.python.org/3/library/sys.html#sys.setrecursionlimit'
+    status: '未开始'
+    mastery: 0
+
+  - id: 'sorting-and-divide-conquer'
+    title: '排序：分而治之的样板'
+    kind: '实操'
+    objective: '能手写归并排序与快速排序，并说出各自复杂度与最坏情况'
+    problem: '排序看起来是个已被内置函数解决的小问题，为什么还要手写？因为归并排序的"分而治之"和快速排序的"划分"，是后面无数算法的通用骨架——求逆序对、求第 k 大、按关键字分组，都是从这两种写法里长出来的。这课的价值在手写一遍，并说清它们什么时候会退化。'
+    practice: '讲练并重：手写归并排序、快速排序、计数排序各一份，用内置 sorted 对照结果；再造一组已经有序的数据，观察快速排序的耗时应声变长。'
+    prerequisites: ['recursion-and-stack', 'linear-structures-two-pointers']
+    concepts: ['分治三段式（分、治、合）', '归并排序与合并过程', '快速排序与划分', '计数排序的适用条件', '稳定排序', '最坏情况与随机化']
+    pitfalls: ['快排对有序数据退化到平方级', '归并合并时下标走错导致结果错位', '以为内置 sorted 永远比手写快（key 复杂时未必）']
+    realworld: '求逆序对、求排名、按多关键字排序，都以前一课的递归和这一课的排序为工具。'
+    resources:
+      - title: '《算法（第 4 版）》第 2 章 排序'
+        type: 'book'
+      - title: 'Python 官方文档 排序指南（sorted 与 sort）'
+        type: 'official-doc'
+        url: 'https://docs.python.org/3/howto/sorting.html'
+    status: '未开始'
+    mastery: 0
+
+  - id: 'binary-search'
+    title: '二分：每次砍掉一半'
+    kind: '实操'
+    objective: '能写对左右边界不越界的二分查找，并说明循环不变式'
+    problem: '二分的思想简单到一句话，但边界写错是几乎所有初学者都会经历的事：死循环、多查一次、漏掉最后一个元素，而且往往只在某些数据上错。这课的价值在讲清循环不变式的写法——用"答案一定在闭区间里"这句话把每一行的边界条件推出来，而不是靠试。'
+    practice: '讲练并重：分别写闭区间与左闭右开两种二分模板；用一组刻意挑出来的边界数据（空、单元素、全相同、目标在两端、目标不存在）逐一验证；再用 bisect 对照结果。'
+    prerequisites: ['sorting-and-divide-conquer', 'python-function-basics']
+    concepts: ['有序性与单调性', '二分查找与循环不变式', '左右边界写法', 'bisect 模块的现成实现', '二分查找的复杂度为什么是对数']
+    pitfalls: ['mid 更新后区间没有收缩导致死循环', '目标不存在时返回了错误的下标', '在有重复元素时没分清要第一个还是最后一个']
+    realworld: '查找类、判定类题目的第一反应都应该是"能不能二分"，它是把线性扫描压成对数的通用手段。'
+    resources:
+      - title: '《算法（第 4 版）》第 1 章 基础（二分查找）'
+        type: 'book'
+      - title: 'Python 官方文档 bisect —— 用现成实现对照你的边界'
+        type: 'official-doc'
+        url: 'https://docs.python.org/3/library/bisect.html'
+    status: '未开始'
+    mastery: 0
+
+  - id: 'lab-02-verify-by-brute-force'
+    title: '实验二：给解法装上对拍器'
+    kind: '实验'
+    objective: '做出对拍脚本：随机数据上自动比对新旧解法并定位反例'
+    problem: '前四课学完了线性结构、栈队列、递归、排序与二分，手里开始有不止一种解法。可是"我这版对不对"不能靠感觉——把暴力解当参考、把新解当候选，随机造数据自动比对，一旦不一致就把那组数据打印出来。这正是 AI 刷题助手要具备的核心能力，也是本次实验要造出来的东西。'
+    practice: '以练为主：验收为主，对拍脚本本身就要交，并当场用它找出一处真实错误。'
+    prerequisites: ['binary-search', 'stack-and-queue', 'two-pointers-applications', 'recursion-and-stack', 'sorting-and-divide-conquer', 'linear-structures-two-pointers']
+    concepts: ['暴力参考解', '随机数据生成', '答案比对与反例最小化', '边界数据设计']
+    pitfalls: ['参考解自己就写错了，两边错得一样反而"通过"', '只对拍一组数据就收工', '没固定随机种子导致问题无法复现']
+    realworld: '对拍是竞赛里最实用的自检手段，也是本项目"自动验证候选解"这一环节的原型。'
+    resources:
+      - title: 'Python 官方文档 random —— 造随机测试数据'
+        type: 'official-doc'
+        url: 'https://docs.python.org/3/library/random.html'
+    status: '未开始'
+    mastery: 0
+
+  # ===== 第三部分：把数据组织起来——树、堆、哈希与并查集 =====
+
+  - id: 'hash-table'
+    title: '为什么字典查得那么快'
+    kind: '实操'
+    objective: '能用哈希表把查重与统计降到 O(1)，并解释冲突的影响'
+    problem: '同一道题，把判重从列表换成字典，运行时间从三秒掉到零点零几秒——学生看到这个结果会很自然地想"凭什么"。凭的是哈希函数把键直接映射到存储位置。这课的价值在讲清这套映射为什么平均是常数时间、什么时候会退化，并练熟用字典解统计类问题。'
+    practice: '讲练并重：做三题——统计出现次数、找第一个重复元素、两数之和；再手工算一遍几个字符串的哈希值，观察冲突是怎么发生的。'
+    prerequisites: ['python-list-dict-cost']
+    concepts: ['哈希函数与桶', '冲突与开放寻址、拉链法', '平均 O(1) 与最坏 O(n)', 'dict 与 set 的键要求（可哈希）', '计数与去重的典型用法']
+    pitfalls: ['用列表做键（不可哈希）', '以为字典永远常数时间，忽略冲突与扩容', '用浮点数当键做精确匹配']
+    realworld: '判重、计数、把值当索引查回去——省赛里需要用哈希解决的题几乎每套都有。'
+    resources:
+      - title: '《算法导论（第 3 版）》第 11 章 散列表'
+        type: 'book'
+      - title: 'Python 官方文档 dict —— 哈希表实现说明'
+        type: 'official-doc'
+        url: 'https://docs.python.org/3/library/stdtypes.html#mapping-types-dict'
+    status: '未开始'
+    mastery: 0
+
+  - id: 'binary-tree-traversal'
+    title: '树：会递归的结构'
+    kind: '实操'
+    objective: '能写出二叉树三种遍历，并用递归求出深度与节点数'
+    problem: '学生第一次看到"树的遍历"，常把它当成又一套需要背的顺序。其实树本身就是递归定义的——一棵树是根加上两棵更小的树——所以遍历不需要背，递归写法写完就是自然结果。这课的价值在把递归用到会递归的结构上，把上一部分的递归真正落地。'
+    practice: '讲练并重：用嵌套列表或字典表示二叉树，写前序、中序、后序三种遍历；再写求深度、求节点数、判断是否对称三个函数，各跑一组自己造的树。'
+    prerequisites: ['recursion-and-stack', 'stack-and-queue']
+    concepts: ['树的递归定义与术语', '二叉树的前中后序遍历', '层序遍历与队列', '树高与节点数', '用递归返回值汇总子树信息']
+    pitfalls: ['空节点没有作为基例处理', '遍历顺序与题目要求的顺序对不上', '在一棵不平衡的树上递归过深导致爆栈']
+    realworld: '省赛直接考树不多，但区间查询、表达式的结构、目录与组织关系本质都是树。'
+    resources:
+      - title: '《算法导论（第 3 版）》第 12 章 二叉搜索树（树的遍历与递归结构）'
+        type: 'book'
+    status: '未开始'
+    mastery: 0
+
+  - id: 'heap-and-priority-queue'
+    title: '每次都要最小的那个'
+    kind: '实操'
+    objective: '能用 heapq 解决取极值类问题，并说出堆的操作复杂度'
+    problem: '合并果子这道经典题：每次取两堆最小的合并。用列表写就是每轮排一次序，数据一大就超时；用堆写只要几行、每步都是对数时间。区别在于堆只维护"最小值在顶上"这一条性质，不做全排序。这课的价值在讲清堆这条性质怎么换来速度，并用现成的 heapq 先把题做出来。'
+    practice: '讲练并重：用 heapq 做合并果子、第 k 大、数据流中位数三题；再手写一个最小堆的数组实现（上浮与下沉），与 heapq 对照结果。'
+    prerequisites: ['binary-tree-traversal']
+    concepts: ['完全二叉树与数组存储', '堆序性质', '上浮与下沉', 'heappush 与 heappop 的复杂度', '用负数把最小堆当最大堆用']
+    pitfalls: ['heapq 只能建最小堆，求最大值忘了取负', '直接对堆的列表排序（破坏堆结构）', '以为堆是有序数组，用下标取第 k 小']
+    realworld: '合并果子、任务调度、求前 k 大都靠堆，是省赛里性价比最高的现成工具之一。'
+    resources:
+      - title: '《算法导论（第 3 版）》第 6 章 堆排序（堆的性质与操作）'
+        type: 'book'
+      - title: 'Python 官方文档 heapq'
+        type: 'official-doc'
+        url: 'https://docs.python.org/3/library/heapq.html'
+    status: '未开始'
+    mastery: 0
+
+  - id: 'union-find'
+    title: '并查集：谁和谁是一伙的'
+    kind: '实操'
+    objective: '能实现带路径压缩的并查集，并判断两点是否连通'
+    problem: '"判断两个亲戚是不是一家人""数一数图里有多少个连通块"——这类问题看着要遍历整个图，用并查集却只要几行：每个集合挑一个代表，问的时候顺着指针往上找到根，看根是不是同一个。这课的价值在讲清路径压缩为什么能让它近乎常数时间，并亲手实现。'
+    practice: '讲练并重：写一个并查集类（含路径压缩与按秩合并），做亲戚判定、连通块计数两题；再故意去掉路径压缩，用同一组数据对照调用次数。'
+    prerequisites: ['hash-table', 'recursion-and-stack']
+    concepts: ['集合的代表元', 'find 与 union', '路径压缩', '按秩或按大小合并', '近乎常数时间的均摊复杂度']
+    pitfalls: ['只在 union 时改一个方向导致树退化成链', '以为路径压缩之后树高必然是常数', '用并查集做带删除的集合操作（它不支持）']
+    realworld: '亲戚关系、朋友圈、连接网络类题目是并查集的固定考点，写法固定、回报最高。'
+    resources:
+      - title: '《算法导论（第 3 版）》第 21 章 用于不相交集合的数据结构'
+        type: 'book'
+    status: '未开始'
+    mastery: 0
+
+  # ===== 第四部分：把问题看成一张图 =====
+
+  - id: 'graph-representation'
+    title: '把问题画成一张图'
+    kind: '概念'
+    objective: '能把实际问题抽象成图，并用邻接表存下它'
+    problem: '城市之间的公路、课程之间的先修关系、状态之间的转移——这些表面上毫不相干的问题，抽象之后是同一个东西：点和边。抽象这一步做不出来，后面学再多遍历算法也用不上。这课的价值在讲清怎么把文字描述变成点和边，并在动手写遍历之前先把图存进内存。'
+    practice: '以讲为主：拿到四段题目描述，各自画出点与边并写成邻接表；再写一个读入 n、m 与 m 条边的函数，打印邻接表检查自己存对了没有。'
+    prerequisites: ['hash-table', 'union-find']
+    concepts: ['点与边的抽象', '有向图与无向图', '带权图', '邻接矩阵与邻接表', '度与连通性']
+    pitfalls: ['无向图只加了一个方向的边', '节点编号与下标差一导致越界', '数据大时仍用邻接矩阵爆内存']
+    realworld: '状态转移、依赖关系、路径规划，先正确抽象成图才谈得上选算法。'
+    resources:
+      - title: '《算法导论（第 3 版）》第 22 章 图的基本算法（图的表示）'
+        type: 'book'
+    status: '未开始'
+    mastery: 0
+
+  - id: 'dfs-bfs-search'
+    title: '搜索：把图走一遍'
+    kind: '实操'
+    objective: '能用 DFS 与 BFS 解题，并说出两者分别适合什么场景'
+    problem: 'DFS 与 BFS 的区别学生背得出来"一个用栈一个用队列"，但遇到"求最少步数"仍然会写 DFS，然后被大数据卡死。差别不在写法，在搜索顺序意味着什么：一层一层扩散才能保证第一次到达就是最短。这课的价值在练熟两套模板，并建立"什么题该用哪个"的判断。'
+    practice: '讲练并重：写 DFS 与 BFS 两套模板，做迷宫最短路、岛屿数量、连通块计数三题；同一道求最少步数的题故意用 DFS 写一遍，观察在大图上跑不完。'
+    prerequisites: ['graph-representation', 'stack-and-queue']
+    concepts: ['DFS 的递归与显式栈写法', 'BFS 的队列与层数记录', 'visited 标记的时机', '最短步数与无权图', '状态空间搜索']
+    pitfalls: ['BFS 在出队时才标记 visited 导致重复入队', 'DFS 递归过深爆栈', '求最少步数时误用 DFS']
+    realworld: '迷宫、网格图、状态转移的最短路径，是搜索题的两大主力题型。'
+    resources:
+      - title: '《算法导论（第 3 版）》第 22 章 图的基本算法（广度优先搜索与深度优先搜索）'
+        type: 'book'
+      - title: 'Python 官方文档 collections.deque（BFS 的队列）'
+        type: 'official-doc'
+        url: 'https://docs.python.org/3/library/collections.html#collections.deque'
+    status: '未开始'
+    mastery: 0
+
+  - id: 'binary-search-on-answer'
+    title: '二分答案：猜一个再验一遍'
+    kind: '实操'
+    objective: '能把求最值问题转成判定问题并用二分求解'
+    problem: '"在满足条件的前提下让最大值尽可能小"——这类题看上去没有公式可套，直接求最优解无从下手。换个角度：先猜一个答案，再花线性时间验证这个答案行不行；行就往下压，不行就往上抬。这课的价值在讲清这道转换——把最优化问题变成判定问题——以及二分答案里最常见的边界陷阱。'
+    practice: '讲练并重：做经典题"跳石头"与"木材加工"，各写一个 check 函数与二分主体；再用暴力枚举验证小数据上的结果是否一致。'
+    prerequisites: ['binary-search', 'linear-structures-two-pointers']
+    concepts: ['单调性与可判定性', 'check 函数的写法', '答案区间与二分边界', '最大值最小化与最小值最大化', '二分答案与二分的区别']
+    pitfalls: ['check 函数不满足单调性仍然二分', '左右边界开闭与上一课的二分模板混用', 'check 内部用了线性以上复杂度导致整体超时']
+    realworld: '蓝桥杯与省选里"最小的最大"这类问法，标准解法就是二分答案。'
+    resources:
+      - title: '洛谷 P2678 跳石头（二分答案经典题）'
+        type: 'article'
+    status: '未开始'
+    mastery: 0
+
+  - id: 'greedy-and-intervals'
+    title: '贪心：每一步都选当前最好'
+    kind: '概念'
+    objective: '能判断一个问题能否用贪心，并用交换论证说明理由'
+    problem: '找零钱时优先用大面额，这个策略看起来永远正确，但面额设计一变它就会给出错误答案。贪心的难点从来不是写代码，而是证明"每一步选当前最好，最后就是全局最好"。这课的价值在讲清这个证明套路，并让学生学会在贪心与动态规划之间做选择。'
+    practice: '以讲为主：做区间调度（选最多不重叠区间）、活动安排、找零三个例子，其中找零给出一组贪心失效的面额；每个贪心策略都要写出交换论证的两三句话。'
+    prerequisites: ['sorting-and-divide-conquer']
+    concepts: ['贪心选择性质', '交换论证', '区间调度与按结束时间排序', '局部最优与全局最优的区别', '贪心何时失效']
+    pitfalls: ['把贪心当万能，写不出证明就用', '区间问题排序关键字选错（按开始时间排）', '贪心失效时硬改策略而不是换动态规划']
+    realworld: '区间选点、任务安排、覆盖问题都是贪心的常规考点，排班与资源调度也用同一套思路。'
+    resources:
+      - title: '《算法导论（第 3 版）》第 16 章 贪心算法'
+        type: 'book'
+    status: '未开始'
+    mastery: 0
+
+  # ===== 第五部分：动态规划与调优 =====
+
+  - id: 'dp-from-recursion'
+    title: '动态规划：把重复计算记下来'
+    kind: '概念'
+    objective: '能把递归解改成记忆化与递推版，并写清状态与转移方程'
+    problem: '斐波那契的朴素递归，算到第四十个就要等好几秒——把递归树画出来才看得见，同一个子问题被算了成千上万次。动态规划的全部起点就是这一件事：把算过的答案记下来。这课的价值在讲清"状态、转移、边界"这三件套，并让学生亲手把递归一步步改造成递推。'
+    practice: '以讲为主：同一道题（爬楼梯或数字三角形）写三版——朴素递归、记忆化搜索、自底向上递推，对照运行时间；再用打印把状态表画出来，确认每一格的含义。'
+    prerequisites: ['recursion-and-stack', 'greedy-and-intervals']
+    concepts: ['最优子结构', '重叠子问题', '记忆化搜索', '自底向上递推', '状态定义与转移方程', '边界与初始化', '时空复杂度分析']
+    pitfalls: ['状态定义只写了一半，漏掉必要维度', '初始化写错（尤其第 0 项）导致整表偏移', '记忆化用的字典键漏了参数，两种状态混成一种']
+    realworld: 'DP 是省赛区分度最高的题型，也是"能讲给别人"最容易被追问原理的地方。'
+    resources:
+      - title: '《算法导论（第 3 版）》第 15 章 动态规划'
+        type: 'book'
+    status: '未开始'
+    mastery: 0
+
+  - id: 'dp-knapsack'
+    title: '背包：选与不选'
+    kind: '实操'
+    objective: '能手写 0/1 背包与完全背包，并说明遍历顺序为何不同'
+    problem: '0/1 背包与完全背包的代码只差内层循环的方向，理解不深的人只能背下来——考场上稍一变形就写错。方向不同的原因就一句话：同一件物品能不能被重复选。这课的价值在讲清这一句话，并把背包从"容量"推广到各种伪装成背包的题上。'
+    practice: '讲练并重：手写 0/1 背包（一维与二维各一版）、完全背包、分组背包；再用暴力枚举在小数据上对拍，确认遍历方向改错会立刻出错。'
+    prerequisites: ['dp-from-recursion']
+    concepts: ['0/1 背包与状态转移', '一维滚动数组与逆序遍历', '完全背包与正序遍历', '分组背包与多重背包', '恰好装满与不超过的区别']
+    pitfalls: ['一维 0/1 背包写成正序遍历（变成完全背包）', '恰好装满时的非法状态没设为负无穷', '把"最多装"和"正好装"的初始化混用']
+    realworld: '资源分配、预算取舍、任务装载类问题大多能化归成背包，变形多但骨架固定。'
+    resources:
+      - title: '《背包问题九讲》（崔添翼）—— 背包模型的中文经典综述'
+        type: 'article'
+      - title: '洛谷题单：动态规划的背包问题'
+        type: 'article'
+    status: '未开始'
+    mastery: 0
+
+  - id: 'dp-sequence-interval'
+    title: '序列与区间的状态设计'
+    kind: '实操'
+    objective: '能设计序列与区间 DP 的状态，并写出转移方程'
+    problem: '背包的状态是"容量"，序列题的状态则要自己设计——最长递增子序列要按"以谁结尾"定义状态，最长公共子序列要按"两个前缀"定义状态，区间合并要按"从哪断开"定义状态。学生第一次做这类题，卡住的地方几乎都在状态定义，而不在代码。这课的价值在练熟几种常见状态设计的套路。'
+    practice: '讲练并重：做最长递增子序列（含 O(n log n) 版）、最长公共子序列、最长回文子序列、石子合并各一题；每题先写出状态定义与转移方程再动手写代码。'
+    prerequisites: ['dp-knapsack', 'linear-structures-two-pointers']
+    concepts: ['以 i 结尾的状态定义', '双序列的两维状态', '区间 DP 与断点枚举', '前缀最值优化', '把二维压成一维']
+    pitfalls: ['状态定义不完整，转移时用不到需要的旧值', '区间 DP 的枚举顺序写反（小区间要先算）', 'LIS 的二分优化版与 DP 版混用导致答案错']
+    realworld: '编辑距离、最长公共子序列、回文切分，是序列 DP 的固定考法，也是文本相似度工具的基础。'
+    resources:
+      - title: '洛谷题单：动态规划的线性与区间模型'
+        type: 'article'
+    status: '未开始'
+    mastery: 0
+
+  - id: 'lab-03-recommend-and-verify'
+    title: '实验三：让助手推荐并验证'
+    kind: '实验'
+    objective: '做出推荐与验证链：题目文本进、候选算法出、跑通自动验证'
+    problem: '这门课的配套项目——AI 刷题助手——到这一步该长出主干能力了：输入一段题目文本，由大模型分析题意并给出候选算法，再自动生成数据、对拍验证候选解。前三个部分学过的哈希、树、堆、并查集、图与搜索，正是判断"这题像哪一类"的依据；实验二的对拍脚本则是这次的验证模块。'
+    practice: '以练为主：验收为主，产出是一次可重复运行的端到端脚本，讲解只针对接不上的那个环节。'
+    prerequisites: ['hash-table', 'binary-tree-traversal', 'heap-and-priority-queue', 'union-find', 'graph-representation', 'dfs-bfs-search', 'binary-search-on-answer', 'greedy-and-intervals', 'lab-02-verify-by-brute-force']
+    concepts: ['提示词与结构化输出', '把题目特征映射到算法族', '自动生成测试数据', '推荐结果的可信度判断']
+    pitfalls: ['模型给的算法名与自己的实现接不上（只有名词，没有可执行方案）', '提示词没有约束输出格式，返回内容没法程序化解析', '只信模型推荐，不跑验证就当成答案']
+    realworld: '这是本项目第一个真正"能用"的版本：题目进、候选算法出、自动验证收尾。'
+    resources:
+      - title: 'DeepSeek 开放平台 API 文档 —— 模型调用与结构化输出'
+        type: 'official-doc'
+        url: 'https://api-docs.deepseek.com/'
+      - title: 'Python 官方文档 json —— 结构化结果解析'
+        type: 'official-doc'
+        url: 'https://docs.python.org/3/library/json.html'
+    status: '未开始'
+    mastery: 0
+
+  - id: 'problem-pattern-recognition'
+    title: '看数据规模挑算法'
+    kind: '概念'
+    objective: '能由数据范围与问法反查算法族，并说出选择的理由'
+    problem: '考场上真正的困难常常不是写不出代码，而是不知道这题该往哪个方向想。数据范围其实一直在提示答案：范围到十的九次方，几乎只能是线性或对数；范围到几百，多半是三次方或区间 DP。这课的价值在把这条对应关系变成条件反射，并把学过的算法整理成一张可查的题型表。'
+    practice: '以讲为主：收集十道做过的题，只看数据范围与问法就写出候选算法族，再对照题解检查自己的判断；把判断错的题单独记下来，找出是哪条线索漏了。'
+    prerequisites: ['dp-from-recursion', 'greedy-and-intervals', 'lab-02-verify-by-brute-force']
+    concepts: ['数据范围与复杂度上限的对应', '问法关键词（最多最少、是否、第 k、最优）', '常见算法族与适用特征', '复杂度与实现难度之间的取舍']
+    pitfalls: ['只看题目像什么，不看数据规模', '一上来就写最复杂的解法', '把"数据小所以随便写"用到多组测试上']
+    realworld: '同一道题在省赛里被设计成不同数据范围，就是要求选手用不同算法，读范围是第一步。'
+    resources:
+      - title: '《算法竞赛进阶指南》题型与复杂度对应（待核实具体章节）'
+        type: 'book'
+    status: '未开始'
+    mastery: 0
+
+  - id: 'constant-factor-tuning'
+    title: '让 Python 再快一点'
+    kind: '实操'
+    objective: '能用常数优化把接近时限的解法压进时限内'
+    problem: '同一份冒泡排序，用 Python 写比用 C 慢几十倍，所以"理论上够快"在 Python 里经常不够用。好在常数是可以压的：少一次函数调用、用 sys.stdin 整体读入而不是逐行 input、用列表做查表而不是分支判断。这课的价值在练熟几招能立竿见影的提速手段，并知道该先测哪一段。'
+    practice: '讲练并重：拿一道接近时限的题，先测出耗时的瓶颈在哪一段，再依次应用三到四招优化，每招都记录耗时变化；最后对照同一算法的内置实现看还差多少。'
+    prerequisites: ['python-list-dict-cost', 'lab-02-verify-by-brute-force']
+    concepts: ['常数因子的来源', '局部变量的读取比全局快', 'sys.stdin 与逐行 input 的差别', '减少循环内的函数调用与属性查找', '用实测定位瓶颈']
+    pitfalls: ['不测就猜瓶颈在哪', '为了优化牺牲正确性', '用递归写本来该迭代的大循环']
+    realworld: 'Python 选手必须比 C++ 选手更懂常数，很多题的差距就在这几招上。'
+    resources:
+      - title: 'Python 官方文档 性能分析（profile 与 timeit）'
+        type: 'official-doc'
+        url: 'https://docs.python.org/3/library/profile.html'
+      - title: 'Python 官方文档 性能技巧'
+        type: 'official-doc'
+        url: 'https://docs.python.org/3/tutorial/stdlib.html'
+    status: '未开始'
+    mastery: 0
+
+  - id: 'stress-test-and-review'
+    title: '交卷之前你要检查什么'
+    kind: '实操'
+    objective: '能在提交前用暴力解对拍并跑完边界数据自检'
+    problem: '很多人不是不会做，而是交上去才发现多组数据没清空、答案要取模却忘了取、数组开小了。这些错误在样例上全都不会暴露。这课的价值在把"提交前自检"变成固定流程：暴力解对拍、边界数据齐跑、答案格式逐条核对。'
+    practice: '讲练并重：给自己准备一份提交前检查清单；用它检查三道自己以前做错的题，找出当时漏掉的是哪一条。'
+    prerequisites: ['lab-02-verify-by-brute-force']
+    concepts: ['对拍器与随机数据', '边界情况清单（最小、最大、重复、退化）', '多组数据的清空', '取模与溢出', '答案格式与输出要求']
+    pitfalls: ['参考解与候选解用同一个错误思路（假通过）', '随机数据范围与题目不一致，测了个寂寞', '只测小数据，忽略性能退化']
+    realworld: '"过样例不等于过题"，自检流程是把正确率从碰运气变成稳定的关键。'
+    resources:
+      - title: 'Python 官方文档 random（造对拍数据）'
+        type: 'official-doc'
+        url: 'https://docs.python.org/3/library/random.html'
+    status: '未开始'
+    mastery: 0
+
+  - id: 'lab-04-spaced-repetition-drill'
+    title: '实验四：一次完整的赛前模拟'
+    kind: '实验'
+    objective: '能限时独立完成省赛难度真题，并讲清所用算法为何正确'
+    problem: '前面几个部分把零件与工具都备齐了，但考场上是在时间压力下选题、决策、写码、自检。这次要按省赛节奏走一遍完整流程：读题、估规模、定算法、写完、自检，并且把每道题的解法讲清楚——这也是"能讲给别人"这条目标的第一次正式检验。'
+    practice: '以练为主：验收为主，产出是限时完成的解题记录与讲解稿。'
+    prerequisites: ['dp-from-recursion', 'dp-knapsack', 'dp-sequence-interval', 'binary-search-on-answer', 'greedy-and-intervals', 'problem-pattern-recognition', 'constant-factor-tuning', 'stress-test-and-review']
+    concepts: ['限时选题策略', '解题记录与讲解稿', '把算法讲给别人的标准']
+    pitfalls: ['把时间全花在一道难题上', '写对但来不及自检', '讲得出结论讲不出为什么正确']
+    realworld: '蓝桥杯省赛就是在这套节奏里跑的，这一课直接对应考场表现。'
+    resources:
+      - title: '蓝桥杯官方练习系统（历年真题，Python 组）'
+        type: 'article'
+        url: 'https://www.lanqiao.cn/problems/'
+    status: '未开始'
+    mastery: 0
+
+  - id: 'explain-like-a-teacher'
+    title: '把算法讲给别人听'
+    kind: '概念'
+    objective: '能对一个算法讲清正确性、复杂度与被淘汰的数据规模'
+    problem: '这门课的最终目标不是"我做过这道题"，而是"我能把这件事讲明白"。讲不明白，通常说明还有一层没吃透——比如说不清并查集路径压缩为什么摊还到近常数、说不清背包为什么必须逆序。这课的价值在给出一个可自查的讲解结构，并用它去拷问自己学过的每个算法。'
+    practice: '以讲为主：从学过的算法里挑五个，各写一份三分钟讲解稿（为什么正确、复杂度怎么推、什么数据规模会被淘汰），并对着同学或录音讲一遍，记录被问住的地方。'
+    prerequisites: ['lab-02-verify-by-brute-force', 'lab-04-spaced-repetition-drill']
+    concepts: ['正确性论证的写法', '复杂度推导（含摊还分析入门）', '适用边界与失效条件', '把术语翻译成直觉']
+    pitfalls: ['只会复述代码流程，讲不出为什么正确', '复杂度只会背结论不会推', '把"我记得是这样"当成论证']
+    realworld: '面试、组队讨论、写题解，评价一个人算法水平的场合几乎都是要求把道理讲出来。'
+    resources:
+      - title: '《算法导论（第 3 版）》第 17 章 摊还分析（复杂度推导的进阶）'
+        type: 'book'
+    status: '未开始'
+    mastery: 0
+
+  - id: 'capstone-ai-tutor'
+    title: '综合实战：把刷题助手做完'
+    kind: '实验'
+    objective: '做出端到端可用助手：题目文本进、推荐算法出、验证留证据'
+    problem: '把整门课收束到配套项目上：题目文本进 → 大模型分析题意 → 推荐候选算法 → 自动对拍与样例验证 → 输出可复现的记录。这一课也是整套课程目标的总验收：既看工具能不能用，也看你能否讲清它内部每个环节为什么这样设计。'
+    practice: '以练为主：验收为主，交付可重复运行的完整助手与一份说明，讲解只针对讲不清的环节。'
+    prerequisites: ['lab-01-run-one-problem', 'lab-02-verify-by-brute-force', 'lab-03-recommend-and-verify', 'lab-04-spaced-repetition-drill', 'explain-like-a-teacher']
+    concepts: ['端到端流程组织', '结果可复现与留证', '把算法知识做成工具']
+    pitfalls: ['各模块单跑都好，串起来输入输出格式对不上', '没有留验证证据，无法判断推荐到底准不准', '只追求跑通，讲不清每个环节的设计取舍']
+    realworld: '这就是本项目从最早一课的"能跑一道题"长成的最终形态，也是"能讲给别人"的实物证据。'
+    resources:
+      - title: '《算法竞赛进阶指南》综合训练（待核实具体章节）'
+        type: 'book'
+    status: '未开始'
+    mastery: 0
+
+edges:
+  - from: 'intro-what-is-algorithm'
+    to: 'complexity-basics'
+    reason: '先把"数据变大程序会失效"这个现象摆出来，复杂度才有要解决的问题。'
+  - from: 'complexity-basics'
+    to: 'python-list-dict-cost'
+    reason: '会用复杂度估时，才看得懂同一操作在不同容器上的代价差。'
+  - from: 'python-list-dict-cost'
+    to: 'python-function-basics'
+    reason: '知道哪些操作贵之后，下一步是把贵的逻辑封装起来集中改。'
+  - from: 'python-function-basics'
+    to: 'python-comprehension-builtins'
+    reason: '函数不熟练时，推导式与内置函数的写法更容易写错。'
+  - from: 'python-comprehension-builtins'
+    to: 'python-io-and-debug'
+    reason: '输入解析正是推导式与内置函数的第一批真实用途。'
+  - from: 'python-io-and-debug'
+    to: 'lab-01-run-one-problem'
+    reason: '能稳定读入输入，才有第一份能跑通样例的脚本。'
+  - from: 'intro-what-is-algorithm'
+    to: 'python-function-basics'
+    reason: '先建立"算法要写给人看"的意识，再谈怎么把代码分段。'
+  - from: 'complexity-basics'
+    to: 'lab-01-run-one-problem'
+    reason: '没有复杂度概念，实验一的自测无法判断"是否够快"。'
+  - from: 'lab-01-run-one-problem'
+    to: 'brute-force-to-optimization'
+    reason: '跑通过一道题之后，才知道自己的写法离题目要求还差多少。'
+  - from: 'brute-force-to-optimization'
+    to: 'linear-structures-two-pointers'
+    reason: '有了保底的暴力解，前缀和与双指针这类优化手段才知道在优化什么。'
+  - from: 'stack-and-queue'
+    to: 'two-pointers-applications'
+    reason: '先掌握一种线性结构与它的操作代价，再练两个下标如何配合。'
+  - from: 'two-pointers-applications'
+    to: 'recursion-and-stack'
+    reason: '线性扫描与配对练熟之后，再进入函数调用自身的递归写法。'
+  - from: 'brute-force-to-optimization'
+    to: 'hash-table'
+    reason: '暴力解慢在查找上时，哈希表正是把这一层降下来的手段。'
+  - from: 'python-function-basics'
+    to: 'linear-structures-two-pointers'
+    reason: '前缀和与双指针都要写成可反复调用的函数才好对照。'
+  - from: 'python-list-dict-cost'
+    to: 'linear-structures-two-pointers'
+    reason: '知道列表各操作的代价，才能理解前缀和为什么省时间。'
+  - from: 'linear-structures-two-pointers'
+    to: 'stack-and-queue'
+    reason: '已经练过一种数据组织方式，栈与队列是第二、第三种。'
+  - from: 'stack-and-queue'
+    to: 'recursion-and-stack'
+    reason: '先看清显式的栈怎么运作，再理解函数调用栈这一隐式栈。'
+  - from: 'recursion-and-stack'
+    to: 'sorting-and-divide-conquer'
+    reason: '归并排序的分治骨架就是递归，递归没过这一课必然卡住。'
+  - from: 'linear-structures-two-pointers'
+    to: 'sorting-and-divide-conquer'
+    reason: '合并两个有序区间要用到顺序扫描与双指针。'
+  - from: 'sorting-and-divide-conquer'
+    to: 'binary-search'
+    reason: '二分的前提是有序，排序这一课提供有序性。'
+  - from: 'python-function-basics'
+    to: 'binary-search'
+    reason: '二分写在函数里才好测边界，函数的熟练度直接影响正确率。'
+  - from: 'binary-search'
+    to: 'lab-02-verify-by-brute-force'
+    reason: '二分是最容易写错边界的算法，正好拿它对拍验证。'
+  - from: 'stack-and-queue'
+    to: 'lab-02-verify-by-brute-force'
+    reason: '实验二的参考解要用到栈与队列实现暴力模拟。'
+  - from: 'python-list-dict-cost'
+    to: 'hash-table'
+    reason: '已经实测过列表查找慢，哈希表的价值才有对照。'
+  - from: 'recursion-and-stack'
+    to: 'binary-tree-traversal'
+    reason: '树是递归结构，不会递归就写不出遍历。'
+  - from: 'stack-and-queue'
+    to: 'binary-tree-traversal'
+    reason: '层序遍历依赖队列，非递归遍历依赖栈。'
+  - from: 'binary-tree-traversal'
+    to: 'heap-and-priority-queue'
+    reason: '堆是完全二叉树，先有树的概念再谈堆的数组存储。'
+  - from: 'hash-table'
+    to: 'union-find'
+    reason: '并查集用数组或字典存父指针，与哈希的键值映射是同一层心智模型。'
+  - from: 'recursion-and-stack'
+    to: 'union-find'
+    reason: 'find 的递归写法与路径压缩需要递归思维。'
+  - from: 'hash-table'
+    to: 'graph-representation'
+    reason: '邻接表本质是"节点到邻居列表"的映射。'
+  - from: 'union-find'
+    to: 'graph-representation'
+    reason: '先会用集合代表元处理连通性，再学完整的图结构表示。'
+  - from: 'graph-representation'
+    to: 'dfs-bfs-search'
+    reason: '图没存进内存，就谈不上遍历。'
+  - from: 'stack-and-queue'
+    to: 'dfs-bfs-search'
+    reason: 'DFS 用栈、BFS 用队列，这一课直接把两者套到图上。'
+  - from: 'binary-search'
+    to: 'binary-search-on-answer'
+    reason: '二分答案先要会写对二分本体，再谈把最优化问题转成判定问题。'
+  - from: 'linear-structures-two-pointers'
+    to: 'binary-search-on-answer'
+    reason: 'check 函数通常要在区间上做前缀和或双指针扫描。'
+  - from: 'sorting-and-divide-conquer'
+    to: 'greedy-and-intervals'
+    reason: '区间调度要先按结束时间排序，排序是它的前置动作。'
+  - from: 'greedy-and-intervals'
+    to: 'dp-from-recursion'
+    reason: '先看清贪心为什么会失效，才理解 DP 为什么要枚举所有选择。'
+  - from: 'recursion-and-stack'
+    to: 'dp-from-recursion'
+    reason: '记忆化搜索的起点是朴素递归，递归写不对就改不出 DP。'
+  - from: 'dp-from-recursion'
+    to: 'dp-knapsack'
+    reason: '背包是 DP 三件套的第一个完整模型，需要状态与转移的基础。'
+  - from: 'dp-knapsack'
+    to: 'dp-sequence-interval'
+    reason: '背包练熟一维状态设计，序列与区间 DP 再上到二维。'
+  - from: 'linear-structures-two-pointers'
+    to: 'dp-sequence-interval'
+    reason: '前缀最值优化要用到前缀和的思路。'
+  - from: 'hash-table'
+    to: 'lab-03-recommend-and-verify'
+    reason: '题目特征映射与答案去重依赖哈希表。'
+  - from: 'binary-tree-traversal'
+    to: 'lab-03-recommend-and-verify'
+    reason: '树形结构题是助手要能识别的算法族之一。'
+  - from: 'heap-and-priority-queue'
+    to: 'lab-03-recommend-and-verify'
+    reason: '取极值类题目是助手的推荐类别之一，先自己会写才能判断推荐对不对。'
+  - from: 'union-find'
+    to: 'lab-03-recommend-and-verify'
+    reason: '连通性题目的识别需要自己先掌握并查集。'
+  - from: 'dfs-bfs-search'
+    to: 'lab-03-recommend-and-verify'
+    reason: '搜索是刷题时最常被推荐的算法族，先自己写熟。'
+  - from: 'dp-from-recursion'
+    to: 'problem-pattern-recognition'
+    reason: 'DP 的状态设计是题型识别里最需要经验的一类，必须先学过。'
+  - from: 'greedy-and-intervals'
+    to: 'problem-pattern-recognition'
+    reason: '贪心与 DP 的分界是题型判断的经典难点。'
+  - from: 'lab-02-verify-by-brute-force'
+    to: 'problem-pattern-recognition'
+    reason: '对拍过多种解法之后，才有足够素材总结题型与算法的对应。'
+  - from: 'lab-03-recommend-and-verify'
+    to: 'problem-pattern-recognition'
+    reason: '助手要按题型推荐算法，逼着你把题型与算法的对应关系写下来。'
+  - from: 'python-list-dict-cost'
+    to: 'constant-factor-tuning'
+    reason: '常数优化改的正是容器与操作的选择，先有代价意识。'
+  - from: 'lab-02-verify-by-brute-force'
+    to: 'constant-factor-tuning'
+    reason: '优化前后必须用对拍确认结果没变，验证能力是前提。'
+  - from: 'lab-02-verify-by-brute-force'
+    to: 'stress-test-and-review'
+    reason: '实验二已建立对拍能力，这一课把它固化成提交前流程。'
+  - from: 'dp-from-recursion'
+    to: 'lab-04-spaced-repetition-drill'
+    reason: '模拟赛的题大多落在 DP 与搜索上，先具备 DP 基础。'
+  - from: 'dp-knapsack'
+    to: 'lab-04-spaced-repetition-drill'
+    reason: '背包是模拟赛里出现频率最高的 DP 模型。'
+  - from: 'dp-sequence-interval'
+    to: 'lab-04-spaced-repetition-drill'
+    reason: '序列与区间 DP 是模拟赛的常见失分点，先补上。'
+  - from: 'binary-search-on-answer'
+    to: 'lab-04-spaced-repetition-drill'
+    reason: '模拟赛常考"最小的最大"型问法。'
+  - from: 'greedy-and-intervals'
+    to: 'lab-04-spaced-repetition-drill'
+    reason: '限时选题需要快速判断贪心是否适用。'
+  - from: 'constant-factor-tuning'
+    to: 'lab-04-spaced-repetition-drill'
+    reason: '限时模拟里经常要靠常数优化把解法压进时限，赛前专练过一次才敢用。'
+  - from: 'problem-pattern-recognition'
+    to: 'lab-04-spaced-repetition-drill'
+    reason: '限时实战的第一动作就是按数据范围选定算法族。'
+  - from: 'stress-test-and-review'
+    to: 'lab-04-spaced-repetition-drill'
+    reason: '模拟赛必须带上"提交前自检"这套固定流程。'
+  - from: 'lab-02-verify-by-brute-force'
+    to: 'explain-like-a-teacher'
+    reason: '验证能力是讲清"为什么正确"的底气，先能证明再谈讲给别人。'
+  - from: 'lab-04-spaced-repetition-drill'
+    to: 'explain-like-a-teacher'
+    reason: '限时实战中被问住的算法，正好成为讲解练习的素材。'
+  - from: 'lab-01-run-one-problem'
+    to: 'capstone-ai-tutor'
+    reason: '综合实战的输入解析与求解骨架来自实验一。'
+  - from: 'lab-03-recommend-and-verify'
+    to: 'capstone-ai-tutor'
+    reason: '助手的推荐与验证模块是综合实战的主体。'
+  - from: 'lab-04-spaced-repetition-drill'
+    to: 'capstone-ai-tutor'
+    reason: '综合实战要按赛前状态把整条流程串起来，先经过一次模拟赛。'
+  - from: 'explain-like-a-teacher'
+    to: 'capstone-ai-tutor'
+    reason: '综合验收包括讲清每个环节的设计取舍，先练过讲解结构。'

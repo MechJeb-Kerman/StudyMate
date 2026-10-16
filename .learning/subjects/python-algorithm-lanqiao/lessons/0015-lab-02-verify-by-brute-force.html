@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>实验二：给解法装上对拍器 · Python 算法与蓝桥杯</title>
+
+<!-- 共享层在 .learning/assets/，课件在 .learning/subjects/<slug>/lessons/ 下，所以是 ../../../assets/ -->
+<link rel="stylesheet" href="../../../assets/sayo/sayo.css">
+<link rel="stylesheet" href="../../../assets/learn-theme.css">
+<link rel="stylesheet" href="../assets/style.css">
+
+<!-- 主题要在首帧前应用，避免闪白/闪黑 -->
+<script src="../../../assets/learn-theme.js"></script>
+<script>LearnTheme.apply();</script>
+</head>
+
+<body class="lesson-body">
+
+<nav class="lesson-bar">
+  <a href="../index.html">← 返回课程</a>
+  <span>Python 算法与蓝桥杯</span>
+  <span class="lesson-bar__no">0015</span>
+  <!-- 课件页自带主题开关：学生从文件管理器直接打开课件时也能切暗色 -->
+  <label class="syo-toggle syo-toggle--theme lesson-bar__toggle" title="切换深浅主题" aria-label="切换深浅主题">
+    <input type="checkbox" id="lesson-theme-checkbox" checked>
+    <span class="syo-toggle-track"></span>
+    <span class="syo-toggle-knob">
+      <svg class="syo-toggle-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.5" stroke="#f57c00" stroke-width="1.5"/><path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.34 4.34l1.77 1.77M13.89 13.89l1.77 1.77M4.34 15.66l1.77-1.77M13.89 6.11l1.77-1.77" stroke="#f57c00" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <svg class="syo-toggle-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.5 12.5A6 6 0 019 4.5a6 6 0 007.5 8z" stroke="#5c6bc0" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </span>
+  </label>
+</nav>
+
+<article class="lesson">
+
+  <header class="lesson-header">
+    <span class="lesson-header__eyebrow">0015 · 实验二：给解法装上对拍器</span>
+    <h1>实验二：给解法装上对拍器</h1>
+    <p class="lesson-goal"><b>本节目标：</b>交出一份对拍脚本：随机数据上自动比对参照解与候选解，抓到反例并把反例最小化。</p>
+  </header>
+
+  <!-- ── 正文：渲染器按内容文件（lessons/<序号>-<节点id>.md）产出，块词汇见 docs/规范/课件内容格式.md ── -->
+
+  <p>到这一课为止，你手上开始有不止一种解法了。同一道题，暴力版能手写出来，二分版也能手写出来；归并排序与内置 <code>sorted</code> 是两条路；递归与循环加栈是两条路。</p>
+
+  <p>于是「我这版对不对」这个问题变得难回答了：样例过了不代表对，因为样例只有几组；看着像对也不代表对，第 14 课那三种错法<b>跑起来一行报错都没有</b>，只在某些数据上悄悄给出错的答案。</p>
+
+  <p>靠感觉判断对错，在这条路上走不远。这次要造的是把感觉换成证据的东西：<b>把暴力解当参照，随机造数据自动比对，一不一致就把那组数据打印出来</b>。</p>
+
+  <p>这份脚本就是配套项目「AI 刷题助手」里「自动验证候选解」那一环的原型。</p>
+
+  <p>任务、断言与判分脚本在 <a href="../lab/0015-lab-02-verify-by-brute-force/">lab/0015-lab-02-verify-by-brute-force/</a>；五个任务都做完、判分全过之后，再对照 <a href="../lab/solutions/">lab/solutions/</a>。</p>
+
+  <h2>这次要做出什么</h2>
+
+  <p>两样产物，都在 lab 目录里。文件名与函数名是判分接口，别改；函数体里怎么写随你。</p>
+
+  <table>
+    <thead>
+      <tr><th>产物</th><th>长什么样</th><th>怎么算做出来了</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>stress.py</code></td><td>四个函数：<code>brute_find</code> 参照解、<code>gen_wide</code> 与 <code>gen_boundary</code> 两个造数据器、<code>stress</code> 比对循环、<code>shrink</code> 反例最小化</td><td>对拍 <code>buggy.py</code> 时能抓到反例；<code>shrink</code> 能在反例上继续缩小，缩到不能再缩</td></tr>
+      <tr><td><code>findings.md</code></td><td>一份记录：抓到的原始反例、最小化后的反例、<code>buggy.py</code> 里哪一行错了</td><td>判分拿它和判分自己算出来的最小反例对照，必须一致</td></tr>
+    </tbody>
+  </table>
+
+  <p>给好的东西（别改）：候选解 <code>buggy.py</code>（里面藏着第 14 课那三种错法中的一种）、判分脚本 <code>run_tests.py</code>、公共工具 <code>tools.py</code>。</p>
+
+  <p>留白版原样跑是<b>不通过</b>的：<code>stress.py</code> 里的函数还空着，<code>stress</code> 交回 <code>None</code>（看起来像「一次都没抓到」，其实是根本没比对）。那是起点，不是 bug。</p>
+
+  <h2>对拍的四个部件</h2>
+
+  <p><b>对拍</b>（stress test）由四件事组成，缺一件都跑不起来：</p>
+
+  <table>
+    <thead>
+      <tr><th>部件</th><th>做什么</th><th>这一课里对应什么</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>参照解</td><td>慢但一定对的解法，作为「标准答案」</td><td><code>brute_find</code>：从头到尾线性扫一遍，一眼看得出对不对</td></tr>
+      <tr><td>候选解</td><td>要验的那一版，快但可能有错</td><td><code>buggy.py</code> 里的 <code>cand_find</code></td></tr>
+      <tr><td>数据生成器</td><td>每次造一组新输入</td><td><code>gen_wide</code> 与 <code>gen_boundary</code></td></tr>
+      <tr><td>比对循环</td><td>跑两边、比结果、不一致就报告</td><td><code>stress</code></td></tr>
+    </tbody>
+  </table>
+
+  <p>参照解为什么用暴力版而不是另一份优化版？因为暴力版<b>简单到能一眼看出对不对</b>。它的价值不在快，在于可信：用它当尺子，量出来的差异才有意义。</p>
+
+  <p>比对循环的返回值要设计好——不能只回一句「有问题」，要把<b>那一组数据</b>一起交回来：</p>
+
+  <pre data-lang="python"><code>def stress(candidate, reference, gen, trials, seed=None):
+    if seed is not None:
+        random.seed(seed)
+    for t in range(1, trials + 1):
+        a, x = gen()
+        got = candidate(a, x)
+        want = reference(a, x)
+        if got != want:
+            return t, a, x, got, want
+    return None</code></pre>
+
+  <p><code>t</code> 是第几次抓到的。<code>seed</code> 用来固定随机序列——这一点后面单独讲。</p>
+
+  <h2>一个真跑出来的例子</h2>
+
+  <p>参照解与候选解这样写：</p>
+
+  <pre data-lang="python"><code>def brute_find(a, x):
+    for i in range(len(a)):
+        if a[i] == x:
+            return i
+    return -1
+
+def cand_find(a, x):
+    lo = 0
+    hi = len(a) - 1
+    while lo &lt; hi:
+        mid = (lo + hi) // 2
+        if a[mid] == x:
+            return mid
+        if a[mid] &lt; x:
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    return -1</code></pre>
+
+  <p><code>cand_find</code> 就是第 14 课那个「闭区间配上 <code>while lo &lt; hi</code>，漏掉最后一个元素」的错法。数据生成器给两组：</p>
+
+  <pre data-lang="python"><code>def gen_wide():
+    n = random.randint(1, 8)
+    a = sorted(random.sample(range(100), n))
+    return a, random.randrange(100)
+
+def gen_from_array():
+    n = random.randint(1, 8)
+    a = sorted(random.sample(range(100), n))
+    return a, random.choice(a)</code></pre>
+
+  <p>拿 <code>gen_from_array</code> 对拍，第 2 次就抓到了：</p>
+
+  <pre data-lang="text"><code>第 2 次抓到：a=[63, 97] x=97 候选=-1 参照=1</code></pre>
+
+  <p>两个元素的数组里，<code>97</code> 明明在下标 1 上，候选解却交回 <code>-1</code>。原因回到第 14 课那句话：区间只剩一个元素时循环已经退出，那一格从没被检查过。</p>
+
+  <p>抓到了不等于看清了。两格的数据已经足够小，但「最小化」这一步仍然值得做——后面单独讲。</p>
+
+  <h2>抓错快慢差四百倍</h2>
+
+  <p>换成另外三种造数据方案，同一个候选解、同样 5000 次的预算，抓到它的速度差得很远：</p>
+
+  <table>
+    <thead>
+      <tr><th>造数据方案</th><th>第几次抓到</th><th>抓到时的那组数据</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>A 宽范围随机（<code>n</code> 取 1 到 8，<code>x</code> 在 0 到 99 里随便取）</td><td>第 13 次</td><td><code>a=[24, 36, 38, 63, 64, 75, 85]</code> <code>x=64</code></td></tr>
+      <tr><td>B <code>x</code> 取自数组元素</td><td>第 2 次</td><td><code>a=[63, 97]</code> <code>x=97</code></td></tr>
+      <tr><td>C 小值域多重复（值域 0 到 4）</td><td>第 1 次</td><td><code>a=[0, 2, 4]</code> <code>x=0</code></td></tr>
+      <tr><td>D 含空数组与单元素，<code>x</code> 仍宽范围随机</td><td>第 398 次</td><td><code>a=[95]</code> <code>x=95</code></td></tr>
+      <tr><td>E 主动造边界形态，<code>x</code> 也按形态给</td><td>第 1 次</td><td><code>a=[72]</code> <code>x=72</code></td></tr>
+    </tbody>
+  </table>
+
+  <p>最快第 1 次，最慢第 398 次——<b>四百倍的差距</b>。这个结果值得停一下：方案 A 看起来「最随机」，却排在中游；方案 D 明明已经包含单元素数组这种最容易出错的数据形态，却排在最慢。</p>
+
+  <p>原因在触发条件。这个候选解只在「答案恰好是最后剩下那个没被检查的元素」时出错。于是抓到它的快慢取决于两件事：</p>
+
+  <ul>
+    <li><code>x</code> 得<b>真的在数组里</b>。方案 A 里 <code>x</code> 在 0 到 99 里随便取，而数组只有几个元素，多数时候 <code>x</code> 根本不在数组里——两边都交回 <code>-1</code>，一次也抓不到。方案 B 把 <code>x</code> 限定成数组里的元素，命中率立刻上去。</li>
+    <li>数组得<b>有重复值，或者答案在端点</b>。方案 C 值域只有 0 到 4，重复多，对撞的路径更容易走到「只剩一格」那一步。</li>
+  </ul>
+
+  <p>方案 D 与方案 E 的对比最能说明问题。两者都包含单元素数组，写法上的差别只在 <code>x</code>：</p>
+
+  <pre data-lang="python"><code>def gen_boundary():
+    kind = random.randrange(4)
+    if kind == 0:                      # 空数组
+        return [], random.randrange(100)
+    if kind == 1:                      # 单元素，x 就取那个元素
+        v = random.randrange(100)
+        return [v], v
+    if kind == 2:                      # 全相同
+        v = random.randrange(5)
+        return [v] * random.randint(2, 6), v
+    n = random.randint(2, 6)           # 答案在两端
+    a = sorted(random.sample(range(100), n))
+    return a, (a[0] if random.randrange(2) == 0 else a[-1])</code></pre>
+
+  <p>D 里 <code>x</code> 仍然宽范围随机，单元素数组必须<b>恰好</b>配上 <code>x</code> 等于那个元素才会暴露，两个条件叠起来的概率很低；E 里 <code>kind == 1</code> 那一支直接把 <code>x</code> 设成那个元素，两个条件被绑在一起造出来：</p>
+
+  <pre data-lang="text"><code>第 1 次抓到：a=[72] x=72 候选=-1 参照=0</code></pre>
+
+  <div class="lesson-warn">
+    <b>「随机造数据」不等于「能抓到 bug」</b>
+    <p>随便写一个 <code>random.randint</code> 不叫造数据。造数据的目的是<b>踩中候选解出错的那个条件</b>，所以要先问一句：这个 bug 在什么输入下才会露出来？答案在边界上（空、一个元素、全相同、答案在两端）时，就把这些形态直接写进生成器，而不是等随机去撞。</p>
+  </div>
+
+  <p>所以 <code>gen_boundary</code> 的任务很明确：把空数组、单元素、全相同、答案在两端这些形态<b>主动造出来</b>，而不是靠随机碰。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "对拍时为什么拿暴力解当参照，而不是另一份更快的优化版？",
+    "opts": [
+      "暴力解简单到能一眼看出它确实答对了",
+      "暴力解跑得更快，能在同样时间里对拍更多轮",
+      "两份优化版互相比对会互相抵消掉错误",
+      "暴力解的答案与题目要求一致，不需要检查"
+    ],
+    "ans": 0,
+    "why": "参照解的价值不在快，在于可信。它要当尺子，所以必须简单到能一眼判断对错。拿另一份优化版当参照，两边都可能有错，对拍报出的不一致说明不了该改哪一边。"
+  }
+]'></div>
+
+  <h2>反例最小化</h2>
+
+  <p>抓到的那组数据往往比必要的更大。<code>a=[63, 97]</code>、<code>x=97</code> 里的第一个元素对暴露 bug 毫无贡献——真正的错在「区间只剩一格」这一步。</p>
+
+  <p><b>反例最小化</b>（shrinking）就是反复试着把反例改小，只要它还能让两边不一致，就接受这个更小的版本：</p>
+
+  <pre data-lang="python"><code>def shrink(candidate, reference, a, x):
+    cur = list(a)
+    changed = True
+    while changed:
+        changed = False
+        for i in range(len(cur)):
+            smaller = cur[:i] + cur[i + 1:]
+            if candidate(smaller, x) != reference(smaller, x):
+                cur = smaller
+                changed = True
+                break
+    return cur</code></pre>
+
+  <p>对上面那组反例跑一遍：</p>
+
+  <pre data-lang="text"><code>原始反例: [63, 97] x = 97  候选 -1  参照 1
+最小化后: [97] x = 97  候选 -1  参照 0</code></pre>
+
+  <p>一步就缩到了极限：一个元素的数组，<code>97</code> 就是它自己，候选解却交回 <code>-1</code>。看到这一组，错在哪几乎不用再猜了。</p>
+
+  <p>最小化之后的反例还有一个用处：它可以<b>直接抄进测试用例</b>。第 14 课那些边界数据，其中几条正是这样来的——从对拍抓到的反例里缩出来的。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "反例最小化这一步带来的是什么？",
+    "opts": [
+      "把反例缩到删不动，错在哪几乎不用再猜",
+      "把反例改写成能通过的用例，方便回归测试",
+      "把反例的耗时压到最短，便于反复跑很多次",
+      "把反例里的随机数固定下来，便于日后复现"
+    ],
+    "ans": 0,
+    "why": "反复试着删掉一个元素，只要两边还不一致就接受。实测 [63, 97] 配 x=97 能缩到一个元素的 [97]，看到这一组就能直接指出是「区间只剩一格时那一格没被检查」。要注意它只保证删不动，不保证是全局最小的那一组。"
+  }
+]'></div>
+
+  <h2>参考解也会错</h2>
+
+  <p>对拍有一个前提容易被忽略：<b>它比对的是两个解，不是解与真相</b>。参照解自己写错时，对拍给出的结论会误导人。</p>
+
+  <p>先看一种情况：参照解用了「严格大于」，候选解用了「不小于」。</p>
+
+  <pre data-lang="text"><code>参照用「严格大于」时：第 1 次抓到 a=[2, 5, 8, 9] x=9 候选=3 参照=4</code></pre>
+
+  <p>对拍报了不一致。可是<b>该改哪一边</b>？对拍自己不知道——它只负责报差异。这时要靠手算的小样例或标准库来裁决：这道题问的是「第一个不小于 <code>x</code> 的位置」，正确答案是 3，错的是参照解。</p>
+
+  <p>再看更麻烦的一种：两边错成同一种。</p>
+
+  <pre data-lang="python"><code>def ref_gt(a, x):
+    for i in range(len(a)):
+        if a[i] &gt; x:
+            return i
+    return len(a)
+
+def cand_gt(a, x):
+    lo = 0
+    hi = len(a)
+    while lo &lt; hi:
+        mid = (lo + hi) // 2
+        if a[mid] &lt;= x:
+            lo = mid + 1
+        else:
+            hi = mid
+    return lo</code></pre>
+
+  <p>一个用暴力、一个用二分，写法完全不同，但两边问的都是「第一个严格大于 <code>x</code> 的位置」。拿去对拍：</p>
+
+  <pre data-lang="text"><code>2000 次里不一致的次数: 0 -&gt; 全部通过</code></pre>
+
+  <p>2000 次全部通过。而真正的答案要求「不小于」：</p>
+
+  <pre data-lang="text"><code>a=[1, 3, 5] x=3:  两边给 2   真实答案 1
+a=[2, 5, 8, 9] x=9:  两边给 4   真实答案 3
+a=[1, 1, 1] x=1:  两边给 3   真实答案 0</code></pre>
+
+  <p>三组全错。<b>对拍说没问题，实际上两边一起错。</b> 这也正是「参考解要写得简单到一眼能看出对不对」的原因：复杂到看不出对错的参照解，对拍的全部结论都不可信。</p>
+
+  <div class="lesson-warn">
+    <b>对拍通过只说明两版一致</b>
+    <p>它说明不了任何一版是对的。补上这一条的办法有两个：一是拿<b>手算过的小样例</b>（三五个元素那种）钉住答案，二是把参照解写得足够笨——笨到能一眼看出它确实在回答问题。</p>
+  </div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "对拍报了大量不一致，改了半天候选解还是不一致。最该先查什么？",
+    "opts": [
+      "先单独验一遍参照解，拿手算的小样例对一下",
+      "候选解的数据结构选错了，换成集合重写",
+      "对拍的轮次太少，把两千次加到两万次",
+      "随机种子没固定，换个种子重跑一次看看"
+    ],
+    "ans": 0,
+    "why": "参照解写错时，对拍的两边都在错，报出的不一致并不能指向候选解。实测两边都问「严格大于」时，对拍跑两千次全部通过，而真正的答案要求「不小于」，三组数据全错。先用手算的小样例钉住参照解，再拿它对拍。"
+  }
+]'></div>
+
+  <h2>种子与复现</h2>
+
+  <p>对拍脚本里如果用了随机数，就必须能复现。看三行输出：</p>
+
+  <pre data-lang="text"><code>seed=1: 第 2 次抓到 a=[63, 97] x=97
+seed=1: 第 2 次抓到 a=[63, 97] x=97
+seed=2: 第 1 次抓到 a=[11] x=11
+不设种子那一次: 第 1 次抓到 a=[21, 32, 39, 77, 85, 94] x=32</code></pre>
+
+  <p>同一个 <code>seed</code> 连着跑两次，抓到的是<b>同一组</b>数据；换个种子就换一组；不设种子则每次都不同。</p>
+
+  <p>为什么非要固定种子？因为抓到反例之后你要做的是改代码、再跑一遍确认修好了。不固定种子的话，第二遍跑的是另一批随机数据，它可能根本不碰那个已经修好的位置——于是「改完就通过了」这件事什么都没证明。固定种子之后，同一个反例每次都重现：修之前必挂，修之后必过。</p>
+
+  <div class="lesson-warn">
+    <b>不设种子的对拍脚本没法当证据</b>
+    <p>它的结论只在「刚才那一次运行的随机序列」上成立，别人（包括几小时之后的你）重跑一遍可能得到另一个结果。把 <code>seed</code> 写进脚本、也写进记录里，反例才是可复现的证据。</p>
+  </div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "对拍脚本里不固定随机种子，会带来什么麻烦？",
+    "opts": [
+      "抓到的那组反例没法重现，改完也证明不了",
+      "对拍会跑得慢一些，因为随机数要重新生成",
+      "候选解的结果会随种子变化，答案变得不稳定",
+      "参照解与候选解会用到不同的随机序列"
+    ],
+    "ans": 0,
+    "why": "不固定种子时，第二遍跑的是另一批随机数据，可能根本不碰那个已经修好的位置，于是「改完就通过了」什么都没证明。实测同一个种子两次抓到同一组数据，不设种子那一次就换了一组。种子要写进脚本，也写进记录。"
+  }
+]'></div>
+
+  <h2>怎么算过</h2>
+
+  <p><code>run_tests.py</code> 按四层判：</p>
+
+  <table>
+    <thead>
+      <tr><th>层</th><th>查什么</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>第 1 层</td><td><code>brute_find</code> 在几组已知数据上给出正确下标</td></tr>
+      <tr><td>第 2 层</td><td><code>stress</code> 拿同一个函数当候选与参照时，跑若干次都交回 <code>None</code>（没有自己骗自己）</td></tr>
+      <tr><td>第 3 层</td><td><code>stress</code> 对拍 <code>buggy.py</code> 时能抓到，而且同一个 <code>seed</code> 两次抓到同一组</td></tr>
+      <tr><td>第 4 层</td><td><code>shrink</code> 的结果仍然让两边不一致，且再也缩不动；<code>findings.md</code> 里记的最小反例与判分算出的相同</td></tr>
+    </tbody>
+  </table>
+
+  <p>退出码：四层都过是 0，还有没过的（或跳过的）是 1。</p>
+
+  <p>第 2 层值得解释一句：拿<b>同一个函数</b>同时当候选与参照，对拍必须一次都抓不到。这一层专门抓「<code>stress</code> 根本没在比对」这类问题——比如漏了 <code>if got != want</code> 那一行，或者把两个结果写反了。</p>
+
+  <h2>怎么跑</h2>
+
+  <pre data-lang="sh"><code>py stress.py            # 手动跑一次，看抓到什么
+py run_tests.py         # 交判分</code></pre>
+
+  <p><code>py stress.py</code> 直接输出抓到的反例、最小化结果与 <code>findings.md</code> 该写的内容，对着抄进去即可。</p>
+
+  <div class="lesson-practice">
+    <div class="lesson-practice__head">
+      <span class="lesson-practice__level">上手做</span>
+      <span class="lesson-practice__title">五个任务按这个顺序做</span>
+    </div>
+
+      <p><b>第 1 步 · 写参照解。</b> 在 <code>stress.py</code> 里补 <code>brute_find(a, x)</code>：从头到尾扫一遍，找到就交回下标，扫完没有就交回 <code>-1</code>。写完拿三组小手算的数据验一遍（空数组、一个元素、两个元素）。</p>
+
+      <p><b>第 2 步 · 写两个造数据器。</b> <code>gen_wide()</code> 造宽范围随机的数据，返回 <code>(a, x)</code>，<code>a</code> 要<b>升序</b>（候选解是二分，无序的数据会让它给出无意义的答案）。<code>gen_boundary()</code> 专门造边界形态：空数组、单元素、全相同、答案在左右两端，各占一部分，别只写其中一种。</p>
+
+      <p><b>第 3 步 · 写比对循环。</b> <code>stress(candidate, reference, gen, trials, seed=None)</code>：设种子、循环 <code>trials</code> 次、每次造数据跑两边、不一致就把「第几次 + 那组数据 + 两个答案」一起交回，全一致交回 <code>None</code>。写完先用「同一个函数同时当候选与参照」跑一次 <code>trials=2000</code>，必须是 <code>None</code>。</p>
+
+      <p><b>第 4 步 · 写反例最小化。</b> <code>shrink(candidate, reference, a, x)</code>：反复试着删掉一个元素，只要还能让两边不一致就接受。写完在抓到的那组反例上跑一次，看它缩到多小。</p>
+
+      <p><b>第 5 步 · 用它对拍 <code>buggy.py</code> 并把记录写出来。</b> 跑 <code>py stress.py</code>，把三样东西写进 <code>findings.md</code>：原始反例、最小化后的反例、<code>buggy.py</code> 里哪一行导致了它。最后 <code>py run_tests.py</code>，哪一层没过就回哪一步。</p>
+  </div>
+
+  <h2>自查清单</h2>
+
+  <ul>
+    <li><code>brute_find</code> 在空数组、单元素、目标不存在这三种输入上给出的是 <code>-1</code> 吗？</li>
+    <li><code>gen_wide</code> 交回的 <code>a</code> 是<b>升序</b>的吗？<code>gen_boundary</code> 是不是真的造了空数组与单元素，而不只是换个值域？</li>
+    <li><code>stress</code> 拿同一个函数当候选与参照跑 2000 次，交回的是 <code>None</code> 吗？</li>
+    <li>同一个 <code>seed</code> 连着跑两次，抓到的是同一组数据吗？</li>
+    <li><code>shrink</code> 之后那组数据，跑一遍两边还是不一致吗？再试着删掉一个元素，还缩得动吗？</li>
+    <li><code>findings.md</code> 里那三样东西都写了吗？（原始反例、最小反例、出错的那一行）</li>
+    <li>三个任务的函数体里有没有留下的调试 <code>print</code>？标准输出应当只有脚本要求的那几行。</li>
+    <li><code>py run_tests.py</code> 是不是四层全过、退出码 0？</li>
+  </ul>
+
+  <h2>最可能卡在哪</h2>
+
+  <p><b>坑一：参照解自己就写错了。</b> 表现是：对拍报了一堆不一致，改了半天候选解还是不一致。原因是参照解写错时，对拍的两边都在错。<b>先单独验参照解</b>：拿三组手算过的小数据（空、一个元素、两个元素）跑它，答案对得上再拿它对拍。</p>
+
+  <p><b>坑二：只对拍一组数据就收工。</b> 表现是：跑一次 <code>trials=10</code>，看到 <code>None</code> 就认为候选解是对的。这一课的数据摆在那儿：同一个 bug，有的方案第 1 次就中，有的要到第 398 次。次数要足够多（几千次），方案要覆盖边界形态。</p>
+
+  <p><b>坑三：没固定随机种子。</b> 表现是：把 <code>seed</code> 留成 <code>None</code> 或者每次跑都换一个数，于是反例记不下来——写完 <code>findings.md</code> 再跑一遍，抓到的是另一组数据，判分第 3 层直接不过。</p>
+
+  <p><b>坑四：造了无序的数据。</b> 表现是：对拍报了大量不一致，而那组数据本来就不合法（候选解是二分，前提是有序）。生成器里排一次序，或者用 <code>sorted(...)</code> 包一层。</p>
+
+  <p>按经验，卡住的地方通常是这几个（按出现频率排）：</p>
+
+  <table>
+    <thead>
+      <tr><th>现象或报错</th><th>一般缺哪一步</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>stress</code> 抛出 <code>TypeError: 'NoneType' object is not subscriptable</code></td><td>函数还空着，交回 <code>None</code>；先写第 1、2、3 步</td></tr>
+      <tr><td>第 2 层「同一个函数当两边也报不一致」</td><td><code>stress</code> 里的比对条件写反了，或者漏了 <code>if got != want</code></td></tr>
+      <tr><td>第 3 层「5000 次一次都没抓到」</td><td><code>gen_wide</code> 的 <code>x</code> 是宽范围随机的，落在数组里的概率太低；用 <code>gen_boundary</code>，或让 <code>x</code> 取自数组元素</td></tr>
+      <tr><td>第 3 层「两次的 seed 抓到不同数据」</td><td><code>random.seed(seed)</code> 写在循环里了，或者只在 <code>seed is not None</code> 之外没设</td></tr>
+      <tr><td>第 4 层「缩不动但两边一致了」</td><td><code>shrink</code> 接受了一个让两边重新一致的版本；每次接受之前要再比一次</td></tr>
+      <tr><td>对拍报的不一致里有一堆「候选 -1、参照 -1」</td><td>比对条件写成了 <code>is not None</code> 之类；要比的是两个答案本身</td></tr>
+      <tr><td><code>IndexError</code> 出现在 <code>gen_wide</code> 里</td><td><code>random.sample(range(100), n)</code> 当 <code>n</code> 大于 100 时报错；把 <code>n</code> 的上限压到远小于值域宽度</td></tr>
+    </tbody>
+  </table>
+
+  <h2>卡壳顺序</h2>
+
+  <p>按这五步来，别一上来就问：</p>
+
+  <ol>
+    <li><b>读错误信息。</b> 判分脚本会把它跑出来的报错最后几行贴出来并指到那一行；<code>TypeError</code> 与 <code>IndexError</code> 往往直接说明是哪个函数还空着。</li>
+    <li><b>自己跑一遍。</b> <code>py stress.py</code> 单独跑，看它到底交回了什么：交回 <code>None</code> 是没抓到，抛异常是函数没接上。</li>
+    <li><b>看 FAIL 行。</b> 每一行 FAIL 后面写了期望、实际，以及「这一层指向哪一段」。</li>
+    <li><b>再对线索。</b> 抓不到 → 造数据器没踩中触发条件；两次种子结果不同 → 种子没设对；缩完两边一致了 → <code>shrink</code> 接受条件写松了。</li>
+    <li><b>对照参考解。</b> 四层都过了再打开 <a href="../lab/solutions/">lab/solutions/</a> 比一比——重点比「造数据器覆盖了哪些形态」和「<code>stress</code> 的返回值设计」，不是比谁的代码短。</li>
+  </ol>
+
+  <h2>做完之后</h2>
+
+  <p>这份对拍器是「AI 刷题助手」里验证环节的原型。它接下来会被用在三处：第 27 课（给新解法对拍出反例）、第 30 课（交卷前的自检）、第 33 课（综合实战里自动挑出候选解里错的那一版）。</p>
+
+  <p>交完之后用一句话回答：<b>这次对拍里，是哪一个数据形态让 <code>buggy.py</code> 暴露出来的？</b></p>
+
+  <ul class="lesson-resources">
+    <li><a href="https://docs.python.org/zh-cn/3/library/random.html">Python 官方文档 · random</a><span class="lesson-resources__meta"><code>seed</code> 固定随机序列、<code>randint</code> 与 <code>sample</code> 的区间口径、<code>choice</code></span></li>
+    <li><a href="https://docs.python.org/zh-cn/3/library/bisect.html">Python 官方文档 · bisect</a><span class="lesson-resources__meta">裁决「参照解与候选解谁错」时的第三方依据：<code>bisect_left</code> 给出标准答案</span></li>
+    <li>lab 说明 lab/README.md<span class="lesson-resources__meta">载体与环境依赖、任务表、写法边界、卡壳顺序（先读这一份）</span></li>
+  </ul>
+
+  <!-- ── 提问提示：固定写法，别删 ── -->
+
+  <div class="lesson-ask">
+    <b>没看懂？随时问</b>
+    把看不懂的段落（或报错）原样复制回会话，说一句哪里不懂就行，我只解释这一段，不打断你的进度。
+  </div>
+
+  <!-- ── 上/下节课指针由渲染器按 curriculum.yaml 的 nodes 顺序算（第一课无 --prev、最后一课无 --next） ── -->
+
+  <nav class="lesson-nav" aria-label="上一课 / 下一课">
+    <a class="lesson-nav__link lesson-nav__link--prev" href="0014-binary-search.html">
+      <span class="lesson-nav__dir">上节课</span>
+      <span class="lesson-nav__title">二分：每次砍掉一半</span>
+    </a>
+    <a class="lesson-nav__link lesson-nav__link--next" href="0016-hash-table.html">
+      <span class="lesson-nav__dir">下节课</span>
+      <span class="lesson-nav__title">为什么字典查得那么快</span>
+    </a>
+  </nav>
+
+  <footer class="lesson-footer">
+    StudyMate · 0015 实验二：给解法装上对拍器 · 本地学习工作区
+  </footer>
+
+</article>
+
+<script src="../../../assets/sayo/sayo.js"></script>
+
+<script src="../assets/quiz.js" defer></script>
+<script src="../assets/lesson-toc.js" defer></script>
+<script>LearnTheme.wire(document.getElementById('lesson-theme-checkbox'));</script>
+</body>
+</html>

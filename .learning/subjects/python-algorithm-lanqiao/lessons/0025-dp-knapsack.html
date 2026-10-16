@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>背包：选与不选 · Python 算法与蓝桥杯</title>
+
+<!-- 共享层在 .learning/assets/，课件在 .learning/subjects/<slug>/lessons/ 下，所以是 ../../../assets/ -->
+<link rel="stylesheet" href="../../../assets/sayo/sayo.css">
+<link rel="stylesheet" href="../../../assets/learn-theme.css">
+<link rel="stylesheet" href="../assets/style.css">
+
+<!-- 主题要在首帧前应用，避免闪白/闪黑 -->
+<script src="../../../assets/learn-theme.js"></script>
+<script>LearnTheme.apply();</script>
+</head>
+
+<body class="lesson-body">
+
+<nav class="lesson-bar">
+  <a href="../index.html">← 返回课程</a>
+  <span>Python 算法与蓝桥杯</span>
+  <span class="lesson-bar__no">0025</span>
+  <!-- 课件页自带主题开关：学生从文件管理器直接打开课件时也能切暗色 -->
+  <label class="syo-toggle syo-toggle--theme lesson-bar__toggle" title="切换深浅主题" aria-label="切换深浅主题">
+    <input type="checkbox" id="lesson-theme-checkbox" checked>
+    <span class="syo-toggle-track"></span>
+    <span class="syo-toggle-knob">
+      <svg class="syo-toggle-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.5" stroke="#f57c00" stroke-width="1.5"/><path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.34 4.34l1.77 1.77M13.89 13.89l1.77 1.77M4.34 15.66l1.77-1.77M13.89 6.11l1.77-1.77" stroke="#f57c00" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <svg class="syo-toggle-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.5 12.5A6 6 0 019 4.5a6 6 0 007.5 8z" stroke="#5c6bc0" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </span>
+  </label>
+</nav>
+
+<article class="lesson">
+
+  <header class="lesson-header">
+    <span class="lesson-header__eyebrow">0025 · 背包：选与不选</span>
+    <h1>背包：选与不选</h1>
+    <p class="lesson-goal"><b>本节目标：</b>能手写 0/1 背包与完全背包，并说清内层循环的方向为什么一个逆序、一个正序。</p>
+  </header>
+
+  <!-- ── 正文：渲染器按内容文件（lessons/<序号>-<节点id>.md）产出，块词汇见 docs/规范/课件内容格式.md ── -->
+
+  <h2>从选与不选说起</h2>
+
+  <p>背包问题的骨架只有一句话：<b>每一件物品，要么拿，要么不拿。</b> 拿了就占掉它的重量、换来它的价值；不拿就什么都不占。</p>
+
+  <p>给定几件物品，每件有重量和价值，再给一个容量上限，问<b>能装下的最大总价值</b>是多少。</p>
+
+  <p>先写一个绝对正确的版本：<b>把所有子集都枚举一遍</b>。它慢，但它是后面一切写法的裁判。</p>
+
+  <pre data-lang="python"><code>def brute01(w, v, C):
+    """枚举所有子集——0/1 背包的标准答案，物品少的时候才能用。"""
+    best = 0
+    n = len(w)
+    for mask in range(1 &lt;&lt; n):
+        tw = tv = 0
+        for i in range(n):
+            if mask &gt;&gt; i &amp; 1:
+                tw += w[i]
+                tv += v[i]
+        if tw &lt;= C and tv &gt; best:
+            best = tv
+    return best
+
+
+def knap01_2d(w, v, C):
+    """0/1 背包 · 二维：dp[i][c] = 只看前 i 件、容量 c 的最大价值。"""
+    n = len(w)
+    dp = [[0] * (C + 1) for _ in range(n + 1)]
+    for i in range(1, n + 1):
+        for c in range(C + 1):
+            dp[i][c] = dp[i - 1][c]                     # 不拿第 i 件
+            if c &gt;= w[i - 1]:
+                dp[i][c] = max(dp[i][c], dp[i - 1][c - w[i - 1]] + v[i - 1])   # 拿
+    return dp[n][C]
+
+
+def knap01_1d_rev(w, v, C):
+    """0/1 背包 · 一维滚动数组 · 内层逆序（对）。"""
+    dp = [0] * (C + 1)
+    for i in range(len(w)):
+        for c in range(C, w[i] - 1, -1):
+            dp[c] = max(dp[c], dp[c - w[i]] + v[i])
+    return dp[C]
+
+
+W = [2, 3, 4, 5]
+V = [3, 4, 5, 6]
+C = 8
+print(f'   物品 (重量, 价值): {list(zip(W, V))}    容量 {C}')
+print(f'   二维                  : {knap01_2d(W, V, C)}')
+print(f'   一维 · 内层逆序（对）   : {knap01_1d_rev(W, V, C)}')
+print(f'   枚举所有子集          : {brute01(W, V, C)}')</code></pre>
+
+  <pre data-lang="text"><code>   物品 (重量, 价值): [(2, 3), (3, 4), (4, 5), (5, 6)]    容量 8
+   二维                  : 10
+   一维 · 内层逆序（对）   : 10
+   枚举所有子集          : 10</code></pre>
+
+  <p>三种写法答案一致：<b>10</b>（拿重量 3 和重量 5 那两件，价值 4 + 6）。容量刚好用满。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "0/1 背包的状态转移在比较哪两种选择？",
+    "opts": [
+      "不拿第 i 件，和拿第 i 件，取价值大的",
+      "拿最重的一件，和拿最值钱的一件，取大的",
+      "装满容量，和不装满容量，取价值大的那个",
+      "从头开始拿，和从尾开始拿，谁的价值更大"
+    ],
+    "ans": 0,
+    "why": "dp[i][c] 是「只看前 i 件、容量上限 c 的最大价值」。每一件只有拿与不拿两种可能：不拿就是 dp[i-1][c]（答案跟前 i-1 件一样），拿就是 dp[i-1][c-w] 加 v。背包的全部骨架就在这两支上。"
+  }
+]'></div>
+
+  <h2>二维写法</h2>
+
+  <p><code>dp[i][c]</code> 读作「<b>只看前 <span class="math-inline">i</span> 件物品、容量上限是 <span class="math-inline">c</span> 时，能拿到的最大价值</b>」。这个定义里有两个「只看」，都要说清：</p>
+
+  <ul>
+    <li>只看<b>前 <span class="math-inline">i</span> 件</b>——第 <span class="math-inline">i+1</span> 件之后的一概不考虑；</li>
+    <li>容量上限<b>是 <span class="math-inline">c</span></b>——不是「正好用掉 <span class="math-inline">c</span>」。</li>
+  </ul>
+
+  <p>转移就是这几行：</p>
+
+  <pre data-lang="python"><code>def knap01_fill(dp, i, c, w, v):
+    """填 dp 的第 i 行第 c 格。"""
+    dp[i][c] = dp[i - 1][c]                            # 不拿第 i 件：答案跟前 i-1 件一样
+    if c &gt;= w[i - 1]:
+        dp[i][c] = max(dp[i][c],
+                       dp[i - 1][c - w[i - 1]] + v[i - 1])   # 拿：腾出容量，价值加 v[i-1]
+    return dp[i][c]</code></pre>
+
+  <p>第二行是背包的灵魂：<b>拿第 <span class="math-inline">i</span> 件之后，剩下要解决的问题正好是「只看前 <span class="math-inline">i-1</span> 件、容量 <span class="math-inline">c - w_{i-1}</span>」</b>——规模变小了，而且形状不变。这就是上一课说的最优子结构。</p>
+
+  <p>注意拿的那一支查的是 <code>dp[i-1]</code>，<b>不是 <code>dp[i]</code></b>。这个下标就是下一节一切差别的源头。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "拿第 i 件时，为什么要查 dp[i-1] 而不是 dp[i]？",
+    "opts": [
+      "每件只有一件，拿完就得回到「还没考虑它」",
+      "dp[i] 那一行还没算出来，查了会读到空值",
+      "dp[i] 存的是最小值，查它会得到偏小的数",
+      "查 dp[i] 要多算一次，时间复杂度会翻倍"
+    ],
+    "ans": 0,
+    "why": "拿掉第 i 件之后，剩下要解决的问题是「只看前 i-1 件、容量 c-w」。查 dp[i] 等于允许第 i 件再被拿一次——那就变成了完全背包。这个下标就是后面内层循环方向的源头：逆序保证读到的是没被本轮更新过的 dp[c-w]。"
+  }
+]'></div>
+
+  <h2>压成一维：滚动数组</h2>
+
+  <p>二维表有 <span class="math-inline">(n+1) \times (C+1)</span> 格，但算第 <span class="math-inline">i</span> 行时只用到第 <span class="math-inline">i-1</span> 行。<b>于是可以只用一行，反复覆盖它自己。</b></p>
+
+  <pre data-lang="python"><code>dp = [0] * (C + 1)
+for i in range(len(W)):
+    for c in range(C, W[i] - 1, -1):     # 从大到小
+        dp[c] = max(dp[c], dp[c - W[i]] + V[i])</code></pre>
+
+  <p><code>dp[c]</code> 在赋值前是「前 <span class="math-inline">i-1</span> 件的结果」，赋值后是「前 <span class="math-inline">i</span> 件的结果」——同一格身兼两职。</p>
+
+  <p>代价是<b>必须从大到小遍历容量</b>。为什么？看下一节。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "一维滚动数组里，同一个 dp[c] 在赋值前后分别代表什么？",
+    "opts": [
+      "赋值前是前 i-1 件的结果，赋值后是前 i 件",
+      "赋值前是「不超过」，赋值后是「恰好装满」的",
+      "赋值前是这一轮的旧值，赋值后是下一轮的初值",
+      "赋值前是没拿第 i 件，赋值后是不拿第 i 件"
+    ],
+    "ans": 0,
+    "why": "一维写法把二维表压成一行，反复覆盖它自己。所以同一格在赋值前装的是「前 i-1 件的结果」，赋值后变成「前 i 件的结果」。正因为身兼两职，遍历容量的方向决定了你读到的是旧值还是新值——方向一错，同一件物品就被拿了多次。"
+  }
+]'></div>
+
+  <h2>内层循环的方向</h2>
+
+  <p>把上面那个循环的方向改成正序，其他一个字都不动：</p>
+
+  <pre data-lang="python"><code>def knap01_1d_fwd(w, v, C):
+    """0/1 背包 · 一维 · 内层正序（错：同一件物品会被重复选）。"""
+    dp = [0] * (C + 1)
+    for i in range(len(w)):
+        for c in range(w[i], C + 1):
+            dp[c] = max(dp[c], dp[c - w[i]] + v[i])
+    return dp[C]
+
+
+def knap_complete(w, v, C):
+    """完全背包 · 一维 · 内层正序（对：每件物品可以拿任意多件）。"""
+    dp = [0] * (C + 1)
+    for i in range(len(w)):
+        for c in range(w[i], C + 1):
+            dp[c] = max(dp[c], dp[c - w[i]] + v[i])
+    return dp[C]
+
+
+for C2 in (6, 8, 10, 12):
+    print(f'   容量 {C2:&gt;2}: 逆序 {knap01_1d_rev(W, V, C2):&gt;3}'
+          f'   正序 {knap01_1d_fwd(W, V, C2):&gt;3}'
+          f'   枚举 {brute01(W, V, C2):&gt;3}'
+          f'   正序 == 完全背包? {knap01_1d_fwd(W, V, C2) == knap_complete(W, V, C2)}')</code></pre>
+
+  <pre data-lang="text"><code>   容量  6: 逆序   8   正序   9   枚举   8   正序 == 完全背包? True
+   容量  8: 逆序  10   正序  12   枚举  10   正序 == 完全背包? True
+   容量 10: 逆序  13   正序  15   枚举  13   正序 == 完全背包? True
+   容量 12: 逆序  15   正序  18   枚举  15   正序 == 完全背包? True</code></pre>
+
+  <p><b>正序版本的答案和完全背包一模一样，而且都比枚举出来的正确答案大。</b> 它错得很有规律。</p>
+
+  <p>原因在「一格身兼两职」这件事上。正序遍历时，算 <code>dp[c]</code> 用到的 <code>dp[c - w[i]]</code> <b>在本轮已经被更新过了</b>——也就是说那一格已经是「前 <span class="math-inline">i</span> 件」的结果，可能<b>已经拿过第 <span class="math-inline">i</span> 件</b>。于是同一件物品被拿了第二次、第三次。</p>
+
+  <p>容量 6、物品 1 是（重量 2，价值 3）：正序等于把它拿了三次（2+2+2），价值 9。可 0/1 背包里<b>它只有一件</b>。</p>
+
+  <p>逆序就没有这个问题：算 <code>dp[c]</code> 时 <code>dp[c - w[i]]</code> 的下标更小，<b>逆序还没走到那儿</b>，所以它一定还是「前 <span class="math-inline">i-1</span> 件」的结果——没有拿过第 <span class="math-inline">i</span> 件。</p>
+
+  <p>一句话记住：<b>同一件物品能不能被重复选，决定了内层循环的方向。</b></p>
+
+  <table>
+    <thead>
+      <tr><th></th><th>0/1 背包（每件只有一件）</th><th>完全背包（每件可以拿任意多）</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>内层容量循环</td><td><b>逆序</b>（从 C 到 w[i]）</td><td><b>正序</b>（从 w[i] 到 C）</td></tr>
+      <tr><td>正向读到的 dp[c-w[i]]</td><td>上一件物品时的结果</td><td>本轮已更新过的结果</td></tr>
+      <tr><td>含义</td><td>这件物品还没被拿过</td><td>这件物品已经可以再拿一次</td></tr>
+    </tbody>
+  </table>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "0/1 背包的内层容量循环写成正序，答案会怎样？",
+    "opts": [
+      "偏大，而且恰好等于完全背包的答案",
+      "偏小，因为排序之后有些物品被漏掉",
+      "不变，正序和逆序算出来完全一样",
+      "偏大，因为数组下标越界读到了脏数据"
+    ],
+    "ans": 0,
+    "why": "正序遍历时，算 dp[c] 用到的 dp[c-w] 在本轮已经被更新过，可能已经拿过第 i 件，于是同一件被拿了第二次、第三次。实测四个容量上「正序 == 完全背包」全部为真，而两者都比枚举出的正确答案大。容量 6、物品（重量 2，价值 3）时，正序等于把它拿了三次，可 0/1 背包里它只有一件。"
+  }
+]'></div>
+
+  <h2>完全背包：正序就是答案</h2>
+
+  <p>完全背包允许每件物品拿任意多件，所以<b>正序就是对的</b>。上一节已经看到：同一段代码在 0/1 背包里是错的，在这里是对的。</p>
+
+  <p>拿它跟「按容量从小到大逐个推」的写法对拍：</p>
+
+  <pre data-lang="python"><code>def brute_complete(w, v, C):
+    """完全背包的参照实现：按容量从小到大推。"""
+    dp = [0] * (C + 1)
+    for c in range(1, C + 1):
+        for i in range(len(w)):
+            if w[i] &lt;= c:
+                dp[c] = max(dp[c], dp[c - w[i]] + v[i])
+    return dp[c]
+
+
+import random
+random.seed(11)
+bad_c = 0
+for _ in range(300):
+    n = random.randint(1, 5)
+    ws = [random.randint(1, 8) for _ in range(n)]
+    vs = [random.randint(1, 15) for _ in range(n)]
+    cc = random.randint(1, 25)
+    if knap_complete(ws, vs, cc) != brute_complete(ws, vs, cc):
+        bad_c += 1
+print(f'   300 组随机数据上，完全背包（正序）与逐容量递推不一致的有 {bad_c} 组')
+W3 = [2, 3, 4]
+V3 = [3, 4, 5]
+print(f'   小例子 重量 {W3} 价值 {V3}：')
+for C4 in (4, 6, 8, 10, 12):
+    print(f'      容量 {C4:&gt;2}: 0/1 背包 {knap01_1d_rev(W3, V3, C4):&gt;3}'
+          f'   完全背包 {knap_complete(W3, V3, C4):&gt;3}'
+          f'   枚举(0/1) {brute01(W3, V3, C4):&gt;3}')</code></pre>
+
+  <pre data-lang="text"><code>   300 组随机数据上，完全背包（正序）与逐容量递推不一致的有 0 组
+   小例子 重量 [2, 3, 4] 价值 [3, 4, 5]：
+      容量  4: 0/1 背包   5   完全背包   6   枚举(0/1)   5
+      容量  6: 0/1 背包   8   完全背包   9   枚举(0/1)   8
+      容量  8: 0/1 背包   9   完全背包  12   枚举(0/1)   9
+      容量 10: 0/1 背包  12   完全背包  15   枚举(0/1)  12
+      容量 12: 0/1 背包  12   完全背包  18   枚举(0/1)  12</code></pre>
+
+  <p>完全背包的答案<b>永远不小于</b> 0/1 背包——可选的方案多了（允许重复拿），最大值只会更大或不变。容量 8 时它给 12，是把（重量 4，价值 5）拿了两次；0/1 背包里那件只有一件，只能给 9。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "完全背包为什么内层用正序就对了？",
+    "opts": [
+      "正序读到 dp[c-w] 已更新，可以再拿一次",
+      "正序让物品按重量从小到大排好，选起来更省事",
+      "正序能保证每一件物品都至少会被选中一次",
+      "正序让容量从 0 开始算起，边界条件更简单"
+    ],
+    "ans": 0,
+    "why": "完全背包允许每件拿任意多件，所以「正序读到的 dp[c-w] 是已更新值」从缺陷变成了功能——它正好表示「这件物品还可以再拿一次」。同一段代码在 0/1 背包里是错的、在这里是对的，差别只有「同一件能不能重复选」这一句话。"
+  }
+]'></div>
+
+  <h2>恰好装满与不超过</h2>
+
+  <p>前面所有写法回答的都是「<b>不超过</b>容量 C 的最大价值」。还有一问：<b>恰好装满容量 C</b> 的最大价值是多少？（有时无解。）</p>
+
+  <p>两者代码只差<b>初始化</b>：</p>
+
+  <pre data-lang="python"><code>NEG = float('-inf')
+
+
+def knap01_exact(w, v, C):
+    """恰好装满：只把 dp[0] 设 0，其余全是负无穷。"""
+    dp = [NEG] * (C + 1)
+    dp[0] = 0
+    for i in range(len(w)):
+        for c in range(C, w[i] - 1, -1):
+            if dp[c - w[i]] != NEG:
+                dp[c] = max(dp[c], dp[c - w[i]] + v[i])
+    return dp[C]
+
+
+def knap01_exact_badinit(w, v, C):
+    """恰好装满，但初始化照「不超过」那版写成了全 0。"""
+    dp = [0] * (C + 1)
+    for i in range(len(w)):
+        for c in range(C, w[i] - 1, -1):
+            dp[c] = max(dp[c], dp[c - w[i]] + v[i])
+    return dp[C]
+
+
+W2 = [3, 5, 7]
+V2 = [3, 5, 7]
+print(f'   物品 (重量, 价值): {list(zip(W2, V2))}（价值 = 重量，所以「装满多少」就是价值）')
+print('   容量   恰好装满   初始化写成全 0   这个容量能恰好凑出来吗')
+for C3 in range(1, 16):
+    ex = knap01_exact(W2, V2, C3)
+    bd = knap01_exact_badinit(W2, V2, C3)
+    print(f'   {C3:&gt;4}   {str(ex):&gt;8}   {bd:&gt;15}   {"能" if ex != NEG else "不能"}')</code></pre>
+
+  <pre data-lang="text"><code>   物品 (重量, 价值): [(3, 3), (5, 5), (7, 7)]（价值 = 重量，所以「装满多少」就是价值）
+   容量   恰好装满   初始化写成全 0   这个容量能恰好凑出来吗
+      1       -inf                 0   不能
+      2       -inf                 0   不能
+      3          3                 3   能
+      4       -inf                 3   不能
+      5          5                 5   能
+      6       -inf                 5   不能
+      7          7                 7   能
+      8          8                 8   能
+      9       -inf                 8   不能
+     10         10                10   能
+     11       -inf                10   不能
+     12         12                12   能
+     13       -inf                12   不能
+     14       -inf                12   不能
+     15         15                15   能</code></pre>
+
+  <p>重量 3、5、7 能凑出的数只有 0、3、5、7、8、10、12、14、15……，<b>容量 1、2、4、6、9、11、13 根本凑不出来</b>，正确答案是「无解」。</p>
+
+  <p>初始化写成全 0 之后，它在这些容量上交回的是 <b><code>不超过</code> 的答案</b>（比如容量 11 给 10）——一个看着很正常、也确实是某个问题的答案的数，只是<b>回答的不是你问的那个问题</b>。</p>
+
+  <p>为什么 <code>-inf</code> 能挡住？因为 <code>dp[c - w]</code> 是 <code>-inf</code> 时，<code>-inf + v</code> 还是 <code>-inf</code>，<b>比 <code>-inf</code> 不大</b>，那一格就不会被填上。没填上就等于「这个容量凑不出来」。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "「恰好装满」的非法状态没设成负无穷，会怎样？",
+    "opts": [
+      "它会悄悄交回「不超过」的答案，答非所问",
+      "程序会报下标越界，一眼就能看出写错了",
+      "答案会偏小，因为负无穷那一格没被填上",
+      "两种初始化算出来的答案其实完全一样"
+    ],
+    "ans": 0,
+    "why": "恰好装满要只把 dp[0] 设 0、其余全设 -inf；因为 -inf + v 仍是 -inf、永远比 -inf 不大，那一格就填不上，等于「这个容量凑不出来」。初始化写成全 0 之后，重量 3、5、7 时容量 11 会交回 10——那是「不超过」的答案，正常、合法、但回答的不是你问的问题。"
+  }
+]'></div>
+
+  <h2>小数据对拍</h2>
+
+  <p>背包的写法变体多，靠读代码看不出对错。<b>对拍</b>是最省事的办法：小数据上枚举所有子集，跟你的写法逐组比。</p>
+
+  <pre data-lang="python"><code>import random
+random.seed(5)
+bad_rev = bad_fwd = 0
+trials = 400
+for _ in range(trials):
+    n = random.randint(1, 8)
+    ws = [random.randint(1, 9) for _ in range(n)]
+    vs = [random.randint(1, 20) for _ in range(n)]
+    cc = random.randint(1, 20)
+    want = brute01(ws, vs, cc)
+    if knap01_1d_rev(ws, vs, cc) != want:
+        bad_rev += 1
+    if knap01_1d_fwd(ws, vs, cc) != want:
+        bad_fwd += 1
+print(f'   {trials} 组随机数据（n≤8、容量≤20）：')
+print(f'      内层逆序与枚举不一致的有 {bad_rev} 组')
+print(f'      内层正序与枚举不一致的有 {bad_fwd} 组')
+
+rng = random.Random(5)
+first = None
+for _ in range(4000):
+    n = rng.randint(1, 8)
+    ws = [rng.randint(1, 9) for _ in range(n)]
+    vs = [rng.randint(1, 20) for _ in range(n)]
+    cc = rng.randint(1, 20)
+    if knap01_1d_fwd(ws, vs, cc) != brute01(ws, vs, cc):
+        first = (ws, vs, cc, brute01(ws, vs, cc), knap01_1d_fwd(ws, vs, cc))
+        break
+if first:
+    ws, vs, cc, want, got = first
+    print(f'   揪出一组：重量 {ws}、价值 {vs}、容量 {cc}')
+    print(f'      逆序给 {knap01_1d_rev(ws, vs, cc)}、正序给 {got}、枚举给 {want}')</code></pre>
+
+  <pre data-lang="text"><code>   400 组随机数据（n≤8、容量≤20）：
+      内层逆序与枚举不一致的有 0 组
+      内层正序与枚举不一致的有 297 组
+   揪出一组：重量 [6, 9, 1, 8, 4]、价值 [2, 6, 4, 12, 16]、容量 8
+      逆序给 20、正序给 32、枚举给 20</code></pre>
+
+  <p><b>逆序 0 组错，正序 297 组错</b>——400 组里错了四分之三。注意它错的方式：<b>答案总是偏大</b>。背包问题里「偏大」就是铁证，因为一个偏大的答案意味着<b>某种你其实没有的资源被用掉了</b>（这里是同一件物品被拿了多次）。</p>
+
+  <p>对拍的三个要点：</p>
+
+  <ol>
+    <li><b>数据要小</b>，小到能枚举（这里 <span class="math-inline">n \le 8</span>，<span class="math-inline">2^8 = 256</span> 个子集）。</li>
+    <li><b>数据要随机，也要有边界</b>：重量为 1 的、价值为 0 的、容量刚好等于某件物品重量的，都该出现几次。</li>
+    <li><b>错的那一组要打印出来</b>，人眼扫一遍往往就能看出是哪类情况。</li>
+  </ol>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "背包对拍时，为什么答案偏大就说明有问题？",
+    "opts": [
+      "偏大意味着用掉了你其实没有的资源",
+      "偏大说明数组开小了，写到了界外",
+      "偏大说明循环多跑了一轮，该停没停",
+      "偏大说明取模运算漏掉了，数值溢出"
+    ],
+    "ans": 0,
+    "why": "「不超过容量 C 的最大价值」有一个天然上界：所有物品价值之和。答案偏大只有一种解释——某个约束被绕过了。背包里最常见的就是同一件物品被拿了多次。方向写错的实测表现正是这个：400 组对拍里正序错 297 组、逆序错 0 组。"
+  }
+]'></div>
+
+  <h2>变形：分组背包</h2>
+
+  <p>背包的变形很多，骨架都是「选与不选」，只是<b>多了一层约束</b>。</p>
+
+  <p>分组背包：物品分成若干组，<b>每组最多选一件</b>。写法只多一层循环：</p>
+
+  <pre data-lang="python"><code>import itertools
+
+groups = [[(2, 3), (3, 4)], [(4, 5), (5, 6)], [(1, 8)]]
+
+
+def knap_group(groups, C):
+    """外层遍历组、中层遍历容量（逆序）、内层遍历组内物品。"""
+    dp = [0] * (C + 1)
+    for g in groups:
+        for c in range(C, -1, -1):
+            for gw, gv in g:
+                if c &gt;= gw:
+                    dp[c] = max(dp[c], dp[c - gw] + gv)
+    return dp[C]
+
+
+def brute_group(groups, C):
+    """枚举：每组有三种可能——不选、选第 1 件、选第 2 件……"""
+    best = 0
+    for pick in itertools.product(*[range(-1, len(g)) for g in groups]):
+        tw = tv = 0
+        for i, j in enumerate(pick):
+            if j &gt;= 0:
+                tw += groups[i][j][0]
+                tv += groups[i][j][1]
+        if tw &lt;= C and tv &gt; best:
+            best = tv
+    return best
+
+
+for C5 in range(1, 13):
+    a, b = knap_group(groups, C5), brute_group(groups, C5)
+    print(f'   容量 {C5:&gt;2}: 分组背包 {a:&gt;3}   枚举 {b:&gt;3}   一致 {a == b}')</code></pre>
+
+  <pre data-lang="text"><code>   容量  1: 分组背包   8   枚举   8   一致 True
+   容量  2: 分组背包   8   枚举   8   一致 True
+   容量  3: 分组背包  11   枚举  11   一致 True
+   容量  4: 分组背包  12   枚举  12   一致 True
+   容量  5: 分组背包  13   枚举  13   一致 True
+   容量  6: 分组背包  14   枚举  14   一致 True
+   容量  7: 分组背包  16   枚举  16   一致 True
+   容量  8: 分组背包  17   枚举  17   一致 True
+   容量  9: 分组背包  18   枚举  18   一致 True
+   容量 10: 分组背包  18   枚举  18   一致 True
+   容量 11: 分组背包  18   枚举  18   一致 True
+   容量 12: 分组背包  18   枚举  18   一致 True</code></pre>
+
+  <p>循环顺序的规矩：<b>组在外层，容量在中层（逆序），组内物品在最里层。</b> 容量逆序保证这一组不会被选两次——它跟 0/1 背包是同一个道理，只不过「一件物品」换成了「一组里的一个选择」。</p>
+
+  <p>这类变形看着多，其实只要问三句话就能归位：</p>
+
+  <ul>
+    <li><b>每件能拿几次？</b> 一次 → 逆序；任意多次 → 正序。</li>
+    <li><b>有没有「每组最多一件」这类分组约束？</b> 有 → 加一层组循环。</li>
+    <li><b>问的是「不超过」还是「恰好」？</b> 恰好 → 非法状态设负无穷。</li>
+  </ul>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "分组背包的循环顺序为什么是「组在外、容量在中」？",
+    "opts": [
+      "容量逆序保证同一组不会被选中两次",
+      "组在外能让每一组都至少被选一次",
+      "容量在中能让每一组装得下更多东西",
+      "组在外能让物品按组的顺序排好序"
+    ],
+    "ans": 0,
+    "why": "分组背包的约束是「每组最多选一件」。把组放最外层、容量在中间逆序，就保证处理某一组时读到的 dp[c-w] 还没被这一组更新过——跟 0/1 背包是同一个道理，只不过「一件物品」换成了「一组里的一个选择」。实测容量 1 到 12 上，分组背包与枚举全部一致。"
+  }
+]'></div>
+
+  <h2>这一课用到的判断</h2>
+
+  <ul>
+    <li><b>背包的骨架是「选与不选」</b>：<code>dp[i][c]</code> 读作「只看前 i 件、容量上限是 c 的最大价值」。拿第 i 件时查的是 <code>dp[i-1][c - w]</code>——<b>上一个下标是 i-1，这是方向问题的源头</b>。</li>
+    <li><b>一维滚动数组让一格身兼两职</b>：赋值前是「前 i-1 件」的结果，赋值后是「前 i 件」的。</li>
+    <li><b>方向由「同一件能不能重复选」决定</b>：0/1 背包内层<b>逆序</b>（正向读到的 <code>dp[c-w]</code> 还没被本轮更新，所以那件还没拿过）；完全背包内层<b>正序</b>（读到的是已更新值，可以再拿一次）。</li>
+    <li><b>0/1 写成正序的后果是答案偏大，而且恰好等于完全背包</b>：实测四个容量上「正序 == 完全背包」全部为真。400 组对拍里正序错 <b>297</b> 组、逆序错 <b>0</b> 组。容量 6 时正序等于把（重量 2，价值 3）拿了三次，可它只有一件。</li>
+    <li><b>背包答案「偏大」就是铁证</b>：偏大意味着用掉了你其实没有的资源。</li>
+    <li><b>「恰好装满」靠初始化区分</b>：只把 <code>dp[0]</code> 设 0，其余全设 <code>-inf</code>。<code>-inf + v</code> 仍是 <code>-inf</code>，那一格永远填不上，等于「这个容量凑不出来」。</li>
+    <li><b>初始化写错会回答另一个问题</b>：全 0 初始化让「恰好装满」悄悄交回「不超过」的答案。重量 3、5、7 时，容量 11 的正确回答是「无解」，写错初始化给 10——正常、合法、但答非所问。</li>
+    <li><b>变形只要问三句话</b>：每件拿几次（定方向）、有没有分组约束（加循环）、问不超过还是恰好（定初始化）。分组背包的循环顺序是「组在外、容量在中逆序、组内物品在最里」。</li>
+  </ul>
+
+  <div class="lesson-practice">
+    <div class="lesson-practice__head">
+      <span class="lesson-practice__level">上手做</span>
+      <span class="lesson-practice__title">四个任务加一次对拍</span>
+    </div>
+
+      <p>这一课配了动手练习，在 <a href="../lab/0025-dp-knapsack/">lab/0025-dp-knapsack/</a>。</p>
+
+      <ol>
+        <li><code>task1_knap01.py</code>：把 0/1 背包的二维版与一维逆序版写出来，两版答案必须一致。</li>
+        <li><code>task2_direction.py</code>：把内层写成正序，跟枚举出的正确答案对拍，看它错在哪、错的方式是不是「总是偏大」。</li>
+        <li><code>task3_exact.py</code>：实现「恰好装满」，并把非法状态设成负无穷；再故意改成全 0 初始化，对比两种答案。</li>
+        <li><code>task4_complete_group.py</code>：写完全背包与分组背包，各自在随机小数据上跟暴力版对拍。</li>
+      </ol>
+
+      <p>跑法、判分在读什么、卡住了先看哪里，都写在该目录的说明与 <code>../lab/README.md</code> 里。写完想对照，看 <a href="../lab/solutions/">lab/solutions/</a>。</p>
+  </div>
+
+  <ul class="lesson-resources">
+    <li><a href="https://github.com/tianyicui/pack">《背包问题九讲》（崔添翼）</a><span class="lesson-resources__meta">文章 · 背包模型的中文经典综述，从 0/1 到分组、多重、依赖背包</span></li>
+    <li><a href="https://www.luogu.com.cn/training/101">洛谷题单：动态规划的背包问题</a><span class="lesson-resources__meta">题单 · 由易到难的背包练习</span></li>
+    <li><a href="0024-dp-from-recursion.html">第 24 课：动态规划：把重复计算记下来</a><span class="lesson-resources__meta">上一课讲的状态、转移方程与边界，这一课直接用</span></li>
+    <li><a href="0013-sorting-and-divide-conquer.html">第 13 课：排序：分而治之的样板</a><span class="lesson-resources__meta">对拍与暴力验证的方法在这一课里第一次成体系</span></li>
+  </ul>
+
+  <!-- ── 提问提示：固定写法，别删 ── -->
+
+  <div class="lesson-ask">
+    <b>没看懂？随时问</b>
+    把看不懂的段落（或报错）原样复制回会话，说一句哪里不懂就行，我只解释这一段，不打断你的进度。
+  </div>
+
+  <!-- ── 上/下节课指针由渲染器按 curriculum.yaml 的 nodes 顺序算（第一课无 --prev、最后一课无 --next） ── -->
+
+  <nav class="lesson-nav" aria-label="上一课 / 下一课">
+    <a class="lesson-nav__link lesson-nav__link--prev" href="0024-dp-from-recursion.html">
+      <span class="lesson-nav__dir">上节课</span>
+      <span class="lesson-nav__title">动态规划：把重复计算记下来</span>
+    </a>
+    <a class="lesson-nav__link lesson-nav__link--next" href="0026-dp-sequence-interval.html">
+      <span class="lesson-nav__dir">下节课</span>
+      <span class="lesson-nav__title">序列与区间的状态设计</span>
+    </a>
+  </nav>
+
+  <footer class="lesson-footer">
+    StudyMate · 0025 背包：选与不选 · 本地学习工作区
+  </footer>
+
+</article>
+
+<script src="../../../assets/sayo/sayo.js"></script>
+<link rel="stylesheet" href="../../../assets/katex/katex.min.css">
+<script src="../../../assets/katex/katex.min.js" defer></script>
+<script src="../../../assets/lesson-math.js" defer></script>
+<script src="../assets/quiz.js" defer></script>
+<script src="../assets/lesson-toc.js" defer></script>
+<script>LearnTheme.wire(document.getElementById('lesson-theme-checkbox'));</script>
+</body>
+</html>

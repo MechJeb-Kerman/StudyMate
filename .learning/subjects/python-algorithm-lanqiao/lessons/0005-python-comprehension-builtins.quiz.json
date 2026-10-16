@@ -1,0 +1,127 @@
+{
+  "列表推导式与循环版的对应": [
+    {
+      "q": "下面这段最后一行会怎样？\n\n```python\nprint([y for y in range(3)])\nprint(y)\n```\n\n循环版跑完之后，循环的目标名 x 还留在外面。",
+      "opts": [
+        "报 NameError，因为 y 只活在推导式内部",
+        "打印 2，因为它把最后一轮取到的那个值留在了外面",
+        "打印 [0, 1, 2]，因为 y 是推导式建的那张表",
+        "报 TypeError，因为 print 打不了列表"
+      ],
+      "ans": 0,
+      "why": "推导式在一个隐式的嵌套作用域里执行：赋给目标的名字（这里的 y）不会泄漏到外层，所以出了方括号这个名字就不存在了，print(y) 报 NameError。循环版正相反——for x in range(3) 结束后 x 还留在外面。两版算出的表逐字相同（[0, 1, 2]），差的只是目标名的可见范围；写函数时这条有用：函数里写推导式不会意外改掉外层的同名变量。"
+    }
+  ],
+  "带条件的推导式": [
+    {
+      "q": "下面这个式子的结果是什么？\n\n```python\n[x for x in range(10) if x % 2 == 0 if x > 4]\n```\n\n注意它连着写了两个 if 子句。",
+      "opts": [
+        "得到 [6, 8]：两个 if 子句要同时满足才算数",
+        "得到 [0, 2, 4, 6, 8]：两个 if 只留后一个",
+        "得到 [5, 6, 7, 8, 9]：两个 if 是或的关系",
+        "报语法错误：一个推导式里最多只允许写一个 if 子句"
+      ],
+      "ans": 0,
+      "why": "连着写两个 if 子句，等价于循环版里连着写两个 if —— 两个条件都要满足才把元素收进表，也就是「与」的关系：既要偶数又要大于 4，只剩 6 和 8。要「或」得写成一个 if x % 2 == 0 or x > 4。另外据课件：条件写在最后，可以连着写两个 if；要「与」也可以合成一个 if 用 and 连起来，两种写法结果一样。"
+    }
+  ],
+  "把逻辑挤成一行看不懂的推导式": [
+    {
+      "q": "同事把一段筛选压成了一行，现在没人能一眼看懂：\n\n```python\nres = [k for i, row in enumerate(grid) if i % 2 == 0\n       for k in row if k > 0 if k % 2 == 1]\n```\n\n① 展开成循环版，for 与 if 的顺序必须与这一行一致。\n② 这属于课件里「该写回循环」的哪一种情形？照你展开的代码说清理由。",
+      "answer": "① 一行里 for 与 if 的先后，和循环版从上到下的顺序一致，展开是：\n\n```python\nres = []\nfor i, row in enumerate(grid):\n    if i % 2 == 0:\n        for k in row:\n            if k > 0:\n                if k % 2 == 1:\n                    res.append(k)\n```\n\n两层 for 不能对调（对调后先按列再按行，结果就变了），if 也不能提到它前面的那个 for 之前。\n\n② 属于「for 与 if 叠到三层以上」这一条：这里叠了五层。理由是读的人要先在心里把五层完整展开，才能确认 res 里到底装了些什么；换回循环版以后，每一层的条件都单独占一行，一眼就能看下去。课件给的另一个出口是照官方那句换成现成函数（这类「按位置筛行、再筛元素」多数能写成 sum / any 这类一站式的调用）。",
+      "criteria": "① 展开后的顺序必须逐层对上：for i, row → if i % 2 == 0 → for k → if k > 0 → if k % 2 == 1 → append(k)。把两个 for 对调、或把某个 if 挪到它前面那个 for 之前，都算顺序错（结果会变），不算过。\n② 必须落到「for 与 if 叠到三层以上」这一条上，并给出理由：读的人要先在心里展开才能确认结果（或：一行里看不到中间值）。只说「太长了」「不好看」而不指出这一条，不算过。"
+    }
+  ],
+  "生成器表达式与惰性求值": [
+    {
+      "q": "下面这段两次 sum 各打印什么？\n\n```python\ngen = (x ** 2 for x in range(5))\nprint(sum(gen))\nprint(sum(gen))\n```",
+      "opts": [
+        "先 30 再 0：生成器被取完就空了",
+        "先 30 再 30：每回都从头重新算一遍",
+        "先 30 再报错：第二次不许再遍历它",
+        "先 0 再 0：sum 认不出生成器里的数"
+      ],
+      "ans": 0,
+      "why": "生成器是惰性的——要一个才算一个，取完就没有了。第一次 sum 把 0、1、4、9、16 逐个要出来加一遍得 30；第二次再要，里面已经空了，加一个空序列得 0。这也是它省内存的代价：额外占用 O(1)，但只能走一遍，而且没有 len、不能下标（len(gen) 报 TypeError: object of type 'generator' has no len()）。要反复用就先建成表：squares = [x ** 2 for x in range(5)]。"
+    }
+  ],
+  "zip 与 enumerate 的用法": [
+    {
+      "q": "两个列表长度不齐时，这一行打印什么？\n\n```python\nprint(list(zip([1, 2, 3], ['x', 'y'])))\n```",
+      "opts": [
+        "[(1, 'x'), (2, 'y')]：到短的那个用完就停下，不补也不报",
+        "[(1, 'x'), (2, 'y'), (3, '')]：缺的补成空串",
+        "[(1, 'x'), (2, 'y'), (3, None)]：缺的补 None",
+        "报 ValueError：两个序列长度不一样，zip 得先补齐再走一趟才行"
+      ],
+      "ans": 0,
+      "why": "zip 在最短的那个序列用完时就停，多出来的元素直接丢掉——长度不齐不报错，只会悄悄变短，所以用之前要确认两个序列是对齐的。同一族的另一条口径：enumerate 的计数默认从 0 起，要按题号从 1 数就写 enumerate(names, start=1)；它也是迭代器，取完就空，不存在「重置」。"
+    }
+  ],
+  "把下标循环改成 enumerate 与 zip": [
+    {
+      "q": "把下标循环改成一行：\n\n```python\nnames = ['甲', '乙']\nscores = [80, 95]\nfor i in range(len(names)):\n    print(i + 1, names[i], scores[i])\n```\n\n现在要写成 for i, (n, s) in ____: 且打印结果与上面一行不差，横线上填哪个式子？",
+      "opts": [
+        "enumerate(zip(names, scores), start=1)",
+        "enumerate(zip(names, scores), start=0)",
+        "enumerate(zip(scores, names), start=1)",
+        "zip(enumerate(names, scores), start=1)"
+      ],
+      "ans": 0,
+      "why": "下标版在三个地方写同一个下标（i、names[i]、scores[i]），换成 enumerate 配 zip 后每一处都只剩一次：zip 把两个序列一一配对，enumerate 给每对配上位置号，start=1 让编号从 1 起（默认从 0 起，那样第一行会打成 0 甲 80，与下标版差 1）。第 3 项把 scores 与 names 对调了，n 会拿到分数；第 4 项 zip 不收 start 这个关键字实参，而且 enumerate 与 zip 的嵌套写反了。"
+    }
+  ],
+  "sorted 的 key 参数": [
+    {
+      "q": "用 sorted(records, key=show) 排 5 条记录，\nshow 里有一句 print，它会被打印几行？",
+      "opts": [
+        "5 行：键函数在每条记录上只调用一次",
+        "多于 5 行：每比较一次就要调用一次",
+        "1 行：键函数只在第一条记录上调用",
+        "0 行：真正排序时才轮到它调用一次"
+      ],
+      "ans": 0,
+      "why": "官方排序指南专门点明：键函数只需在输入的每个记录上调用恰好一次。排序过程中元素之间要比很多次，但比的是取回来的键，不是重新调用 show —— 取键一次、比较很多次，这正是 key 比「让元素自己会比较」划算的地方。同一个 key 写法在 min、max 上也照样能用。"
+    }
+  ],
+  "按第二关键字给记录排序": [
+    {
+      "q": "模拟赛排行榜要按这个规则排：\n\n```python\nrecords = [('A03', 80), ('A01', 95), ('A02', 80)]\n# 分数从高到低；分数相同的，编号从小到大\n```\n\n① 写出 key 函数与排序那一行。\n② 为什么这样写能保证同分的两个人不乱？",
+      "answer": "① 分数要降序、而元组按升序比较，所以第一项取负号；同分再比编号，把编号放第二项：\n\n```python\ndef rank_key(rec):\n    return (-rec[1], rec[0])\n\nboard = sorted(records, key=rank_key)\nprint(board)\n# [('A01', 95), ('A02', 80), ('A03', 80)]\n```\n\n② 两条依据任选一条说清即可。第一条：元组之间按字典式顺序比较——先比第一个对应元素，不相等就已经定了；相等再比后面两个。所以 (-rec[1], rec[0]) 读作「先按分数从高到低，分数相同再按编号从小到大」，同分的两条一定按编号排。第二条：排序保证稳定，等键记录保持原始顺序。于是可以「先按次要键排一遍、再按主要键排一遍」：\n\n```python\ndef by_no(rec):\n    return rec[0]\n\ndef by_score_desc(rec):\n    return -rec[1]\n\nboard = sorted(sorted(records, key=by_no), key=by_score_desc)\n```\n\n先按编号升序排好，再按分数降序排；同分的两条在第二次排序里键相等，稳定性让它们保持第一次排好的编号顺序。用 sorted 而不是 records.sort() 的那一版，是因为题目要求保留 records 的原始顺序。",
+      "criteria": "① key 必须交回一个元组（或等价的两级写法），第一项实现「分数降序」——用负号、或配 reverse=True 的两遍稳定排序都算；第二项实现「编号升序」的原字段。排序行要用 sorted(...) 并指名 key=。\n② 必须点到以下两条之一并说清它怎么保证同分不乱：元组按字典式顺序比、先比第一项相同再比第二项；或者排序稳定、等键记录保持原始顺序（先按次要键排、再按主要键排）。只贴代码不说理由，不算过。\n③ 用 sorted 而不是调用 records.sort()：题目要求按规则给出排行榜、原 records 还要按原样保留；若用 records.sort()，必须说明它原地改掉了 records，或说明这一处可以接受。"
+    }
+  ],
+  "把 list.sort 的返回值当新列表": [
+    {
+      "q": "提交后报错，报错那一行离出错的写法很远：\n\n```python\nscores = [88, 95, 70]\nranked = scores.sort(reverse=True)\nprint(ranked[0])\n```\n\nTypeError: 'NoneType' object is not subscriptable\n\n① 根因是什么？\n② 给出两种改法。\n③ 下次怎么在写的时候躲开它？",
+      "answer": "① list.sort() 原地排序，并且返回 None —— 官方排序指南特意标注它「返回 None 以避免混淆」。执行到 ranked = scores.sort(reverse=True) 时，scores 已经被排成 [95, 88, 70]，而 ranked 拿到的是 None；下一行 ranked[0] 是拿 None 取下标，于是报 'NoneType' object is not subscriptable。报错的行（print(ranked[0])）不是出错的行，这正是它难查的原因。\n\n② 两种改法。要新表、原表不动：\n\n```python\nranked = sorted(scores, reverse=True)   # 返回新表\nprint(ranked[0])                        # 95\n```\n\n原表可以就地改掉、也不再需要旧顺序：\n\n```python\nscores.sort(reverse=True)               # 原地改，不接返回值\nprint(scores[0])                        # 95\n```\n\n③ 口径：sorted(a) 由可迭代对象新建一个有序列表（列表、集合、元组、字符串都能交给它），a.sort() 只为列表定义、原地修改并返回 None。见到 x = a.sort() 就知道 x 是 None。",
+      "criteria": "① 必须点出 list.sort() 原地修改、返回 None（指南标注「返回 None 以避免混淆」），并说出后果：ranked 这个名字被赋成了 None，所以取下标才报错，报错行离出错行很远。只说「sort 没有返回值」而不点 None，不算过。\n② 两种改法都要给全：ranked = sorted(scores, reverse=True)（返回新表，scores 不动）；scores.sort(reverse=True) 之后直接用 scores（原地改）。只给一种不算过。\n③ 给出可执行的口径即可：sorted 返回新表 / list.sort 返回 None（原地改）/ 见到 x = a.sort() 就是 x = None。答「给 sort 加个 return」或「再排一次就有了」不算过。"
+    }
+  ],
+  "any 与 all 的返回值": [
+    {
+      "q": "数据为空时这一行打印什么？\n\n```python\na = []\nprint(any(x > 0 for x in a), all(x > 0 for x in a))\n```",
+      "opts": [
+        "False True：一个满足的都没有，一个反例也没有",
+        "True False：空数据上两头都算成立才叫对称",
+        "False False：空数据上两个函数都判断不出来",
+        "报 ValueError：空序列不能给 any 与 all"
+      ],
+      "ans": 0,
+      "why": "any(iterable) 在有任意一个元素为真时返回 True，空的可迭代对象返回 False（一个满足的都没有）；all(iterable) 在所有元素都为真时返回 True，空的可迭代对象也算 True（一个反例也没有）。两个默认答案相反，是这对函数最容易记错的地方：用 all 检查「这批数据是不是都合法」，空数据也会给出 True，所以判空前要先判空（if not data:）。"
+    }
+  ],
+  "用内置函数替换计数与判定循环": [
+    {
+      "q": "把这段计数循环换成一行，哪一行的结果与它一致？\n\n```python\na = [3, -1, 4, 0, 7]\nc = 0\nfor x in a:\n    if x > 0:\n        c += 1\nprint(c)\n```",
+      "opts": [
+        "print(sum(1 for x in a if x > 0))",
+        "print(sum(x for x in a if x > 0))",
+        "print(len(x for x in a if x > 0))",
+        "print(sum([x for x in a if x > 0]))"
+      ],
+      "ans": 0,
+      "why": "sum(1 for x in a if x > 0) 读作「每个满足条件的元素算作 1，把它们加起来」，数出 3 个正数。它喂给 sum 的是生成器表达式，不建表，所以计数这种「只为了走一遍」的场合用它最合适；写成 len([x for x in a if x > 0]) 结果一样，代价是先建一张 O(n) 的表。另外两行是把「计数」写成了「求和」——正数加起来是 14，不是 3 个；len 不能用在生成器上，会报 TypeError: object of type 'generator' has no len()。"
+    }
+  ]
+}

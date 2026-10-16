@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>先把暴力写对 · Python 算法与蓝桥杯</title>
+
+<!-- 共享层在 .learning/assets/，课件在 .learning/subjects/<slug>/lessons/ 下，所以是 ../../../assets/ -->
+<link rel="stylesheet" href="../../../assets/sayo/sayo.css">
+<link rel="stylesheet" href="../../../assets/learn-theme.css">
+<link rel="stylesheet" href="../assets/style.css">
+
+<!-- 主题要在首帧前应用，避免闪白/闪黑 -->
+<script src="../../../assets/learn-theme.js"></script>
+<script>LearnTheme.apply();</script>
+</head>
+
+<body class="lesson-body">
+
+<nav class="lesson-bar">
+  <a href="../index.html">← 返回课程</a>
+  <span>Python 算法与蓝桥杯</span>
+  <span class="lesson-bar__no">0008</span>
+  <!-- 课件页自带主题开关：学生从文件管理器直接打开课件时也能切暗色 -->
+  <label class="syo-toggle syo-toggle--theme lesson-bar__toggle" title="切换深浅主题" aria-label="切换深浅主题">
+    <input type="checkbox" id="lesson-theme-checkbox" checked>
+    <span class="syo-toggle-track"></span>
+    <span class="syo-toggle-knob">
+      <svg class="syo-toggle-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.5" stroke="#f57c00" stroke-width="1.5"/><path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.34 4.34l1.77 1.77M13.89 13.89l1.77 1.77M4.34 15.66l1.77-1.77M13.89 6.11l1.77-1.77" stroke="#f57c00" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <svg class="syo-toggle-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.5 12.5A6 6 0 019 4.5a6 6 0 007.5 8z" stroke="#5c6bc0" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </span>
+  </label>
+</nav>
+
+<article class="lesson">
+
+  <header class="lesson-header">
+    <span class="lesson-header__eyebrow">0008 · 先把暴力写对</span>
+    <h1>先把暴力写对</h1>
+    <p class="lesson-goal"><b>本节目标：</b>能按「估规模 → 写暴力 → 数操作次数 → 对照时限 → 定优化方向」这套流程走完一道题，并说清什么时候该停手不优化。</p>
+  </header>
+
+  <!-- ── 正文：渲染器按内容文件（lessons/<序号>-<节点id>.md）产出，块词汇见 docs/规范/课件内容格式.md ── -->
+
+  <p>实验一里，题目 A 的两种查重写法在四组样例上打出的答案一模一样，跑起来也都是一瞬间。差别出现在大数据那一组：列表查重的版本在十万个数上超时，集合查重的版本一秒都不到。那次是判分脚本把结果摆到面前的——你亲手撞上了它，但没有机会在动手之前判断出来。</p>
+
+  <p>这一课要把那次撞车变成一套<b>拿到题就能走的流程</b>。它接在第 2 课后面：第 2 课回答了「这种写法要跑多少次、会不会超时」，这一课回答接下来的那一问——<b>估出来不够快的时候，往哪个方向改</b>。</p>
+
+  <h2>考场上的正确顺序</h2>
+
+  <p>拿到一道题，有两种动手顺序。</p>
+
+  <p>一种是先想最优解：翻遍脑子里见过的算法，找一个「应该能过」的写法，写出来交上去。这条路的风险在于，最优解往往要在若干种做法之间挑，挑错了就得推倒重来；而时间只够写完一版。另一种顺序是反过来的：先把最直白的枚举写出来，保证它对；再看数据范围，决定它够不够快；不够快，再回头找它哪里做了重复的事。这条路上每一步都有一个<b>已经能跑、答案已经对了</b>的东西在手上，后面的改动是在这个基础上做的。</p>
+
+  <p>蓝桥杯按测试点给分。同一道题，小数据那一档和大数据那一档分别算分，所以一版「只能过小数据」的暴力解，本身就握着可观的一部分分数。它的第二个身份在实验一里也见过：几道题放在一起时，暴力解的答案可以拿来和候选解对拍—— 没有标准答案的时候，能互相验证的两个程序里，总得有一个是写起来最笨、最不容易错的那个。</p>
+
+  <div class="lesson-note">
+    <b>这一课的位置</b>
+    <p>第 2 课讲的是怎么估：数基本操作、写大 O 记号、把数据范围翻译成复杂度上限。这一课讲的是估完之后怎么办：暴力的操作次数超了上限，下一步改哪里。往后每一课教的技巧——前缀和、双指针、排序、二分、哈希表——都可以看成这套流程里「换走法」那一格的候选答案。</p>
+  </div>
+
+  <h2>一条走得通的流程</h2>
+
+  <p>把上面那段话拆开，是一串能逐步落地的动作。每一步都能当场做出判断，不需要灵感。</p>
+
+  <table>
+    <thead>
+      <tr><th>步骤</th><th>具体动作</th><th>这一步交出的东西</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>1 · 读规模与时限</td><td>从题面抄下数据范围（<span class="math-inline">n</span> 最大多少）与时限（几秒）</td><td>一个数 <span class="math-inline">n</span> 与一个秒数</td></tr>
+      <tr><td>2 · 写最直白的暴力</td><td>按定义把「所有可能」都枚举一遍，不跳步、不取巧</td><td>一份能跑、答案正确的代码</td></tr>
+      <tr><td>3 · 数它的操作次数</td><td>看循环套了几层、最内层跑多少次，写成 <span class="math-inline">n</span> 的式子并化成大 O</td><td>一个式子，如 <span class="math-inline">\frac{n(n-1)}{2}</span></td></tr>
+      <tr><td>4 · 对照本机那把尺子</td><td>用第 2 课那张表（本机 1 秒约 <span class="math-inline">5\times10^7</span> 次基本操作），把 <span class="math-inline">n</span> 代进去估秒数</td><td>一个估计耗时，与时限比较</td></tr>
+      <tr><td>5 · 找重复做的事</td><td>若超过时限，回头看第 3 步那个式子：哪些次数是被重复算掉的</td><td>一句「这里重复了什么」</td></tr>
+      <tr><td>6 · 消掉重复</td><td>换掉那件重复的事：换数据结构、换走法，或提前剪枝</td><td>一份新的代码，操作次数降档</td></tr>
+    </tbody>
+  </table>
+
+  <p>第 4 步是这套流程的分岔口。<b>估计值没超时限，流程就到此为止</b>——后面三步不用走，这一点在下一节单独说。超过时限，第 5 步才是真正花脑子的地方，而它问的问题很具体：把你第 3 步数出来的那些操作摊开看，哪一部分是<b>同一个东西被算了不止一次</b>。</p>
+
+  <p>第 6 步给的交出物是新代码，所以流程会回到第 3 步再来一遍：重新数操作次数、重新估、重新对照时限。改一次不够就再改一次，直到估出来的值落进时限以内。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "下面是一道题的目的：给定 $n$ 个整数，数出其中不同的值有几个，$1 \\le n \\le 2\\times10^5$，时限 1 秒。按课件里那套流程走，第 4 步估出来的值没超时限时，正确的做法是哪一个？",
+    "opts": [
+      "停手，把这一版直接交上去就可以",
+      "继续走第 5、6 步，改到最优再交",
+      "先交一版，另外再开一份改到最优",
+      "把数据规模改小一点，让它更稳地过"
+    ],
+    "ans": 0,
+    "why": "流程第 4 步是分岔口：估计值没超时限，流程就到此为止。优化换不来分数，却会带来写错的风险与挤掉检查时间的代价。"
+  }
+]'></div>
+
+  <h2>什么时候不该优化</h2>
+
+  <p>流程的第 6 步给的是「消掉重复」的几种方向，走到第 5 步才需要挑一个。暴力的估计值没超时限时，第 4 步就已经把流程收住了，正确答案是把这一版交上去。</p>
+
+  <p>这个判断在考场上是有分量的。改一版代码要重新验正确性：暴力版是照着定义写的，边界少、容易看穿；优化版多绕了一道，有没有漏掉某种情况、等号该取不该取，都得多测几组才知道。改完还要再花时间确认它没写坏。这些成本是真实的，拿它们去换一段本来就不超时的更快代码，是亏的。</p>
+
+  <p>过度设计还有第二种代价：它会挤掉检查的时间。一版改到第三遍的代码，学生往往没时间再回头验样例了。把「能过就先交、过不了再改」当成默认动作，比把「一定要写成最优」当成默认动作稳。</p>
+
+  <p>下面这张表把判断收成三行：</p>
+
+  <table>
+    <thead>
+      <tr><th>第 4 步的结果</th><th>该做什么</th><th>理由</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>估计值明显小于时限（比如不到十分之一）</td><td>停手，交这一版</td><td>优化换不来分数，只会带来写错的风险</td></tr>
+      <tr><td>估计值在时限附近（同数量级）</td><td>先交一版，有余力再改</td><td>常数因子的波动可能让它过，也可能让它不过</td></tr>
+      <tr><td>估计值超过时限若干倍</td><td>走第 5、6 步</td><td>不改一定过不了</td></tr>
+    </tbody>
+  </table>
+
+  <div class="lesson-warn">
+    <b>「估计值明显小于时限」里的「明显」</b>
+    <p>第 4 步估出来的是一个量级，不是精确秒数。估计值算到时限的一半，不必急着优化—— 本机实测的常数因子会随写法、随 Python 版本浮动，半数以内的余量通常够用。真正需要动手的是超出几倍、几十倍的那种。</p>
+  </div>
+
+  <h2>案例一：不一样的数</h2>
+
+  <p>第一个案例就是实验一里那道题，这次把整条流程走完。</p>
+
+  <p><b>第 1 步 · 读规模与时限。</b> 题面给的是 <span class="math-inline">1 \le n \le 2\times10^5</span>，时限 1 秒。</p>
+
+  <p><b>第 2 步 · 写最直白的暴力。</b> 要数这 <span class="math-inline">n</span> 个数里有几个不同的值。最直白的做法是拿一个列表存下已经见过的数，每遇到一个新数就回头看看它在不在这个列表里，不在就加进去：</p>
+
+  <pre data-lang="python"><code>def brute(a):
+    seen = []
+    for x in a:
+        if x in seen:
+            continue
+        seen.append(x)
+    return len(seen)</code></pre>
+
+  <p>这段代码不跳步，也不依赖任何没学过的工具，写完就能确定它是对的。</p>
+
+  <p><b>第 3 步 · 数操作次数。</b> 外层循环跑 <span class="math-inline">n</span> 次。内层的 <code>x in seen</code> 每次要从头扫过 <code>seen</code>，扫的长度从 0 涨到最多 <span class="math-inline">n - 1</span>，平均约 <span class="math-inline">\frac{n}{2}</span>。把每次扫的长度加起来：</p>
+
+  <div class="math-block">0 + 1 + 2 + \cdots + (n-1) = \frac{n(n-1)}{2} = O(n^2)</div>
+
+  <p><span class="math-inline">n</span> 取 <span class="math-inline">2\times10^5</span> 时，<span class="math-inline">\frac{n(n-1)}{2} \approx 2\times10^{10}</span> 次比较。</p>
+
+  <p><b>第 4 步 · 对照尺子。</b> 本机那把尺子是每秒约 <span class="math-inline">5\times10^7</span> 次基本操作（第 2 课实测，非通用值）， <span class="math-inline">2\times10^{10} \div 5\times10^7 = 400</span> 秒。时限 1 秒，超了 400 倍。</p>
+
+  <p>也可以换个做法，不动手算，直接量一小段再外推。本机实测：</p>
+
+  <table>
+    <thead>
+      <tr><th><span class="math-inline">n</span></th><th>暴力版耗时</th><th>优化版耗时</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>2 000</td><td>0.0099 秒</td><td>0.000132 秒</td></tr>
+      <tr><td>4 000</td><td>0.0414 秒</td><td>0.000166 秒</td></tr>
+      <tr><td>8 000</td><td>0.1716 秒</td><td>0.000476 秒</td></tr>
+    </tbody>
+  </table>
+
+  <p><span class="math-inline">n</span> 从 2 000 到 8 000 是 4 倍规模，暴力版从 0.0099 秒涨到 0.1716 秒，约 17 倍—— 平方档的特征（<span class="math-inline">4^2 = 16</span>）。从 8 000 推到题目给的 <span class="math-inline">2\times10^5</span> 是 25 倍规模，按平方算要慢 <span class="math-inline">25^2 = 625</span> 倍，8 000 那行 0.1716 秒乘上去约 107 秒，稳妥地超过 1 秒时限。</p>
+
+  <p><b>第 5 步 · 找重复做的事。</b> 回头看第 3 步那个求和式 <span class="math-inline">\frac{n(n-1)}{2}</span>。它之所以是平方档，是因为<b>「这个数见过没有」这个问题被反复回答了很多次</b>：每来一个新数就问一遍，而每一次问答都要把 <code>seen</code> 从头扫一遍。 <code>seen</code> 扫完一遍得到的信息，下一个数来时完全用不上，又要从头扫。</p>
+
+  <p>用一句话说清这里重复了什么：<b>同一个列表被反复地逐个比过去，而每次问的只是「某个值在不在里面」。</b></p>
+
+  <p><b>第 6 步 · 消掉重复。</b> 第 3 课量过这件事：问「某个值在不在里面」，列表每次要扫 <span class="math-inline">O(n)</span>，集合平均 <span class="math-inline">O(1)</span>。把 <code>seen</code> 从列表换成集合，问答的次数不变，每次问答的代价从 <span class="math-inline">n</span> 降到常数：</p>
+
+  <pre data-lang="python"><code>def fast(a):
+    seen = set()
+    for x in a:
+        seen.add(x)
+    return len(seen)</code></pre>
+
+  <p>回到第 3 步重新数：外层 <span class="math-inline">n</span> 次，内层每次平均 <span class="math-inline">O(1)</span>，总共 <span class="math-inline">O(n)</span>，操作次数约 <span class="math-inline">2\times10^5</span>。第 4 步重新估：<span class="math-inline">2\times10^5 \div 5\times10^7 = 0.004</span> 秒，落在时限以内。</p>
+
+  <p>本机实测这一版在 <span class="math-inline">n = 2\times10^5</span> 上跑了 <b>0.0160 秒</b>。两版答案在 <span class="math-inline">n = 10</span>、<span class="math-inline">1\,000</span>、<span class="math-inline">3\,000</span> 上逐一对过，完全一致。同一份数据上两版耗时的比值，<span class="math-inline">n = 8\,000</span> 时是 361 倍。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "数不同值的暴力版用列表存已见过的数，每遇到一个新数就在 seen 里查一遍；优化版把 seen 换成集合。为什么这一换就把平方档降成了线性档？",
+    "opts": [
+      "集合里的 in 平均是常数时间，不用从头扫",
+      "集合会自动把重复的值丢掉，省下一次判断",
+      "集合里的元素比列表少，比较次数也跟着少",
+      "集合里的元素排好了序，比较时少比几次"
+    ],
+    "ans": 0,
+    "why": "外面那层循环没变，变的是内层那一次查找：列表 in 要逐个比、平均 O(n)，集合 in 平均 O(1)。n 次查找从 O(n²) 降到 O(n)。"
+  }
+]'></div>
+
+  <h2>案例二：数一数有多少对相等</h2>
+
+  <p>换一道新题，这次从零走完流程。题目是：给定 <span class="math-inline">n</span> 个整数，数一数有多少对下标 <span class="math-inline">(i, j)</span> 满足 <span class="math-inline">i &lt; j</span> 且 <span class="math-inline">a_i = a_j</span>。数据范围 <span class="math-inline">1 \le n \le 10^5</span>，时限 1 秒。</p>
+
+  <p><b>第 2 步 · 写最直白的暴力。</b> 按定义枚举所有数对：</p>
+
+  <pre data-lang="python"><code>def brute_pairs(a):
+    n = len(a)
+    count = 0
+    for i in range(n):
+        for j in range(i + 1, n):
+            if a[i] == a[j]:
+                count += 1
+    return count</code></pre>
+
+  <p><b>第 3 步 · 数操作次数。</b> 外层跑 <span class="math-inline">n</span> 次，内层从 <span class="math-inline">i+1</span> 跑到 <span class="math-inline">n-1</span>，最内层的比较一共做了：</p>
+
+  <div class="math-block">(n-1) + (n-2) + \cdots + 1 = \frac{n(n-1)}{2} = O(n^2)</div>
+
+  <p><span class="math-inline">n = 10^5</span> 时约 <span class="math-inline">5\times10^9</span> 次比较。</p>
+
+  <p><b>第 4 步 · 对照尺子。</b> <span class="math-inline">5\times10^9 \div 5\times10^7 = 100</span> 秒，时限 1 秒，超了 100 倍。</p>
+
+  <p>本机实测外推：<span class="math-inline">n = 8\,000</span> 时暴力版 0.6958 秒，从 8 000 推到 <span class="math-inline">10^5</span> 是 12.5 倍规模，按平方算乘 <span class="math-inline">156</span>，约 109 秒。这一次估出来的是同一个结论。</p>
+
+  <p><b>第 4 步的另一半 · 暴力版能拿多少分。</b> 这里要看的是题目的数据分档。 <span class="math-inline">n \le 100</span> 时暴力版的操作次数是 <span class="math-inline">\frac{100 \times 99}{2} = 4\,950</span> 次，一瞬间就跑完； <span class="math-inline">n \le 1\,000</span> 是 499 500 次，同样在时限内。也就是说，<span class="math-inline">n</span> 在几千以内的测试点，这一版全都能过。把这些点先交上去，已经是一部分分数。</p>
+
+  <p><b>第 5 步 · 找重复做的事。</b> 平方档的来源是那两层循环里的<b>同一个比较被反复做</b>： <code>a[i] == a[j]</code> 这一句，对每一对下标都执行一次，而其中大量比较在问同一个问题—— 「这个数值在这个数组里出现了几次」。</p>
+
+  <p>把它说得更具体一点。假设某个数值 <span class="math-inline">v</span> 在数组里恰好出现了 3 次，位置是 <span class="math-inline">p_1 &lt; p_2 &lt; p_3</span>。两层循环会分别比较 <span class="math-inline">(p_1, p_2)</span>、<span class="math-inline">(p_1, p_3)</span>、<span class="math-inline">(p_2, p_3)</span>——三次比较，得到的是同一个事实： <span class="math-inline">v</span> 出现了 3 次。而这个事实只要数一遍就够了，数出来是 3，由 3 直接算出对数 <span class="math-inline">\frac{3 \times 2}{2} = 3</span>。暴力的那三次比较，本质上是在用两两比较去<b>重新数一遍</b>一个只需要数一遍的量。</p>
+
+  <p><b>第 6 步 · 消掉重复。</b> 那就把「数一遍」这一步显式地做出来：用字典统计每个数值出现了几次（第 3 课的字典计数），再由每个数值的次数直接算出它对多少对：</p>
+
+  <pre data-lang="python"><code>def fast_pairs(a):
+    counts = {}
+    for x in a:
+        counts[x] = counts.get(x, 0) + 1
+    total = 0
+    for c in counts.values():
+        total += c * (c - 1) // 2
+    return total</code></pre>
+
+  <p>回到第 3 步：第一遍循环 <span class="math-inline">n</span> 次，字典查找与写入平均 <span class="math-inline">O(1)</span>；第二遍循环次数等于不同数值的个数，不超过 <span class="math-inline">n</span>。总共 <span class="math-inline">O(n)</span>，操作次数约 <span class="math-inline">2\times10^5</span>。第 4 步重新估：<span class="math-inline">2\times10^5 \div 5\times10^7 = 0.004</span> 秒，通过。</p>
+
+  <p>本机实测：</p>
+
+  <table>
+    <thead>
+      <tr><th><span class="math-inline">n</span></th><th>暴力版耗时</th><th>优化版耗时</th><th>比值</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>2 000</td><td>0.0528 秒</td><td>0.000072 秒</td><td>729 倍</td></tr>
+      <tr><td>4 000</td><td>0.1778 秒</td><td>0.000119 秒</td><td>1 499 倍</td></tr>
+      <tr><td>8 000</td><td>0.6958 秒</td><td>0.000212 秒</td><td>3 287 倍</td></tr>
+      <tr><td>100 000</td><td>约 109 秒（外推）</td><td>0.0050 秒</td><td>—</td></tr>
+    </tbody>
+  </table>
+
+  <p>两版答案在 <span class="math-inline">n = 10</span>、<span class="math-inline">1\,000</span>、<span class="math-inline">3\,000</span> 上都一致（<span class="math-inline">n = 3\,000</span>、取值 1 到 50 时都是 89 596）。</p>
+
+  <p>这一课的两个案例，优化的动作不同，找重复的思路是同一个：</p>
+
+  <table>
+    <thead>
+      <tr><th></th><th>案例一</th><th>案例二</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>暴力的操作次数</td><td><span class="math-inline">\frac{n(n-1)}{2}</span></td><td><span class="math-inline">\frac{n(n-1)}{2}</span></td></tr>
+      <tr><td>重复做的是什么</td><td>反复扫同一个列表回答「在不在」</td><td>用两两比较去重新数「出现几次」</td></tr>
+      <tr><td>换掉的动作</td><td>换数据结构：列表 → 集合</td><td>换走法：先数一遍，再由次数直接算</td></tr>
+      <tr><td>优化后的操作次数</td><td><span class="math-inline">O(n)</span></td><td><span class="math-inline">O(n)</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "数有多少对相等的暴力版是两层循环枚举所有数对，做 $n(n-1)/2$ 次比较。这份暴力里重复做的那件事是什么？",
+    "opts": [
+      "反复回答同一个值在数组里出现了几次",
+      "反复计算数组的长度，每次循环都算一遍",
+      "反复比较下标的大小，判断 i 是否小于 j",
+      "反复把同一个元素从列表里取出来看一眼"
+    ],
+    "ans": 0,
+    "why": "大量比较在问同一个问题：这个数值出现了几次。看懂这一点，第 6 步的方向就出来了——先数一遍次数，再由次数直接算对数。"
+  }
+]'></div>
+
+  <h2>把重复做的事看见</h2>
+
+  <p>上面两个案例里，「重复」都是靠数循环次数推出来的。这一节把它做成能跑的对照： <b>同一件事的两种做法，把内层到底执行了多少次打印出来。</b></p>
+
+  <p>数一数「比较操作」发生了几次。暴力版把所有数对都枚举一遍，优化版只把每个元素看一遍：</p>
+
+  <pre data-lang="python"><code>def brute_ops(n):
+    ops = 0
+    for i in range(n):
+        for j in range(i + 1, n):
+            ops += 1
+    return ops
+
+def fast_ops(n):
+    ops = 0
+    for i in range(n):
+        ops += 1
+    return ops
+
+for n in (10, 100, 1000, 10000):
+    print(n, brute_ops(n), fast_ops(n))</code></pre>
+
+  <p>本机跑出来的结果：</p>
+
+  <pre data-lang="term"><code>$ py count_ops.py
+10 45 10
+100 4950 100
+1000 499500 1000
+10000 49995000 10000</code></pre>
+
+  <p><span class="math-inline">n</span> 从 10 涨到 10 000 是一千倍，暴力版从 45 涨到 49 995 000，约一百一十万倍。速度差就是这样长出来的：<b>规模涨一千倍，平方档涨一百万倍。</b></p>
+
+  <p>两个版本之间的差距，从 4 倍、49 倍、499 倍一路涨到 4 999 倍。这个数字比秒数更可靠——它不随机器变，只随 <span class="math-inline">n</span> 变。在动手之前用纸笔把它算出来，就是流程第 3、4 步在做的事。</p>
+
+  <div class="lesson-practice">
+    <div class="lesson-practice__head">
+      <span class="lesson-practice__level">练习</span>
+      <span class="lesson-practice__title">数一遍，再估一遍</span>
+    </div>
+
+      <p>这一节的动作都在本机 Python 里做，写一个 <code>estimate.py</code> 就够。</p>
+
+      <p><b>第一步 · 让次数看得见。</b> 把上面那两个函数抄进文件，跑一遍，确认打印出来的第二列是第三列的平方级：<span class="math-inline">n = 100</span> 时 4 950 与 100。</p>
+
+      <p><b>第二步 · 换一道题估。</b> 下面是一道新题的题面摘录，先不要写代码：</p>
+
+      <pre data-lang="text"><code>【题目】给定 n 个整数 a，找出其中最大的一对（两个不同的下标 i ≠ j），输出它们的和。
+【规模】1 ≤ n ≤ 10^5；时限 1 秒。</code></pre>
+
+      <p>按流程走前三步：写下最直白的暴力写法要用几层循环、它的操作次数是多少、用本机这把尺子估出来是几秒。把三个答案写在 <code>estimate.py</code> 的注释里。</p>
+
+      <p><b>第三步 · 判断要不要优化。</b> 接着写第 4、5 步：这个估计值和 1 秒的时限比，是停手交这一版，还是继续走第 5、6 步？如果决定继续，用一句话写出第 5 步的答案—— 「暴力里重复做的是哪一件事」。把判断和那句话也写进注释。</p>
+
+      <p><b>第四步 · 对照答案。</b> 再跑一次这个文件，让它把上面那道题的暴力版实测一次（<span class="math-inline">n</span> 取 2 000，按第 2 课的办法用 <code>time.perf_counter()</code> 前后相减），并打印按 <span class="math-inline">n = 10^5</span> 外推的秒数。把你第二步估的值和这一行打印出来的值对一下：差在「操作次数数错了」还是「尺子记错了」，回查是哪一步，把它写下来。</p>
+  </div>
+
+  <h2>这一课用到的判断</h2>
+
+  <table>
+    <thead>
+      <tr><th>要做的事</th><th>怎么做</th><th>边界</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>从题面读出规模与时限</td><td>找「数据范围」与「时间限制」两行</td><td>只写 <span class="math-inline">n</span> 的那一行不够，<span class="math-inline">n \times m</span> 这类乘积也常是规模</td></tr>
+      <tr><td>写暴力解</td><td>按定义枚举所有可能，不跳步</td><td>先让它对，再谈快慢</td></tr>
+      <tr><td>数它的操作次数</td><td>看循环套几层、最内层跑多少次，求和</td><td>内层范围随外层变时，要把每一项加起来再化简</td></tr>
+      <tr><td>估耗时</td><td>操作次数 ÷ 本机每秒次数</td><td>尺子每台机器不同，第 2 课量过的那把</td></tr>
+      <tr><td>判断要不要优化</td><td>估计值明显小于时限就停手</td><td>改代码有写错与调试成本，没超时限时不值得</td></tr>
+      <tr><td>找重复做的事</td><td>问：这些操作里，哪一件被算了不止一次</td><td>问对这个问题，改法往往就跟着出来了</td></tr>
+      <tr><td>消掉重复</td><td>换数据结构、换走法、提前剪枝</td><td>改完回到第 3 步重新数、重新估</td></tr>
+    </tbody>
+  </table>
+
+  <p>配套项目「AI 刷题助手」在这里对应的是最实的一段：给出候选写法之前，它得先按数据范围判断哪一版能过，再决定推荐暴力解还是优化解，并说明为什么。这个判断就是上面那六步。</p>
+
+  <ul class="lesson-resources">
+    <li><a href="https://oi-wiki.org/basic/complexity/">OI Wiki · 复杂度</a><span class="lesson-resources__meta">本课数操作次数与估耗时用的口径：基本操作数、<span class="math-inline">\Theta</span> 与 <span class="math-inline">O</span> 的区别、哪些量算常量</span></li>
+    <li><a href="https://docs.python.org/zh-cn/3/library/time.html">Python 官方文档 · time</a><span class="lesson-resources__meta">练习里的实测照它写：<code>perf_counter()</code> 是单调时钟，前后相减就是这段代码的耗时</span></li>
+    <li><a href="https://docs.python.org/zh-cn/3/tutorial/datastructures.html">Python 官方教程 · 数据结构</a><span class="lesson-resources__meta">5.4 集合、5.5 字典：案例一把 <code>seen</code> 从列表换成集合的依据</span></li>
+    <li>实验一 · 把一道题跑通<span class="lesson-resources__meta">案例一那道题与它的判分数据，两条线索对照着看</span></li>
+  </ul>
+
+  <!-- ── 提问提示：固定写法，别删 ── -->
+
+  <div class="lesson-ask">
+    <b>没看懂？随时问</b>
+    把看不懂的段落（或报错）原样复制回会话，说一句哪里不懂就行，我只解释这一段，不打断你的进度。
+  </div>
+
+  <!-- ── 上/下节课指针由渲染器按 curriculum.yaml 的 nodes 顺序算（第一课无 --prev、最后一课无 --next） ── -->
+
+  <nav class="lesson-nav" aria-label="上一课 / 下一课">
+    <a class="lesson-nav__link lesson-nav__link--prev" href="0007-lab-01-run-one-problem.html">
+      <span class="lesson-nav__dir">上节课</span>
+      <span class="lesson-nav__title">实验一：把一道题跑通</span>
+    </a>
+    <a class="lesson-nav__link lesson-nav__link--next" href="0009-linear-structures-two-pointers.html">
+      <span class="lesson-nav__dir">下节课</span>
+      <span class="lesson-nav__title">一维数据的两种走法</span>
+    </a>
+  </nav>
+
+  <footer class="lesson-footer">
+    StudyMate · 0008 先把暴力写对 · 本地学习工作区
+  </footer>
+
+</article>
+
+<script src="../../../assets/sayo/sayo.js"></script>
+<link rel="stylesheet" href="../../../assets/katex/katex.min.css">
+<script src="../../../assets/katex/katex.min.js" defer></script>
+<script src="../../../assets/lesson-math.js" defer></script>
+<script src="../assets/quiz.js" defer></script>
+<script src="../assets/lesson-toc.js" defer></script>
+<script>LearnTheme.wire(document.getElementById('lesson-theme-checkbox'));</script>
+</body>
+</html>

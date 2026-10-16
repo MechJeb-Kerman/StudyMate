@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>推导式与常用内置工具 · Python 算法与蓝桥杯</title>
+
+<!-- 共享层在 .learning/assets/，课件在 .learning/subjects/<slug>/lessons/ 下，所以是 ../../../assets/ -->
+<link rel="stylesheet" href="../../../assets/sayo/sayo.css">
+<link rel="stylesheet" href="../../../assets/learn-theme.css">
+<link rel="stylesheet" href="../assets/style.css">
+
+<!-- 主题要在首帧前应用，避免闪白/闪黑 -->
+<script src="../../../assets/learn-theme.js"></script>
+<script>LearnTheme.apply();</script>
+</head>
+
+<body class="lesson-body">
+
+<nav class="lesson-bar">
+  <a href="../index.html">← 返回课程</a>
+  <span>Python 算法与蓝桥杯</span>
+  <span class="lesson-bar__no">0005</span>
+  <!-- 课件页自带主题开关：学生从文件管理器直接打开课件时也能切暗色 -->
+  <label class="syo-toggle syo-toggle--theme lesson-bar__toggle" title="切换深浅主题" aria-label="切换深浅主题">
+    <input type="checkbox" id="lesson-theme-checkbox" checked>
+    <span class="syo-toggle-track"></span>
+    <span class="syo-toggle-knob">
+      <svg class="syo-toggle-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.5" stroke="#f57c00" stroke-width="1.5"/><path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.34 4.34l1.77 1.77M13.89 13.89l1.77 1.77M4.34 15.66l1.77-1.77M13.89 6.11l1.77-1.77" stroke="#f57c00" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <svg class="syo-toggle-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.5 12.5A6 6 0 019 4.5a6 6 0 007.5 8z" stroke="#5c6bc0" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </span>
+  </label>
+</nav>
+
+<article class="lesson">
+
+  <header class="lesson-header">
+    <span class="lesson-header__eyebrow">0005 · 推导式与常用内置工具</span>
+    <h1>推导式与常用内置工具</h1>
+    <p class="lesson-goal"><b>本节目标：</b>能用列表推导式与 sum、max、any、all、zip、enumerate、sorted 把手写循环压成一行，并说清生成器为什么只能走一遍、什么时候不该压成一行。</p>
+  </header>
+
+  <!-- ── 正文：渲染器按内容文件（lessons/<序号>-<节点id>.md）产出，块词汇见 docs/规范/课件内容格式.md ── -->
+
+  <p>上一课的结尾是一份能读数据、能算、能输出的函数版解。这一课处理另一种在题解里到处都是的重复：每回要从一批数据算出另一批数据，都要先建一个空容器，再写一层 <code>for</code>，再往里 <code>append</code>。三行里两行是脚手架，只有一行在做实事。</p>
+
+  <p>题解里常见的 <code>a = [int(x) for x in data]</code>、<code>sum(1 for x in a if x &gt; 0)</code>，去掉的正是这些脚手架。这些写法里每个词单独看都认识，自己落笔时又退回循环——多半是没把「它对应哪一段循环」对上。所以这一课的每一步都并排给两版：先写循环版，再写一行版，输出必须一致。</p>
+
+  <p>价值有两处。少写一层循环，就少一处下标写错的机会：<code>for i in range(len(a))</code> 得在三处同时把下标写对，换成 <code>for x in a</code> 只剩一处。题意也更清楚：<code>[x for x in a if x &gt; 0]</code> 一眼读出「<code>a</code> 里大于 0 的那些」。这一课的目标是把最常用的十几个内置函数过成手感，让它们在写题时成为默认选择。</p>
+
+  <p>有一件事要先说清，免得走偏：压成一行<b>不等于</b>更快。它省的是代码行数与出错机会。几版写法落在同一个复杂度档位，差的是常数因子——这一课末尾有一次本机实测。真正决定过不过的仍是第 2 课那把尺子：由数据范围反推可接受的复杂度上限。这一课不改变那一层判断。</p>
+
+  <h2>从三行循环到一行</h2>
+
+  <p>列表推导式的英文名是 comprehension，这个词在数学与逻辑里本来指「用一个描述式确定一个集合」的写法——像 <span class="math-inline">\{x^2 \mid x \in \mathbb{N}\}</span> 那样，先说清元素长什么样，再说明从哪些东西里取。Python 把这个写法搬进了代码：<b>列表推导式是用一个表达式、一个 <code>for</code> 子句和零个或多个 <code>if</code> 子句描述新列表的写法，写在方括号里，执行时按描述逐项算出元素，组成一个新列表。</b></p>
+
+  <p>最小的一例是平方数列表：</p>
+
+  <pre data-lang="python"><code># 循环版：三行
+squares = []
+for x in range(10):
+    squares.append(x ** 2)
+print(squares)
+
+# 推导式版：一行
+squares = [x ** 2 for x in range(10)]
+print(squares)</code></pre>
+
+  <pre data-lang="text"><code>[0, 1, 4, 9, 16, 25, 36, 49, 64, 81]
+[0, 1, 4, 9, 16, 25, 36, 49, 64, 81]</code></pre>
+
+  <p>两版输出逐字相同。把一行版拆开，方括号里的三段与循环版一一对应：</p>
+
+  <table>
+    <thead>
+      <tr><th>方括号里的部分</th><th>例子</th><th>对应循环版里的哪一行</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>表达式（算出什么）</td><td><code>x ** 2</code></td><td><code>squares.append(x ** 2)</code> 里被追加的那个值</td></tr>
+      <tr><td><code>for</code> 子句（从哪批数据里取）</td><td><code>for x in range(10)</code></td><td><code>for x in range(10):</code></td></tr>
+      <tr><td><code>if</code> 子句（取哪些，可以没有）</td><td><code>if x &gt; 0</code></td><td><code>if x &gt; 0:</code></td></tr>
+    </tbody>
+  </table>
+
+  <p>官方教程给出的正式说法是：方括号内包含「一个表达式，后面为一个 <code>for</code> 子句，然后，是零个或多个 <code>for</code> 或 <code>if</code> 子句」。有一处写法上的差别要记住：<b>这里的 <code>for</code> 子句末尾不写冒号。</b></p>
+
+  <figure class="lesson-figure lesson-figure--inline" role="img" aria-label="列表推导式拆成表达式、for 子句与 if 子句三段，分别对应循环版的三行">
+<svg viewBox="0 0 520 240" role="img" aria-hidden="true">
+  <g stroke="currentColor" fill="none">
+    <rect x="8" y="22" width="168" height="46"/>
+    <rect x="184" y="22" width="160" height="46"/>
+    <rect x="352" y="22" width="160" height="46"/>
+    <path d="M92 68 L92 98" stroke-dasharray="4 3"/>
+    <path d="M264 68 L264 98" stroke-dasharray="4 3"/>
+    <path d="M432 68 L432 98" stroke-dasharray="4 3"/>
+    <rect x="8" y="104" width="504" height="128"/>
+  </g>
+  <g font-family="sans-serif" fill="currentColor">
+    <g font-size="15" text-anchor="middle">
+      <text x="92" y="51">[x * 2</text>
+      <text x="264" y="51">for x in a</text>
+      <text x="432" y="51">if x &gt; 0]</text>
+    </g>
+    <g font-size="12" text-anchor="middle">
+      <text x="92" y="90">算出什么</text>
+      <text x="264" y="90">从哪批数据里取</text>
+      <text x="432" y="90">取哪些（可省）</text>
+    </g>
+    <g font-size="13">
+      <text x="20" y="128">循环版</text>
+      <text x="32" y="152">out = []</text>
+      <text x="32" y="176">for x in a:</text>
+      <text x="32" y="200">    if x &gt; 0: out.append(x * 2)</text>
+      <text x="32" y="224">print(out)   # 与一行版输出相同</text>
+    </g>
+  </g>
+</svg>
+    <figcaption>图 1 · 方括号里的三段与循环版三行一一对应</figcaption>
+  </figure>
+
+  <p>另有一处差别与作用域有关，写函数时会撞上：循环版的目标名会留在外面，推导式的不会。</p>
+
+  <pre data-lang="python"><code>for x in range(3):
+    pass
+print(x)                          # 2，循环的目标名留在外面
+
+print([y for y in range(3)])      # [0, 1, 2]
+print(y)                          # NameError</code></pre>
+
+  <pre data-lang="text"><code>2
+[0, 1, 2]
+NameError: name 'y' is not defined</code></pre>
+
+  <p>官方语言参考把这条写得很明确：推导式在一个隐式的嵌套作用域里执行，赋给目标的名字不会「泄漏」到外层。教程在讲循环建表时也提醒过前半句——「这段代码创建（或覆盖）变量 <code>x</code>，该变量在循环结束后仍然存在」。对第 4 课刚学的函数来说，这条差别是有用的：函数里写推导式，不会意外改掉外层的同名变量。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "下面这段最后一行会怎样？\n\n```python\nprint([y for y in range(3)])\nprint(y)\n```\n\n循环版跑完之后，循环的目标名 x 还留在外面。",
+    "opts": [
+      "报 NameError，因为 y 只活在推导式内部",
+      "打印 2，因为它把最后一轮取到的那个值留在了外面",
+      "打印 [0, 1, 2]，因为 y 是推导式建的那张表",
+      "报 TypeError，因为 print 打不了列表"
+    ],
+    "ans": 0,
+    "why": "推导式在一个隐式的嵌套作用域里执行：赋给目标的名字（这里的 y）不会泄漏到外层，所以出了方括号这个名字就不存在了，print(y) 报 NameError。循环版正相反——for x in range(3) 结束后 x 还留在外面。两版算出的表逐字相同（[0, 1, 2]），差的只是目标名的可见范围；写函数时这条有用：函数里写推导式不会意外改掉外层的同名变量。"
+  }
+]'></div>
+
+  <h2>带条件的推导式</h2>
+
+  <p>官方教程把列表推导式的用途写成两条：对序列里的每个元素应用某种操作，用结果建新表；或者用满足特定条件的元素建子序列。上一节是第一条，这一节是第二条。</p>
+
+  <pre data-lang="python"><code>vec = [-4, -2, 0, 2, 4]
+
+# 循环版
+kept = []
+for x in vec:
+    if x &gt;= 0:
+        kept.append(x)
+print(kept)
+
+# 推导式版
+print([x for x in vec if x &gt;= 0])</code></pre>
+
+  <pre data-lang="text"><code>[0, 2, 4]
+[0, 2, 4]</code></pre>
+
+  <p>本课程里，条件推导式最常出现在两个位置，都在你已经写过的代码里：</p>
+
+  <ul>
+    <li>读进来的 <code>data</code> 是一串字符串，先整批转成整数：<code>a = [int(x) for x in data]</code>。</li>
+    <li>第 3 课查重里的 <code>seen</code> 是集合，筛出还没出现过的元素：<code>[x for x in data if x not in seen]</code>。这一步 <code>seen</code> 自始至终不变，只是一次筛选，正适合推导式；而查重本身要一边判断一边往 <code>seen</code> 里加，那属于下一节末尾要说的边界。</li>
+  </ul>
+
+  <p>要两个条件，就再写一个 <code>if</code> 子句：<code>[x for x in range(10) if x % 2 == 0 if x &gt; 4]</code> 得到 <code>[6, 8]</code>。这两个 <code>if</code> 与循环版里连着写两个 <code>if</code> 是一回事。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "下面这个式子的结果是什么？\n\n```python\n[x for x in range(10) if x % 2 == 0 if x &gt; 4]\n```\n\n注意它连着写了两个 if 子句。",
+    "opts": [
+      "得到 [6, 8]：两个 if 子句要同时满足才算数",
+      "得到 [0, 2, 4, 6, 8]：两个 if 只留后一个",
+      "得到 [5, 6, 7, 8, 9]：两个 if 是或的关系",
+      "报语法错误：一个推导式里最多只允许写一个 if 子句"
+    ],
+    "ans": 0,
+    "why": "连着写两个 if 子句，等价于循环版里连着写两个 if —— 两个条件都要满足才把元素收进表，也就是「与」的关系：既要偶数又要大于 4，只剩 6 和 8。要「或」得写成一个 if x % 2 == 0 or x &gt; 4。另外据课件：条件写在最后，可以连着写两个 if；要「与」也可以合成一个 if 用 and 连起来，两种写法结果一样。"
+  }
+]'></div>
+
+  <h2>两层循环压成一行</h2>
+
+  <p>方括号里可以写两个 <code>for</code>，这时它对应的是两层循环。官方教程的例子是把两个列表里不相等的元素两两组合：</p>
+
+  <pre data-lang="python"><code># 推导式版
+print([(x, y) for x in [1, 2, 3] for y in [3, 1, 4] if x != y])
+
+# 循环版
+combs = []
+for x in [1, 2, 3]:
+    for y in [3, 1, 4]:
+        if x != y:
+            combs.append((x, y))
+print(combs)</code></pre>
+
+  <pre data-lang="text"><code>[(1, 3), (1, 4), (2, 3), (2, 1), (2, 4), (3, 1), (3, 4)]
+[(1, 3), (1, 4), (2, 3), (2, 1), (2, 4), (3, 1), (3, 4)]</code></pre>
+
+  <p>要留意的是<b>顺序</b>：一行版里 <code>for</code> 与 <code>if</code> 的先后，和循环版里从上到下的顺序一致——先 <code>for x</code>，再 <code>for y</code>，最后 <code>if x != y</code>。教程在同一处专门写了一句「上面两段代码中，<code>for</code> 和 <code>if</code> 的顺序相同」；写反了，得到的元素集合就变了。</p>
+
+  <p>两个 <code>for</code> 还能把嵌套的列表展平：</p>
+
+  <pre data-lang="python"><code>vec = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+print([num for elem in vec for num in elem])</code></pre>
+
+  <pre data-lang="text"><code>[1, 2, 3, 4, 5, 6, 7, 8, 9]</code></pre>
+
+  <p>推导式里还能再嵌一个推导式，这时外层每取一个值就构造一整行。转置一个矩阵是它的例子：</p>
+
+  <pre data-lang="python"><code>matrix = [
+    [1, 2, 3, 4],
+    [5, 6, 7, 8],
+    [9, 10, 11, 12],
+]
+
+# 嵌套推导式版
+print([[row[i] for row in matrix] for i in range(4)])
+
+# 循环版
+transposed = []
+for i in range(4):
+    row_out = []
+    for row in matrix:
+        row_out.append(row[i])
+    transposed.append(row_out)
+print(transposed)</code></pre>
+
+  <pre data-lang="text"><code>[[1, 5, 9], [2, 6, 10], [3, 7, 11], [4, 8, 12]]
+[[1, 5, 9], [2, 6, 10], [3, 7, 11], [4, 8, 12]]</code></pre>
+
+  <p>这一层也是<b>该停手的地方</b>。官方在这一节末尾紧接着写了一句：实际应用中，最好用内置函数替代复杂的流程语句，此时 <code>zip()</code> 函数更好用。同一件事用 <code>zip</code> 写：</p>
+
+  <pre data-lang="python"><code>matrix = [
+    [1, 2, 3, 4],
+    [5, 6, 7, 8],
+    [9, 10, 11, 12],
+]
+print(list(zip(matrix[0], matrix[1], matrix[2])))
+print([sum(row) for row in matrix])</code></pre>
+
+  <pre data-lang="text"><code>[(1, 5, 9), (2, 6, 10), (3, 7, 11), (4, 8, 12)]
+[10, 26, 42]</code></pre>
+
+  <p>上面这个 <code>zip</code> 写法把行数写死了（三行就写三个参数）。官方给的是 <code>zip(*matrix)</code>，用星号把矩阵的各行拆成参数传进去，这个写法用到解包实参，遇到再补。转置这个例子到 <code>zip</code> 就到头了：再往里叠第三层 <code>for</code>，读的人得先在心里把三层展开才能确认结果，那时就该换回循环或现成函数。判断标准在「压成一行值不值」一节统一给。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "同事把一段筛选压成了一行，现在没人能一眼看懂：\n\n```python\nres = [k for i, row in enumerate(grid) if i % 2 == 0\n       for k in row if k &gt; 0 if k % 2 == 1]\n```\n\n① 展开成循环版，for 与 if 的顺序必须与这一行一致。\n② 这属于课件里「该写回循环」的哪一种情形？照你展开的代码说清理由。",
+    "answer": "① 一行里 for 与 if 的先后，和循环版从上到下的顺序一致，展开是：\n\n```python\nres = []\nfor i, row in enumerate(grid):\n    if i % 2 == 0:\n        for k in row:\n            if k &gt; 0:\n                if k % 2 == 1:\n                    res.append(k)\n```\n\n两层 for 不能对调（对调后先按列再按行，结果就变了），if 也不能提到它前面的那个 for 之前。\n\n② 属于「for 与 if 叠到三层以上」这一条：这里叠了五层。理由是读的人要先在心里把五层完整展开，才能确认 res 里到底装了些什么；换回循环版以后，每一层的条件都单独占一行，一眼就能看下去。课件给的另一个出口是照官方那句换成现成函数（这类「按位置筛行、再筛元素」多数能写成 sum / any 这类一站式的调用）。",
+    "criteria": "① 展开后的顺序必须逐层对上：for i, row → if i % 2 == 0 → for k → if k &gt; 0 → if k % 2 == 1 → append(k)。把两个 for 对调、或把某个 if 挪到它前面那个 for 之前，都算顺序错（结果会变），不算过。\n② 必须落到「for 与 if 叠到三层以上」这一条上，并给出理由：读的人要先在心里展开才能确认结果（或：一行里看不到中间值）。只说「太长了」「不好看」而不指出这一条，不算过。"
+  }
+]'></div>
+
+  <h2>生成器表达式</h2>
+
+  <p>把方括号换成圆括号，就是<b>生成器表达式</b>。官方语言参考的说法是：生成器表达式的语法与列表推导式相同，只是方括号换成了圆括号；它在运行时的值是一个生成器迭代器，产生的值与对应的列表推导式一样。</p>
+
+  <p>两种写法放在一起看，差别不在结果，在<b>什么时候算</b>：</p>
+
+  <pre data-lang="python"><code>squares = [x ** 2 for x in range(10)]     # 列表：10 个元素已经全部算好
+gen = (x ** 2 for x in range(10))         # 生成器：还没算，等着被要
+print(squares)
+print(gen)
+print(sum(gen))     # 第一次：全部取出来加一遍
+print(sum(gen))     # 第二次：已经空了</code></pre>
+
+  <pre data-lang="text"><code>[0, 1, 4, 9, 16, 25, 36, 49, 64, 81]
+&lt;generator object &lt;genexpr&gt; at 0x...&gt;
+285
+0</code></pre>
+
+  <p>两次 <code>sum</code> 的结果不同，是这一节最该记住的现象：第一次要的时候它把 10 个数逐个算出来交出去，加完是 285；第二次再要，里面已经没有东西可给了，加一个空序列得 0。<b>生成器只能走一遍。</b></p>
+
+  <p>官方把这件事叫<b>惰性求值</b>：除了最左侧 <code>for</code> 子句里的那个来源，其余表达式都推迟到向迭代器要值时才算。这里的来源是 <code>range(10)</code>，它会立刻求值——好处是来源写错时错误当场就报，不必等到取值那一刻。</p>
+
+  <p>没有长度、不能按下标取，也是同一个原因：</p>
+
+  <pre data-lang="python"><code>gen = (x ** 2 for x in range(10))
+print(len(gen))</code></pre>
+
+  <pre data-lang="text"><code>TypeError: object of type 'generator' has no len()</code></pre>
+
+  <pre data-lang="python"><code>gen = (x ** 2 for x in range(10))
+print(gen[0])</code></pre>
+
+  <pre data-lang="text"><code>TypeError: 'generator' object is not subscriptable</code></pre>
+
+  <p>与第 3 课的口径合起来看，两种写法的代价差别就很清楚了：</p>
+
+  <table>
+    <thead>
+      <tr><th></th><th>列表推导式 <code>[...]</code></th><th>生成器表达式 <code>(...)</code></th></tr>
+    </thead>
+    <tbody>
+      <tr><td>什么时候算</td><td>写出来时就把元素全算好，建成一张表</td><td>每要一个才算一个</td></tr>
+      <tr><td>额外占用</td><td><span class="math-inline">O(n)</span>，一格一个元素</td><td><span class="math-inline">O(1)</span>，手上只留当前这个值</td></tr>
+      <tr><td>能遍历几次</td><td>想遍历几次都行</td><td>一次，取完就空</td></tr>
+      <tr><td>能 <code>len</code>、能下标吗</td><td>都能</td><td>都不能，报 <code>TypeError</code></td></tr>
+      <tr><td>什么时候用</td><td>结果要反复用、要按位置取、要 <code>len</code></td><td>结果只是喂给 <code>sum</code>、<code>max</code>、<code>any</code> 这类函数走一遍</td></tr>
+    </tbody>
+  </table>
+
+  <figure class="lesson-figure lesson-figure--inline" role="img" aria-label="列表推导式先把整张表建好再交给 sum，生成器表达式算一个交一个，额外占用分别为 O(n) 与 O(1)">
+<svg viewBox="0 0 520 250" role="img" aria-hidden="true">
+  <g stroke="currentColor" fill="none">
+    <rect x="8" y="30" width="110" height="44"/>
+    <rect x="150" y="30" width="220" height="44"/>
+    <rect x="400" y="30" width="112" height="44"/>
+    <path d="M118 52 L150 52"/>
+    <path d="M370 52 L400 52"/>
+    <rect x="8" y="152" width="110" height="44"/>
+    <rect x="150" y="152" width="220" height="44"/>
+    <rect x="400" y="152" width="112" height="44"/>
+    <path d="M118 174 L150 174"/>
+    <path d="M370 174 L400 174"/>
+    <path d="M456 196 L456 216 L260 216 L260 196" stroke-dasharray="4 3"/>
+  </g>
+  <g font-family="sans-serif" fill="currentColor">
+    <g font-size="13">
+      <text x="8" y="20">列表推导式</text>
+      <text x="8" y="142">生成器表达式</text>
+    </g>
+    <g font-size="13" text-anchor="middle">
+      <text x="63" y="57">来源 a</text>
+      <text x="260" y="57">整张新表：n 个元素</text>
+      <text x="456" y="57">sum(…)</text>
+      <text x="63" y="179">来源 a</text>
+      <text x="260" y="179">算一个、交一个</text>
+      <text x="456" y="179">sum(…)</text>
+    </g>
+    <g font-size="12" text-anchor="middle">
+      <text x="260" y="100">先把 n 个元素全部算好，再交给 sum；额外占用 O(n)</text>
+      <text x="260" y="240">边算边交，不建表；额外占用 O(1)，取完就空</text>
+      <text x="352" y="212">要一个才算一个</text>
+    </g>
+  </g>
+</svg>
+    <figcaption>图 2 · 建表与惰性：前者额外占用 O(n) 且能反复用，后者额外占用 O(1) 但只能走一遍</figcaption>
+  </figure>
+
+  <p>调用处还有个括号可以省，官方专门写了一条：生成器表达式是唯一的实参、又没有关键字实参时，可以省掉外面那层括号。</p>
+
+  <pre data-lang="python"><code>print(sum(x ** 2 for x in range(10)))                    # 285
+print(sum((x ** 2 for x in range(10)), start=1000))      # 1285</code></pre>
+
+  <pre data-lang="text"><code>285
+1285</code></pre>
+
+  <div class="lesson-warn">
+    <b>sum 这类函数会把东西取完</b>
+    <p><code>sum</code>、<code>max</code>、<code>any</code>、<code>all</code> 会一直向可迭代对象要值，直到它结束——上面第二次 <code>sum(gen)</code> 得 0，正是第一次已经把生成器取空了。如果来源本身永远不结束，这些函数就会一直要下去，程序停在原地不动。要处理不会结束的序列，得自己在循环里判断什么时候停，不能直接套这些函数。</p>
+  </div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "下面这段两次 sum 各打印什么？\n\n```python\ngen = (x ** 2 for x in range(5))\nprint(sum(gen))\nprint(sum(gen))\n```",
+    "opts": [
+      "先 30 再 0：生成器被取完就空了",
+      "先 30 再 30：每回都从头重新算一遍",
+      "先 30 再报错：第二次不许再遍历它",
+      "先 0 再 0：sum 认不出生成器里的数"
+    ],
+    "ans": 0,
+    "why": "生成器是惰性的——要一个才算一个，取完就没有了。第一次 sum 把 0、1、4、9、16 逐个要出来加一遍得 30；第二次再要，里面已经空了，加一个空序列得 0。这也是它省内存的代价：额外占用 O(1)，但只能走一遍，而且没有 len、不能下标（len(gen) 报 TypeError: object of type &#39;generator&#39; has no len()）。要反复用就先建成表：squares = [x ** 2 for x in range(5)]。"
+  }
+]'></div>
+
+  <h2>不再数下标的两个函数</h2>
+
+  <p>这两个函数解决的尴尬是同一类：循环体里明明只要元素，却不得不先弄一个下标出来。</p>
+
+  <p>官方教程把它们安排在「循环的技巧」一节：在序列中循环时，用 <code>enumerate()</code> 可以同时取出位置索引和对应的值；同时循环两个或多个序列时，用 <code>zip()</code> 可以把元素一一匹配。</p>
+
+  <pre data-lang="python"><code>names = ['第一题', '第二题', '第三题']
+scores = [80, 95, 60]
+
+for i in range(len(names)):                # 下标版
+    print(i, names[i], scores[i])
+
+for i, name in enumerate(names):           # 位置与值一次取出
+    print(i, name)
+
+for name, score in zip(names, scores):     # 两个序列一一匹配
+    print(name, score)</code></pre>
+
+  <pre data-lang="text"><code>0 第一题 80
+1 第二题 95
+2 第三题 60
+0 第一题
+1 第二题
+2 第三题
+第一题 80
+第二题 95
+第三题 60</code></pre>
+
+  <p>下标版要在三个地方写对同一个下标，两种新写法各只剩一处：</p>
+
+  <ul>
+    <li><code>enumerate</code> 的计数默认从 0 起，要按题号从 1 数就写 <code>enumerate(names, start=1)</code>。</li>
+    <li>位置与配对都要拿到时，两个可以叠起来用：<code>for i, (name, score) in enumerate(zip(names, scores))</code>。</li>
+    <li><code>zip</code> 在最短的那个序列用完时就停：<code>zip(names, scores[:2])</code> 只给出两组。长度不齐不会报错，只会悄悄变短，用之前确认两个序列是对齐的。</li>
+    <li><code>enumerate</code> 的名字里有个迭代器的意思：它也是走一遍就空的，不存在「重置」。</li>
+    <li>想单独取出配对里的某一列，可以写作 <code>[score for _, score in zip(names, scores)]</code>——用一个不对应的名字 <code>_</code> 接住那一列。</li>
+  </ul>
+
+  <pre data-lang="python"><code>names = ['第一题', '第二题', '第三题']
+scores = [80, 95, 60]
+print(list(enumerate(names, start=1)))
+print(list(zip(names, scores[:2])))
+print([score for _, score in zip(names, scores)])
+for i, (name, score) in enumerate(zip(names, scores)):
+    print(i, name, score)</code></pre>
+
+  <pre data-lang="text"><code>[(1, '第一题'), (2, '第二题'), (3, '第三题')]
+[('第一题', 80), ('第二题', 95)]
+[80, 95, 60]
+0 第一题 80
+1 第二题 95
+2 第三题 60</code></pre>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "两个列表长度不齐时，这一行打印什么？\n\n```python\nprint(list(zip([1, 2, 3], [&#39;x&#39;, &#39;y&#39;])))\n```",
+    "opts": [
+      "[(1, &#39;x&#39;), (2, &#39;y&#39;)]：到短的那个用完就停下，不补也不报",
+      "[(1, &#39;x&#39;), (2, &#39;y&#39;), (3, &#39;&#39;)]：缺的补成空串",
+      "[(1, &#39;x&#39;), (2, &#39;y&#39;), (3, None)]：缺的补 None",
+      "报 ValueError：两个序列长度不一样，zip 得先补齐再走一趟才行"
+    ],
+    "ans": 0,
+    "why": "zip 在最短的那个序列用完时就停，多出来的元素直接丢掉——长度不齐不报错，只会悄悄变短，所以用之前要确认两个序列是对齐的。同一族的另一条口径：enumerate 的计数默认从 0 起，要按题号从 1 数就写 enumerate(names, start=1)；它也是迭代器，取完就空，不存在「重置」。"
+  }
+]'></div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "把下标循环改成一行：\n\n```python\nnames = [&#39;甲&#39;, &#39;乙&#39;]\nscores = [80, 95]\nfor i in range(len(names)):\n    print(i + 1, names[i], scores[i])\n```\n\n现在要写成 for i, (n, s) in ____: 且打印结果与上面一行不差，横线上填哪个式子？",
+    "opts": [
+      "enumerate(zip(names, scores), start=1)",
+      "enumerate(zip(names, scores), start=0)",
+      "enumerate(zip(scores, names), start=1)",
+      "zip(enumerate(names, scores), start=1)"
+    ],
+    "ans": 0,
+    "why": "下标版在三个地方写同一个下标（i、names[i]、scores[i]），换成 enumerate 配 zip 后每一处都只剩一次：zip 把两个序列一一配对，enumerate 给每对配上位置号，start=1 让编号从 1 起（默认从 0 起，那样第一行会打成 0 甲 80，与下标版差 1）。第 3 项把 scores 与 names 对调了，n 会拿到分数；第 4 项 zip 不收 start 这个关键字实参，而且 enumerate 与 zip 的嵌套写反了。"
+  }
+]'></div>
+
+  <h2>sorted 的 key</h2>
+
+  <p>排序这件事本身内置函数已经做完了，真正需要写的是「按什么排」。官方排序指南开头的两条口径是：<code>sorted()</code> 函数接受一个可迭代对象，返回一个新的有序列表；<code>key</code> 形参用来指定一个函数，在比较之前对每个元素调用它，用它的返回值参与比较。</p>
+
+  <p>先看没写 <code>key</code> 与写了 <code>key</code> 的区别：</p>
+
+  <pre data-lang="python"><code>records = [('john', 'A', 12), ('jane', 'B', 15), ('dave', 'B', 10)]
+
+print(sorted(records))                       # 没给 key：按整个元组比，先比第一项
+print(sorted(records, key=lambda s: s[2]))   # 给了 key：按第三项比</code></pre>
+
+  <pre data-lang="text"><code>[('dave', 'B', 10), ('jane', 'B', 15), ('john', 'A', 12)]
+[('dave', 'B', 10), ('john', 'A', 12), ('jane', 'B', 15)]</code></pre>
+
+  <p><code>lambda</code> 这个名字来自 λ 演算——二十世纪三十年代用来研究可计算性的一套形式系统，它就是「一个没有名字的函数」的写法。<code>lambda s: s[2]</code> 与第 4 课那样的定义是同一个东西：</p>
+
+  <pre data-lang="python"><code>def key_of(s):
+    return s[2]
+
+records = [('john', 'A', 12), ('jane', 'B', 15), ('dave', 'B', 10)]
+print(sorted(records, key=key_of))</code></pre>
+
+  <pre data-lang="text"><code>[('dave', 'B', 10), ('john', 'A', 12), ('jane', 'B', 15)]</code></pre>
+
+  <p>区别只在不用起名字。<code>lambda</code> 的限制是冒号右边只能写一个表达式（不能赋值、不能写多个分支），当 <code>key</code> 用刚好够。给 <code>key</code> 传的函数必须是<b>一元函数</b>——只收一个元素，交出参与比较的键。</p>
+
+  <p>按第二关键字排序，是这一课最值钱的一招。官方排序指南给多级排序写了两条路。第一条是让 <code>key</code> 返回一个元组：</p>
+
+  <pre data-lang="python"><code>records = [('john', 'A', 12), ('jane', 'B', 15), ('dave', 'B', 10)]
+print(sorted(records, key=lambda s: (s[1], s[2])))</code></pre>
+
+  <pre data-lang="text"><code>[('john', 'A', 12), ('dave', 'B', 10), ('jane', 'B', 15)]</code></pre>
+
+  <p>元组之间比较用的是<b>字典式顺序</b>（官方教程对序列比较的讲法）：先比第一个对应元素，不相等就定了；相等再比后面两个，以此类推。所以 <code>(s[1], s[2])</code> 读作「先按第二项排，第二项相同再按第三项」。</p>
+
+  <p>第二条路用排序的<b>稳定性</b>。官方排序指南的原话是：排序保证稳定——等键记录保持原始顺序；并且说明这个特性使得借助一系列排序步骤构建复杂排序成为可能。于是「先按次要键排一遍，再按主要键排一遍」就能得到多级排序：</p>
+
+  <pre data-lang="python"><code>records = [('john', 'A', 12), ('jane', 'B', 15), ('dave', 'B', 10)]
+s = sorted(records, key=lambda r: r[2])       # 先按次要键：年龄
+print(sorted(s, key=lambda r: r[1]))          # 再按主要键：成绩</code></pre>
+
+  <pre data-lang="text"><code>[('john', 'A', 12), ('dave', 'B', 10), ('jane', 'B', 15)]</code></pre>
+
+  <p><code>key</code> 还有一条性能上的性质，官方指南专门点明：<b>键函数只需在输入的每个记录上调用恰好一次</b>。用一个会打印的函数当 <code>key</code> 就能看见：</p>
+
+  <pre data-lang="python"><code>def show(s):
+    print('取键', s)
+    return s[2]
+
+records = [('john', 'A', 12), ('jane', 'B', 15), ('dave', 'B', 10)]
+print(sorted(records, key=show))</code></pre>
+
+  <pre data-lang="text"><code>取键 ('john', 'A', 12)
+取键 ('jane', 'B', 15)
+取键 ('dave', 'B', 10)
+[('dave', 'B', 10), ('john', 'A', 12), ('jane', 'B', 15)]</code></pre>
+
+  <p>三条记录只打印三行，而排序过程中元素之间要比很多次。这也是 <code>key</code> 比「让元素自己会比较」划算的地方：取键一次，比较很多次。</p>
+
+  <p>同一套 <code>key</code> 写法在 <code>min</code>、<code>max</code> 上也能用（官方指南把 <code>sorted</code>、<code>list.sort</code>、<code>min</code>、<code>max</code> 列在同一组）：</p>
+
+  <pre data-lang="python"><code>records = [('john', 'A', 12), ('jane', 'B', 15), ('dave', 'B', 10)]
+print(max(records, key=lambda s: s[2]))</code></pre>
+
+  <pre data-lang="text"><code>('jane', 'B', 15)</code></pre>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "用 sorted(records, key=show) 排 5 条记录，\nshow 里有一句 print，它会被打印几行？",
+    "opts": [
+      "5 行：键函数在每条记录上只调用一次",
+      "多于 5 行：每比较一次就要调用一次",
+      "1 行：键函数只在第一条记录上调用",
+      "0 行：真正排序时才轮到它调用一次"
+    ],
+    "ans": 0,
+    "why": "官方排序指南专门点明：键函数只需在输入的每个记录上调用恰好一次。排序过程中元素之间要比很多次，但比的是取回来的键，不是重新调用 show —— 取键一次、比较很多次，这正是 key 比「让元素自己会比较」划算的地方。同一个 key 写法在 min、max 上也照样能用。"
+  }
+]'></div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "模拟赛排行榜要按这个规则排：\n\n```python\nrecords = [(&#39;A03&#39;, 80), (&#39;A01&#39;, 95), (&#39;A02&#39;, 80)]\n# 分数从高到低；分数相同的，编号从小到大\n```\n\n① 写出 key 函数与排序那一行。\n② 为什么这样写能保证同分的两个人不乱？",
+    "answer": "① 分数要降序、而元组按升序比较，所以第一项取负号；同分再比编号，把编号放第二项：\n\n```python\ndef rank_key(rec):\n    return (-rec[1], rec[0])\n\nboard = sorted(records, key=rank_key)\nprint(board)\n# [(&#39;A01&#39;, 95), (&#39;A02&#39;, 80), (&#39;A03&#39;, 80)]\n```\n\n② 两条依据任选一条说清即可。第一条：元组之间按字典式顺序比较——先比第一个对应元素，不相等就已经定了；相等再比后面两个。所以 (-rec[1], rec[0]) 读作「先按分数从高到低，分数相同再按编号从小到大」，同分的两条一定按编号排。第二条：排序保证稳定，等键记录保持原始顺序。于是可以「先按次要键排一遍、再按主要键排一遍」：\n\n```python\ndef by_no(rec):\n    return rec[0]\n\ndef by_score_desc(rec):\n    return -rec[1]\n\nboard = sorted(sorted(records, key=by_no), key=by_score_desc)\n```\n\n先按编号升序排好，再按分数降序排；同分的两条在第二次排序里键相等，稳定性让它们保持第一次排好的编号顺序。用 sorted 而不是 records.sort() 的那一版，是因为题目要求保留 records 的原始顺序。",
+    "criteria": "① key 必须交回一个元组（或等价的两级写法），第一项实现「分数降序」——用负号、或配 reverse=True 的两遍稳定排序都算；第二项实现「编号升序」的原字段。排序行要用 sorted(...) 并指名 key=。\n② 必须点到以下两条之一并说清它怎么保证同分不乱：元组按字典式顺序比、先比第一项相同再比第二项；或者排序稳定、等键记录保持原始顺序（先按次要键排、再按主要键排）。只贴代码不说理由，不算过。\n③ 用 sorted 而不是调用 records.sort()：题目要求按规则给出排行榜、原 records 还要按原样保留；若用 records.sort()，必须说明它原地改掉了 records，或说明这一处可以接受。"
+  }
+]'></div>
+
+  <h2>两个排序函数差在哪</h2>
+
+  <p><code>sorted(a)</code> 与 <code>a.sort()</code> 排出来的顺序一样，区别有两处，官方排序指南开头就写了。第一处：<code>list.sort()</code> 原地修改列表，而 <code>sorted()</code> 由可迭代对象新建一个有序列表。第二处就是本课要记的那个坑——指南在讲 <code>list.sort()</code> 时特别标注了它「返回 <code>None</code> 以避免混淆」。</p>
+
+  <p>写 <code>x = a.sort()</code>，你以为拿到的是排好序的新表，实际拿到的是 <code>None</code>，而原列表已经被改过了：</p>
+
+  <pre data-lang="python"><code>c = [3, 1, 2]
+x = c.sort()          # 想拿到新表
+print(x)              # None
+print(c)              # 原表已经被改了
+
+d = [3, 1, 2]
+d = d.sort()          # 把结果又赋回 d
+print(d)              # None
+print(d[0])</code></pre>
+
+  <pre data-lang="text"><code>None
+[1, 2, 3]
+None
+TypeError: 'NoneType' object is not subscriptable</code></pre>
+
+  <p>第二段里 <code>d[0]</code> 报 <code>TypeError</code>，是因为 <code>d</code> 这个名字已经被赋成了 <code>None</code>，再往下用它（取下标、求长度、当参数传）都会报错。这种错误报的那一行往往离出错的写法很远，是它难查的原因。</p>
+
+  <p>第三处差别在同一段官方指南里：<code>list.sort()</code> 只为列表定义，<code>sorted()</code> 接受任何可迭代对象。</p>
+
+  <pre data-lang="python"><code>print(sorted({3, 1, 2}))
+print(hasattr({3, 1, 2}, 'sort'))</code></pre>
+
+  <pre data-lang="text"><code>[1, 2, 3]
+False</code></pre>
+
+  <p>集合可以交给 <code>sorted()</code>（交回来的是列表），但它自己没有 <code>.sort</code>；元组、字符串同理。</p>
+
+  <p>选法就一条：结果要给别的变量用、或者原数据还要保留，用 <code>sorted(...)</code>；原数据可以就地改掉、也不再需要旧顺序，用 <code>a.sort()</code>。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "提交后报错，报错那一行离出错的写法很远：\n\n```python\nscores = [88, 95, 70]\nranked = scores.sort(reverse=True)\nprint(ranked[0])\n```\n\nTypeError: &#39;NoneType&#39; object is not subscriptable\n\n① 根因是什么？\n② 给出两种改法。\n③ 下次怎么在写的时候躲开它？",
+    "answer": "① list.sort() 原地排序，并且返回 None —— 官方排序指南特意标注它「返回 None 以避免混淆」。执行到 ranked = scores.sort(reverse=True) 时，scores 已经被排成 [95, 88, 70]，而 ranked 拿到的是 None；下一行 ranked[0] 是拿 None 取下标，于是报 &#39;NoneType&#39; object is not subscriptable。报错的行（print(ranked[0])）不是出错的行，这正是它难查的原因。\n\n② 两种改法。要新表、原表不动：\n\n```python\nranked = sorted(scores, reverse=True)   # 返回新表\nprint(ranked[0])                        # 95\n```\n\n原表可以就地改掉、也不再需要旧顺序：\n\n```python\nscores.sort(reverse=True)               # 原地改，不接返回值\nprint(scores[0])                        # 95\n```\n\n③ 口径：sorted(a) 由可迭代对象新建一个有序列表（列表、集合、元组、字符串都能交给它），a.sort() 只为列表定义、原地修改并返回 None。见到 x = a.sort() 就知道 x 是 None。",
+    "criteria": "① 必须点出 list.sort() 原地修改、返回 None（指南标注「返回 None 以避免混淆」），并说出后果：ranked 这个名字被赋成了 None，所以取下标才报错，报错行离出错行很远。只说「sort 没有返回值」而不点 None，不算过。\n② 两种改法都要给全：ranked = sorted(scores, reverse=True)（返回新表，scores 不动）；scores.sort(reverse=True) 之后直接用 scores（原地改）。只给一种不算过。\n③ 给出可执行的口径即可：sorted 返回新表 / list.sort 返回 None（原地改）/ 见到 x = a.sort() 就是 x = None。答「给 sort 加个 return」或「再排一次就有了」不算过。"
+  }
+]'></div>
+
+  <h2>统计与判定的现成函数</h2>
+
+  <p>教材在讲数字列表时介绍过一组现成函数：<code>max()</code>、<code>min()</code>、<code>sum()</code> 分别求最大、最小与总和。这三个加上 <code>any()</code> 与 <code>all()</code>，覆盖了「把一批数据扫一遍、得出一个数或一个判断」这类循环的大半。</p>
+
+  <p>官方文档给 <code>any</code> 与 <code>all</code> 的定义是：<code>any(iterable)</code> 在可迭代对象里有任意一个元素为真时返回 <code>True</code>，空的可迭代对象返回 <code>False</code>；<code>all(iterable)</code> 在所有元素都为真时返回 <code>True</code>（空的可迭代对象也算）。两段定义后面都附了一段等价的 <code>for</code> 循环代码，函数体里是 <code>if …: return …</code>——也就是说，能确定结果时它就不再往下取值了。</p>
+
+  <p>四组对照，左边是循环版，右边是一行版，得出的是同一个数：</p>
+
+  <table>
+    <thead>
+      <tr><th>要做的事</th><th>循环版</th><th>一行版</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>求和</td><td><code>total = 0</code>，循环里 <code>total += x</code></td><td><code>sum(a)</code></td></tr>
+      <tr><td>求最大</td><td><code>best = a[0]</code>，循环里比一次</td><td><code>max(a)</code></td></tr>
+      <tr><td>数有几个满足条件的</td><td><code>c = 0</code>，循环里 <code>if x &gt; 0: c += 1</code></td><td><code>sum(1 for x in a if x &gt; 0)</code></td></tr>
+      <tr><td>有没有满足条件的</td><td><code>found = False</code>，循环里置 <code>True</code></td><td><code>any(x &gt; 0 for x in a)</code></td></tr>
+    </tbody>
+  </table>
+
+  <pre data-lang="python"><code>a = [3, -1, 4, 0, 7]
+print(sum(a))                                          # 13
+print(max(a), min(a))                                  # 7 -1
+print(sum(1 for x in a if x &gt; 0))                      # 3
+print(any(x &gt; 5 for x in a))                           # True
+print(all(x &gt; 0 for x in a))                           # False
+print(any(x &gt; 0 for x in []), all(x &gt; 0 for x in []))  # 空序列的默认答案</code></pre>
+
+  <pre data-lang="text"><code>13
+7 -1
+3
+True
+False
+False True</code></pre>
+
+  <p>最后一行是空序列的口径，两个函数的默认答案相反：<code>any</code> 在空序列上返回 <code>False</code>（一个满足的都没有），<code>all</code> 在空序列上返回 <code>True</code>（一个反例也没有）。判空数据时要留意这对不对称：用 <code>all</code> 检查「这批数据是不是都合法」，空数据也会给出 <code>True</code>。</p>
+
+  <p>第三行的 <code>sum(1 for x in a if x &gt; 0)</code> 读法是「每个满足条件的元素算作 1，把它们加起来」。它也可以写成 <code>len([x for x in a if x &gt; 0])</code>：先建一张筛过的表再数长度，结果一样，代价是那张表——<span class="math-inline">O(n)</span> 个元素的空间（第 3 课的口径）。喂给 <code>sum</code> 的生成器表达式不建表，所以计数这种「只为了走一遍」的场合用它更合适。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "数据为空时这一行打印什么？\n\n```python\na = []\nprint(any(x &gt; 0 for x in a), all(x &gt; 0 for x in a))\n```",
+    "opts": [
+      "False True：一个满足的都没有，一个反例也没有",
+      "True False：空数据上两头都算成立才叫对称",
+      "False False：空数据上两个函数都判断不出来",
+      "报 ValueError：空序列不能给 any 与 all"
+    ],
+    "ans": 0,
+    "why": "any(iterable) 在有任意一个元素为真时返回 True，空的可迭代对象返回 False（一个满足的都没有）；all(iterable) 在所有元素都为真时返回 True，空的可迭代对象也算 True（一个反例也没有）。两个默认答案相反，是这对函数最容易记错的地方：用 all 检查「这批数据是不是都合法」，空数据也会给出 True，所以判空前要先判空（if not data:）。"
+  }
+]'></div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "把这段计数循环换成一行，哪一行的结果与它一致？\n\n```python\na = [3, -1, 4, 0, 7]\nc = 0\nfor x in a:\n    if x &gt; 0:\n        c += 1\nprint(c)\n```",
+    "opts": [
+      "print(sum(1 for x in a if x &gt; 0))",
+      "print(sum(x for x in a if x &gt; 0))",
+      "print(len(x for x in a if x &gt; 0))",
+      "print(sum([x for x in a if x &gt; 0]))"
+    ],
+    "ans": 0,
+    "why": "sum(1 for x in a if x &gt; 0) 读作「每个满足条件的元素算作 1，把它们加起来」，数出 3 个正数。它喂给 sum 的是生成器表达式，不建表，所以计数这种「只为了走一遍」的场合用它最合适；写成 len([x for x in a if x &gt; 0]) 结果一样，代价是先建一张 O(n) 的表。另外两行是把「计数」写成了「求和」——正数加起来是 14，不是 3 个；len 不能用在生成器上，会报 TypeError: object of type &#39;generator&#39; has no len()。"
+  }
+]'></div>
+
+  <h2>map 与列表推导式</h2>
+
+  <p><code>map</code> 把现成的函数套到每个元素上。官方教程在讲推导式时给过一个对照：<code>squares = list(map(lambda x: x**2, range(10)))</code> 与 <code>squares = [x**2 for x in range(10)]</code> 等价，并说明后者更简洁、易读。</p>
+
+  <p>它最实用的场合是「转换用的函数已经有现成的」，比如把一串字符串变成整数：</p>
+
+  <pre data-lang="python"><code>data = ['3', '-1', '4']
+print(list(map(int, data)))       # 收成一张表
+print(sum(map(int, data)))        # 直接喂给 sum，不建表
+print([int(x) for x in data])     # 推导式版</code></pre>
+
+  <pre data-lang="text"><code>[3, -1, 4]
+6
+[3, -1, 4]</code></pre>
+
+  <p><code>int</code> 在这里就是第 4 课那条「函数是值，可以当参数传」的直接用法：<code>map</code> 拿到 <code>int</code> 这个函数，对每个元素调用一次。两点与前面呼应：<code>map</code> 返回的是迭代器，所以要么用 <code>list(...)</code> 收下，要么直接交给 <code>sum</code> 这类函数；也正因为是迭代器，它只能用一次。</p>
+
+  <pre data-lang="python"><code>data = ['3', '-1', '4']
+m = map(int, data)
+print(list(m))
+print(list(m))     # 第二次已经空了</code></pre>
+
+  <pre data-lang="text"><code>[3, -1, 4]
+[]</code></pre>
+
+  <p>要写的是自己的一条表达式，或者还要加条件筛选时，列表推导式更顺手：<code>[x * 2 for x in a if x &gt; 0]</code> 一句话说清了「取正的、翻倍」，用 <code>map</code> 得拆成两步。</p>
+
+  <h2>压成一行值不值</h2>
+
+  <p>前面一直说：压成一行，省下来的是行数；速度上几版同档。这里实测一次。本机（Python 3.14.7，free-threading 构建）建一张 <span class="math-inline">10^6</span> 个元素的表：</p>
+
+  <table>
+    <thead>
+      <tr><th>写法</th><th>本机实测</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>循环 + <code>append</code></td><td>约 40 毫秒</td></tr>
+      <tr><td>列表推导式</td><td>约 32 毫秒</td></tr>
+      <tr><td><code>list(map(lambda x: x * 2, range(n)))</code></td><td>约 55 毫秒</td></tr>
+      <tr><td>循环里带 <code>if</code> 计数</td><td>约 27 毫秒</td></tr>
+      <tr><td><code>sum(1 for x in range(n) if x % 2 == 0)</code></td><td>约 30 毫秒</td></tr>
+    </tbody>
+  </table>
+
+  <p>第三行值得多看一眼：它最慢。原因是那个 <code>lambda</code> 每处理一个元素就要调用一次函数，第 4 课量过的那笔调用开销在这里被乘上了一百万次。这说明两件事：写成一行与快不快是两回事；这几版写法都落在同一档复杂度（都是 <span class="math-inline">O(n)</span>），差的是常数因子。</p>
+
+  <div class="lesson-warn">
+    <b>别背这些毫秒</b>
+    <p>表里的数字是本机实测，换机器、换 Python 版本都会变。要记的是两条：几版写法复杂度同档、差在常数倍以内；「一行」省下来的是行数与出错机会，与时间无关。真想压常数，那是后面「让 Python 再快一点」那一课的事。</p>
+  </div>
+
+  <p>几版写法既然在速度上同档，什么时候用一行版、什么时候老实写循环，就只剩可读性一条标准。教材在讲循环建表时给过一句可以当准则的话：<b>你首先应该考虑的是，编写清晰易懂且能完成所需功能的代码</b>；它还给了触发条件——当你觉得编写三四行代码来生成列表有点繁复时，就应考虑用这种写法。反过来，下面几种情形该写回循环：</p>
+
+  <table>
+    <thead>
+      <tr><th>情形</th><th>为什么</th><th>怎么写</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>循环要维护一个跨轮次的状态</td><td>推导式里没有地方放「上一轮留下的东西」</td><td>第 3 课的查重：一边判断一边往 <code>seen</code> 里加</td></tr>
+      <tr><td>一个元素要产生好几样东西，或要顺带打印</td><td>表达式只有一个位置，放不下多件事</td><td>写循环，或把那段逻辑抽成函数</td></tr>
+      <tr><td><code>for</code> 与 <code>if</code> 叠到三层以上</td><td>读的人要先在心里展开才能确认结果</td><td>写循环；或者按官方那句，换现成函数</td></tr>
+      <tr><td>这段代码你打算反复调试</td><td>一行里看不到中间值</td><td>先写循环版跑通，再考虑压成一行</td></tr>
+    </tbody>
+  </table>
+
+  <p>最后一行是这一课的用法建议：改写的顺序是先写清楚，再压紧。压完必须对着循环版比对输出，逐字一致才算改完——这正是练习里要做的事。</p>
+
+  <h2>这一课用到的 Python</h2>
+
+  <table>
+    <thead>
+      <tr><th>要做的事</th><th>写法</th><th>边界</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>用描述式建新表</td><td><code>[x * 2 for x in a]</code></td><td><code>for</code> 子句末尾不写冒号；目标名不会留到外面</td></tr>
+      <tr><td>只取满足条件的元素</td><td><code>[x for x in a if x &gt; 0]</code></td><td>条件写在最后，可以连着写两个 <code>if</code></td></tr>
+      <tr><td>两层循环压一行</td><td><code>[(x, y) for x in a for y in b]</code></td><td><code>for</code> 与 <code>if</code> 的顺序要和循环版一致</td></tr>
+      <tr><td>不建表的写法</td><td><code>(x * 2 for x in a)</code></td><td>只能走一遍；没有 <code>len</code>，不能下标</td></tr>
+      <tr><td>位置与值一起取</td><td><code>for i, v in enumerate(a, start=1)</code></td><td>也是迭代器，取完就空</td></tr>
+      <tr><td>两个序列配对</td><td><code>for x, y in zip(a, b)</code></td><td>在最短的那个用完时停，长度不齐不报错</td></tr>
+      <tr><td>指定排序依据</td><td><code>sorted(a, key=lambda s: s[2])</code></td><td>键函数每条记录只调用一次，必须是一元函数</td></tr>
+      <tr><td>多关键字排序</td><td><code>key=lambda s: (s[1], s[2])</code></td><td>元组按字典式顺序比：先比第一个键，相同再比第二个</td></tr>
+      <tr><td>保留原顺序</td><td><code>b = sorted(a)</code></td><td><code>a.sort()</code> 原地改并返回 <code>None</code></td></tr>
+      <tr><td>求和、极值、判定</td><td><code>sum(a)</code>、<code>max(a)</code>、<code>any(...)</code>、<code>all(...)</code></td><td><code>any([])</code> 得 <code>False</code>，<code>all([])</code> 得 <code>True</code></td></tr>
+      <tr><td>用现成函数做转换</td><td><code>list(map(int, data))</code></td><td>返回迭代器；要写表达式就改用列表推导式</td></tr>
+      <tr><td>计数</td><td><code>sum(1 for x in a if x &gt; 0)</code></td><td>写成 <code>len([...])</code> 会先建一张表</td></tr>
+    </tbody>
+  </table>
+
+  <p>这套工具在后面每一课都会出现：第 3 课的容器选择、这一课的一行写法、下一课的输入解析会连在一起用——把「第一行 <code>n m</code>，接下来 <code>n</code> 行每行 <code>m</code> 个整数」读成二维列表，靠的就是推导式配 <code>split</code> 与 <code>map</code>。</p>
+
+  <div class="lesson-practice">
+    <div class="lesson-practice__head">
+      <span class="lesson-practice__level">练习</span>
+      <span class="lesson-practice__title">十条循环，逐条改写成一行</span>
+    </div>
+
+      <p>这一课的动手部分落在 lab 里（任务与断言见 <a href="../lab/0005-python-comprehension-builtins/">lab/0005-python-comprehension-builtins/</a>，做完对照 <a href="../lab/solutions/">lab/solutions/</a>）。要做的是三件事。</p>
+
+      <ol>
+        <li>从自己过去写过的代码里收集十段循环（求导、统计、筛选、查重、按关键字排序都算），先把每一段的输入与输出记下来。</li>
+        <li>逐段改写：能压成推导式的压成推导式，能换成内置函数的换成内置函数，其中 <code>enumerate</code>、<code>zip</code>、<code>sorted(key=)</code>、<code>sum</code>、<code>max</code>、<code>any</code>、<code>all</code>、<code>map</code> 各至少出现一处。每改完一段，用同一组输入跑新旧两版，输出必须逐字一致。</li>
+        <li>给每一段写一句判断：改完是更清楚了，还是更难读了。判为「更难读」的那几段写回循环版，并在旁边注明撞上了哪一条边界（跨轮次的状态、多件事挤在一个表达式里、<code>for</code> 与 <code>if</code> 叠了三层以上、要留着调试）。</li>
+      </ol>
+  </div>
+
+  <ul class="lesson-resources">
+    <li><a href="https://docs.python.org/zh-cn/3/tutorial/datastructures.html">Python 官方教程 · 数据结构</a><span class="lesson-resources__meta">5.1.3 列表推导式、5.1.4 嵌套推导式、5.6 循环的技巧（<code>enumerate</code> 与 <code>zip</code>），本课的写法与顺序口径出自这里</span></li>
+    <li><a href="https://docs.python.org/zh-cn/3/reference/expressions.html">Python 语言参考 · 表达式</a><span class="lesson-resources__meta">6.2.5 至 6.2.9：推导式的隐式作用域与子句顺序、集合与字典推导式、生成器表达式与惰性求值</span></li>
+    <li><a href="https://docs.python.org/zh-cn/3/howto/sorting.html">Python 官方文档 · 排序指南</a><span class="lesson-resources__meta"><code>sorted</code> 与 <code>list.sort</code> 的区别、<code>key</code> 只调用一次、稳定性与多级排序</span></li>
+    <li><a href="https://docs.python.org/zh-cn/3/library/functions.html">Python 官方文档 · 内置函数</a><span class="lesson-resources__meta"><code>sum</code>、<code>max</code>、<code>min</code>、<code>any</code>、<code>all</code>、<code>enumerate</code>、<code>map</code>、<code>zip</code> 的签名与空序列口径</span></li>
+    <li>《Python 编程：从入门到实践（第 2 版）》第 4 章 操作列表<span class="lesson-resources__meta">本地教材：4.3.3 数字列表的统计、4.3.4 列表解析（本课程统一叫列表推导式）</span></li>
+  </ul>
+
+  <!-- ── 提问提示：固定写法，别删 ── -->
+
+  <div class="lesson-ask">
+    <b>没看懂？随时问</b>
+    把看不懂的段落（或报错）原样复制回会话，说一句哪里不懂就行，我只解释这一段，不打断你的进度。
+  </div>
+
+  <!-- ── 上/下节课指针由渲染器按 curriculum.yaml 的 nodes 顺序算（第一课无 --prev、最后一课无 --next） ── -->
+
+  <nav class="lesson-nav" aria-label="上一课 / 下一课">
+    <a class="lesson-nav__link lesson-nav__link--prev" href="0004-python-function-basics.html">
+      <span class="lesson-nav__dir">上节课</span>
+      <span class="lesson-nav__title">把一段代码变成函数</span>
+    </a>
+    <a class="lesson-nav__link lesson-nav__link--next" href="0006-python-io-and-debug.html">
+      <span class="lesson-nav__dir">下节课</span>
+      <span class="lesson-nav__title">读完输入再动手</span>
+    </a>
+  </nav>
+
+  <footer class="lesson-footer">
+    StudyMate · 0005 推导式与常用内置工具 · 本地学习工作区
+  </footer>
+
+</article>
+
+<script src="../../../assets/sayo/sayo.js"></script>
+<link rel="stylesheet" href="../../../assets/katex/katex.min.css">
+<script src="../../../assets/katex/katex.min.js" defer></script>
+<script src="../../../assets/lesson-math.js" defer></script>
+<script src="../assets/quiz.js" defer></script>
+<script src="../assets/lesson-toc.js" defer></script>
+<script>LearnTheme.wire(document.getElementById('lesson-theme-checkbox'));</script>
+</body>
+</html>

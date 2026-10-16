@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>看数据规模挑算法 · Python 算法与蓝桥杯</title>
+
+<!-- 共享层在 .learning/assets/，课件在 .learning/subjects/<slug>/lessons/ 下，所以是 ../../../assets/ -->
+<link rel="stylesheet" href="../../../assets/sayo/sayo.css">
+<link rel="stylesheet" href="../../../assets/learn-theme.css">
+<link rel="stylesheet" href="../assets/style.css">
+
+<!-- 主题要在首帧前应用，避免闪白/闪黑 -->
+<script src="../../../assets/learn-theme.js"></script>
+<script>LearnTheme.apply();</script>
+</head>
+
+<body class="lesson-body">
+
+<nav class="lesson-bar">
+  <a href="../index.html">← 返回课程</a>
+  <span>Python 算法与蓝桥杯</span>
+  <span class="lesson-bar__no">0028</span>
+  <!-- 课件页自带主题开关：学生从文件管理器直接打开课件时也能切暗色 -->
+  <label class="syo-toggle syo-toggle--theme lesson-bar__toggle" title="切换深浅主题" aria-label="切换深浅主题">
+    <input type="checkbox" id="lesson-theme-checkbox" checked>
+    <span class="syo-toggle-track"></span>
+    <span class="syo-toggle-knob">
+      <svg class="syo-toggle-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.5" stroke="#f57c00" stroke-width="1.5"/><path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.34 4.34l1.77 1.77M13.89 13.89l1.77 1.77M4.34 15.66l1.77-1.77M13.89 6.11l1.77-1.77" stroke="#f57c00" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <svg class="syo-toggle-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.5 12.5A6 6 0 019 4.5a6 6 0 007.5 8z" stroke="#5c6bc0" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </span>
+  </label>
+</nav>
+
+<article class="lesson">
+
+  <header class="lesson-header">
+    <span class="lesson-header__eyebrow">0028 · 看数据规模挑算法</span>
+    <h1>看数据规模挑算法</h1>
+    <p class="lesson-goal"><b>本节目标：</b>能由数据范围与问法反查算法族，并说出选择的理由。</p>
+  </header>
+
+  <!-- ── 正文：渲染器按内容文件（lessons/<序号>-<节点id>.md）产出，块词汇见 docs/规范/课件内容格式.md ── -->
+
+  <h2>先看数据范围</h2>
+
+  <p>到这一课为止，你学过的算法族已经不少了：哈希、树、堆、并查集、图和搜索、二分答案、贪心、动态规划。可真正坐在考场上，最难的一步往往不是写代码，而是<b>第一分钟不知道这题该往哪个方向想</b>。</p>
+
+  <p>有一个线索一直被放在题面最显眼的地方，很多人却不看它——<b>数据范围</b>。</p>
+
+  <p>题目说 <span class="math-inline">n \le 10^5</span>，这不是在描述数据，是在<b>告诉你该用什么算法</b>。范围到 <span class="math-inline">10^5</span>，平方级的做法就已经跑不完了；范围到 <span class="math-inline">10^3</span>，平方级甚至三次方级都还能活。范围到 <span class="math-inline">20</span> 上下，多半是在请你枚举子集。</p>
+
+  <p>这一课要做的，是把这条对应关系变成条件反射：先读范围，算出复杂度上限，再回头挑算法族。<b>先挑算法再回头看范围，顺序反了。</b></p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "为什么应该先看数据范围，再想用什么算法？",
+    "opts": [
+      "范围能先算出复杂度上限，据此划掉大部分候选",
+      "范围是题面里唯一不会骗人的信息，别的不信",
+      "先看范围可以少读几遍题，省下考场上的时间",
+      "范围决定了输入用什么格式，得先按它写读入"
+    ],
+    "ans": 0,
+    "why": "题目写 n ≤ 10^5，实际是在告诉你该用什么算法：按本机实测的尺子（每秒约 5×10^7 次），这个范围只容得下 O(n) 或 O(n log n)，平方级就已经跑不完了。先挑算法再回头看范围，顺序反了——会写出一个又长又过不了的做法，再回头推翻重写，比一开始就选对慢得多。范围不能替你决定一切（它不告诉你题意），但它是第一步就能划掉一大半候选的那条线索。"
+  }
+]'></div>
+
+  <h2>本机一秒能跑多少次</h2>
+
+  <p>要把范围和复杂度对上，得先知道<b>一秒能跑多少次基本操作</b>。这是个实测值，不是通用常数。</p>
+
+  <p>量法很简单：拿一个空转的加法循环，跑几个不同的 <span class="math-inline">n</span>，用 <code>time.perf_counter()</code> 卡住前后，把总用时除以 <span class="math-inline">n</span> 就是「每次循环多少纳秒」。这段代码放在本课最后的练习里，<b>你要在自己这台机器上跑一遍</b>，下面的数是本机的。</p>
+
+  <p><b>本机实测</b>（每次跑都会有些浮动，看量级就行）：</p>
+
+  <table>
+    <thead>
+      <tr><th>n</th><th>用时</th><th>每次循环</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>100,000</td><td>0.002 s</td><td>16.6 ns</td></tr>
+      <tr><td>1,000,000</td><td>0.019 s</td><td>19.0 ns</td></tr>
+      <tr><td>10,000,000</td><td>0.197 s</td><td>19.7 ns</td></tr>
+      <tr><td>100,000,000</td><td>1.943 s</td><td>19.4 ns</td></tr>
+    </tbody>
+  </table>
+
+  <p>注意第三列<b>基本不随 <span class="math-inline">n</span> 变</b>——<span class="math-inline">16.6</span>、<span class="math-inline">19.0</span>、<span class="math-inline">19.7</span>、<span class="math-inline">19.4</span>，都在 20 纳秒上下。这说明一次循环的开销是个常数，所以总用时和 <span class="math-inline">n</span> 是成正比的。<b>如果这一列随 <span class="math-inline">n</span> 明显变大或变小，说明你量错了</b>（多半是循环体里干了别的事，或者机器正在忙别的）。</p>
+
+  <p>每次循环大约 <b>20 纳秒</b>，反过来说——<b>每秒约五千万次</b>。</p>
+
+  <p>这正好跟第 2 课给的那把尺子对上了（那一课定的是「每秒约 <span class="math-inline">5 \times 10^7</span> 次」）。两处是各自独立量出来的，量到同一个数，所以后面就用这把尺子算。</p>
+
+  <div class="lesson-warn">
+    <p><b>这是本机实测值，不是通用值。</b> 换个 CPU、换 Python 版本、把循环体换成更重的操作、或者改用内置函数，都能差出好几倍。所以这一课所有算出来的「上限」都是<b>量级参考</b>，用来做取舍，不是精确的判决线。</p>
+  </div>
+
+  <h2>范围换算成复杂度上限</h2>
+
+  <p>有了尺子，就能反推：一秒的预算下，每种复杂度的 <span class="math-inline">n</span> 最多能到多少。</p>
+
+  <pre data-lang="python"><code>import math
+
+RULER = 5 * 10 ** 7
+
+
+def steps_log10(name, k):
+    """第 name 种复杂度在规模 k 上的「步数的常用对数」。
+
+    只算对数、不真把那个数算出来——O(2^n) 在 k 大时是个天文数字，
+    真去构造它会撑爆内存（k = 5*10^8 时是 10^150514997 这个量级）。
+    """
+    if name == 'O(n)':
+        return math.log10(k)
+    if name == 'O(n log2 n)':
+        return math.log10(k) + math.log10(max(1.0, math.log2(k)))
+    if name == 'O(n^2)':
+        return 2 * math.log10(k)
+    if name == 'O(n^3)':
+        return 3 * math.log10(k)
+    return k * math.log10(2)
+
+
+def fits(name, k):
+    return steps_log10(name, k) &lt;= math.log10(RULER)
+
+
+print(f'   尺子：每秒 {RULER:,} 步（第 2 课那把）')
+print()
+print('   复杂度        1 秒内的 n 上限        跑到 10^8 步要多久')
+for name in ('O(n)', 'O(n log2 n)', 'O(n^2)', 'O(n^3)', 'O(2^n)'):
+    n = 1                                    # 先翻倍逼近，再二分
+    while n * 2 &lt;= 10 ** 9 and fits(name, n * 2):
+        n *= 2
+    lo, hi = n, min(n * 2, 10 ** 9)
+    while lo &lt; hi:
+        mid = (lo + hi + 1) // 2
+        if fits(name, mid):
+            lo = mid
+        else:
+            hi = mid - 1
+    big = steps_log10(name, 10 ** 8)
+    if big &gt;= 15:
+        secs = f'约 10^{int(big - math.log10(RULER))} 秒'
+    else:
+        secs = f'{10 ** (big - math.log10(RULER)):.4g} 秒'
+    print(f'   {name:&lt;12} {lo:&gt;16,}        {secs:&gt;16}')</code></pre>
+
+  <pre data-lang="text"><code>   尺子：每秒 50,000,000 步（第 2 课那把）
+
+   复杂度        1 秒内的 n 上限        跑到 10^8 步要多久
+   O(n)               50,000,000                     2 秒
+   O(n log2 n)         2,361,678                 53.15 秒
+   O(n^2)                  7,071                约 10^8 秒
+   O(n^3)                    368               约 10^16 秒
+   O(2^n)                     25         约 10^30102991 秒</code></pre>
+
+  <div class="lesson-warn">
+    <p><code>O(2^n)</code> 那一格是 <b>25</b>，不是 26。<span class="math-inline">2^{25} = 33{,}554{,}432</span>，一秒装得下；<span class="math-inline">2^{26} = 67{,}108{,}864</span>，就超了。</p>
+
+    <p>这个数值得留意，因为它正好演示了本课的主题：<b>如果图省事，把 <span class="math-inline">2^n</span> 近似成 <span class="math-inline">10^{0.301n}</span> 再取整</b>，会算出 <span class="math-inline">10^7</span> 并得出「26 也行」——而 <span class="math-inline">2^{26}</span> 的真实值比 <span class="math-inline">10^7</span> 大了将近七倍。<b>近似在边界上就是错的</b>，而一到卡线的时候，边界恰恰是唯一要紧的地方。</p>
+  </div>
+
+  <p>上一段那个 <code>steps_log10</code> 值得看一眼：它<b>只算对数</b>。<span class="math-inline">O(2^n)</span> 在 <span class="math-inline">n = 10^8</span> 时的步数是 <span class="math-inline">2^{10^8}</span>，这个数有约三千万位十进制——真把它算出来，内存直接就没了。所以这里全程在对数域里比大小，只在最后要显示秒数时把指数取出来。<code>约 10^30102991 秒</code> 这个说法读作「这个量级」，别当精确值。</p>
+
+  <p><b>把中间那一列记住，这一课就学完了大半：</b></p>
+
+  <table>
+    <thead>
+      <tr><th>复杂度</th><th>一秒内的 n 上限</th><th>考场上的读法</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><span class="math-inline">O(n)</span></td><td>约 <span class="math-inline">5 \times 10^7</span></td><td>范围到 <span class="math-inline">10^7</span> 也放心</td></tr>
+      <tr><td><span class="math-inline">O(n \log n)</span></td><td>约 <span class="math-inline">2.4 \times 10^6</span></td><td>范围到 <span class="math-inline">10^6</span> 没问题</td></tr>
+      <tr><td><span class="math-inline">O(n^2)</span></td><td>约 <span class="math-inline">7 \times 10^3</span></td><td>范围到 <span class="math-inline">10^3</span> 才行，<span class="math-inline">10^5</span> 就别想</td></tr>
+      <tr><td><span class="math-inline">O(n^3)</span></td><td>约 <span class="math-inline">370</span></td><td>只有 <span class="math-inline">n \le 400</span> 左右能活</td></tr>
+      <tr><td><span class="math-inline">O(2^n)</span></td><td>确切地说是 <span class="math-inline">25</span></td><td>只可能是 <span class="math-inline">n \le 25</span> 的枚举子集（卡得很死，别估）</td></tr>
+    </tbody>
+  </table>
+
+  <p>反过来读同一张表，就是<b>从范围反查</b>：</p>
+
+  <ul>
+    <li>范围 <span class="math-inline">n \le 10^5</span> → 只能上 <span class="math-inline">O(n)</span> 或 <span class="math-inline">O(n \log n)</span>。看到「平方级」就知道思路错了。</li>
+    <li>范围 <span class="math-inline">n \le 10^3</span> → <span class="math-inline">O(n^2)</span> 可以，<span class="math-inline">O(n^3)</span> 在边界上（<span class="math-inline">10^9</span> 步要几十秒，不行）。</li>
+    <li>范围 <span class="math-inline">n \le 20</span> 上下 → 出题人就是在请你枚举子集或者状压，别硬找多项式做法。</li>
+  </ul>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "按本课的尺子，n = 10^5 时为什么 O(n^2) 不行？",
+    "opts": [
+      "平方是 10^10 步，按尺子要跑 200 秒",
+      "平方是 10^10 步，超过整数的表示范围",
+      "平方是 10^8 步，刚好卡在一秒边界上",
+      "平方是 10^5 步，步数不多但常数大"
+    ],
+    "ans": 0,
+    "why": "n = 10^5 时 n^2 = 10^10 步。拿尺子一除：10^10 ÷ (5×10^7) = 200 秒，而判分通常只给一两秒。这一课实测的同一件事：最大子段和的平方版在 n = 800 上要 0.0074 秒，按复杂度外推到 n = 10^5 是 113 秒——量级对得上（实测算的是另一组常数）。所以范围到 10^5 时，看到「平方级」就该知道思路错了。"
+  }
+]'></div>
+
+  <h2>同一道题的三个版本</h2>
+
+  <p>「复杂度」这三个字听起来抽象，用一道题摆出来就具体了。<b>最大子段和</b>：给一串数，求和最大的那一段连续子序列。</p>
+
+  <p>这道题有三个写法，答案完全一样，步数差得很远：</p>
+
+  <pre data-lang="python"><code>def max_sum_cubic(a):
+    """O(n^3)：把左右端点全试一遍，中间再累加一遍。返回 (答案, 内层步数)。"""
+    n = len(a)
+    best = a[0]
+    steps = 0
+    for i in range(n):
+        for j in range(i, n):
+            s = 0
+            for k in range(i, j + 1):
+                s += a[k]
+                steps += 1
+            if s &gt; best:
+                best = s
+    return best, steps
+
+
+def max_sum_quadratic(a):
+    """O(n^2)：固定左端，右端往外扩时顺手累加。"""
+    n = len(a)
+    best = a[0]
+    steps = 0
+    for i in range(n):
+        s = 0
+        for j in range(i, n):
+            s += a[j]
+            steps += 1
+            if s &gt; best:
+                best = s
+    return best, steps
+
+
+def max_sum_linear(a):
+    """O(n)：要么接上前面，要么从自己重新开始。"""
+    best = cur = a[0]
+    steps = 1
+    for x in a[1:]:
+        cur = x if cur &lt; 0 else cur + x
+        if cur &gt; best:
+            best = cur
+        steps += 1
+    return best, steps
+
+
+A = [(-1) ** i * (i % 17) for i in range(100)]
+print(f'   n = 100 时三个版本给出的答案一致吗: '
+      f'{max_sum_cubic(A)[0] == max_sum_quadratic(A)[0] == max_sum_linear(A)[0]}'
+      f'（都是 {max_sum_linear(A)[0]}）')
+print()
+print('   规模     O(n^3) 步数     O(n^2) 步数     O(n) 步数')
+for n in (50, 100, 200, 400):
+    a = [(-1) ** i * (i % 17) for i in range(n)]
+    print(f'   {n:&gt;6}   {max_sum_cubic(a)[1]:&gt;12,}   {max_sum_quadratic(a)[1]:&gt;12,}   '
+          f'{max_sum_linear(a)[1]:&gt;10,}')
+b1 = max_sum_cubic([0] * 200)[1] / max_sum_cubic([0] * 100)[1]
+b2 = max_sum_quadratic([0] * 200)[1] / max_sum_quadratic([0] * 100)[1]
+b3 = max_sum_linear([0] * 200)[1] / max_sum_linear([0] * 100)[1]
+print(f'   n 从 100 翻到 200：三版的步数分别变成 {b1:.1f} 倍、{b2:.1f} 倍、{b3:.1f} 倍')</code></pre>
+
+  <pre data-lang="text"><code>   n = 100 时三个版本给出的答案一致吗: True（都是 24）
+
+   规模     O(n^3) 步数     O(n^2) 步数     O(n) 步数
+       50         22,100          1,275           50
+      100        171,700          5,050          100
+      200      1,353,400         20,100          200
+      400     10,746,800         80,200          400
+   n 从 100 翻到 200：三版的步数分别变成 7.9 倍、4.0 倍、2.0 倍</code></pre>
+
+  <p><b>最后的倍数就是复杂度的指纹。</b> 规模翻一倍，三次方版涨约 <span class="math-inline">8</span> 倍（量到 <span class="math-inline">7.9</span> 倍），平方版涨约 <span class="math-inline">4</span> 倍（量到 <span class="math-inline">4.0</span> 倍），线性版涨 <span class="math-inline">2</span> 倍（量到 <span class="math-inline">2.0</span> 倍）。</p>
+
+  <p>这不是巧合，是定义：<span class="math-inline">O(n^3)</span> 里的 <span class="math-inline">3</span> 就是说「<span class="math-inline">n</span> 翻倍、步数翻 <span class="math-inline">2^3</span> 倍」。<b>所以你量出来的倍数，反过来能告诉你这段代码是什么复杂度</b>——比自己数循环层数可靠，因为循环不一定规整。</p>
+
+  <p>顺带看一件很值钱的事：<span class="math-inline">n = 100</span> 时三个版本都是 <span class="math-inline">24</span>，<b>答案一样</b>。区别只在步数——<span class="math-inline">171{,}700</span> 对 <span class="math-inline">5{,}050</span> 对 <span class="math-inline">100</span>。正确性上它们等价，取舍全在能不能跑得完。</p>
+
+  <h2>范围决定你用哪一版</h2>
+
+  <p>上表是<b>步数</b>，换成<b>时间</b>更直观。下面这张是同一批函数在本机跑出来的<b>本机实测</b>秒数：</p>
+
+  <table>
+    <thead>
+      <tr><th>n</th><th><span class="math-inline">O(n^3)</span></th><th><span class="math-inline">O(n^2)</span></th><th><span class="math-inline">O(n)</span></th></tr>
+    </thead>
+    <tbody>
+      <tr><td>50</td><td>0.0004 s</td><td>0.0000 s</td><td>0.000003 s</td></tr>
+      <tr><td>100</td><td>0.0029 s</td><td>0.0001 s</td><td>0.000003 s</td></tr>
+      <tr><td>200</td><td>0.0212 s</td><td>0.0004 s</td><td>0.000008 s</td></tr>
+      <tr><td>400</td><td>0.1737 s</td><td>0.0018 s</td><td>0.000015 s</td></tr>
+      <tr><td>800</td><td>1.5165 s</td><td>0.0074 s</td><td>0.000031 s</td></tr>
+    </tbody>
+  </table>
+
+  <p><span class="math-inline">n = 800</span> 时三次方版要 <b>1.5 秒</b>——已经超了。而它离 <span class="math-inline">10^5</span> 还差着两个数量级。</p>
+
+  <p>按复杂度把 <span class="math-inline">n = 800</span> 这一行外推（每翻倍：三次方涨 <span class="math-inline">8</span> 倍、平方涨 <span class="math-inline">4</span> 倍、线性涨 <span class="math-inline">2</span> 倍）：</p>
+
+  <table>
+    <thead>
+      <tr><th>n</th><th><span class="math-inline">O(n^3)</span> 约</th><th><span class="math-inline">O(n^2)</span> 约</th><th><span class="math-inline">O(n)</span> 约</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>1,000</td><td>3.0 s</td><td>0.01 s</td><td>0.00004 s</td></tr>
+      <tr><td>10,000</td><td>3,007 s</td><td>1.1 s</td><td>0.0004 s</td></tr>
+      <tr><td>100,000</td><td>3,006,977 s</td><td>113 s</td><td>0.0036 s</td></tr>
+      <tr><td>1,000,000</td><td><span class="math-inline">3.0 \times 10^9</span> s</td><td>11,335 s</td><td>0.036 s</td></tr>
+    </tbody>
+  </table>
+
+  <p><span class="math-inline">n = 10^5</span> 那一行是最该看的一行：</p>
+
+  <ul>
+    <li>三次方版要 <b>300 万秒</b>，约 35 天。</li>
+    <li>平方版要 <b>113 秒</b>，还是超，但已经不是天文数字了——<b>这说明「差一个数量级」比「完全不可能」更危险，因为它看起来还能等</b>。</li>
+    <li>线性版要 <b>0.0036 秒</b>。</li>
+  </ul>
+
+  <p>所以同一道最大子段和：</p>
+
+  <ul>
+    <li>数据范围给 <span class="math-inline">n \le 100</span>：三个版本随便挑，写三次方版还更不容易错。</li>
+    <li>数据范围给 <span class="math-inline">n \le 3000</span>：三次方版不行了，平方版够用。</li>
+    <li>数据范围给 <span class="math-inline">n \le 10^5</span>：只能用线性版。</li>
+  </ul>
+
+  <p><b>题目没变，范围变了，答案就该换写法。</b> 这也解释了省赛为什么爱出「同一道题、不同数据范围」的一组题——那是在考你会不会读范围。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "题面给 n ≤ 10^6，你的第一反应应该是？",
+    "opts": [
+      "只能上 O(n) 或 O(n log n)",
+      "可以上 O(n^2)，10^6 的平方跑不完",
+      "可以上 O(n^3)，只要内层写得紧凑",
+      "不用先算复杂度，先把代码写出来跑一下再说"
+    ],
+    "ans": 0,
+    "why": "按本课那张表，一秒的上限是：O(n) 约 5×10^7、O(n log n) 约 2.4×10^6、O(n^2) 约 7×10^3。n = 10^6 落在 O(n log n) 的射程内、O(n^2) 的射程外（差三个数量级）。注意「O(n log n) 到 2.4×10^6」这一格比很多人以为的紧——n = 10^6 时它刚好装得下，再大就要小心常数了。"
+  }
+]'></div>
+
+  <h2>多组测试的陷阱</h2>
+
+  <p>有一种情况会让「范围反查」失灵，而且<b>非常常见</b>：多组测试数据。</p>
+
+  <p><code>n = 1000</code> 这个范围，按上面的表看，平方级随便写（<span class="math-inline">10^6</span> 步，跑一下 <span class="math-inline">0.01</span> 秒）。但如果题面还有一句「共 <span class="math-inline">10^5</span> 组测试数据」呢？</p>
+
+  <pre data-lang="python"><code>n = 1000
+per_case = max_sum_quadratic([(-1) ** i * (i % 17) for i in range(n)])[1]
+print(f'   n = {n} 时，O(n^2) 一组的步数: {per_case:,}')
+print()
+print('   组数          总步数')
+for cases in (1, 10, 100, 1000, 100000):
+    print(f'   {cases:&gt;8,}   {per_case * cases:&gt;18,}')
+print()
+print(f'   一组的 n = {n} 看着很小，10^5 组一乘就是 {per_case * 100000:,} 步。')</code></pre>
+
+  <pre data-lang="text"><code>   n = 1000 时，O(n^2) 一组的步数: 500,500
+
+   组数          总步数
+          1              500,500
+         10            5,005,000
+        100           50,050,000
+      1,000          500,500,000
+    100,000       50,050,000,000
+
+   一组的 n = 1000 看着很小，10^5 组一乘就是 50,050,000,000 步。</code></pre>
+
+  <p><b>一组的 <span class="math-inline">n = 1000</span> 看着很小，<span class="math-inline">10^5</span> 组一乘就是 <span class="math-inline">5 \times 10^{10}</span> 步。</b></p>
+
+  <p>拿尺子一除：<span class="math-inline">5 \times 10^{10} \div (5 \times 10^7) = 1000</span> 秒。判分给每道题通常只有一两秒。</p>
+
+  <p>本机实测同一件事：<span class="math-inline">n = 1000</span> 时平方版跑一组要 <b>0.0120 秒</b>，<span class="math-inline">10^5</span> 组就是 <b>1200 秒</b>——跟上面的估算对得上。</p>
+
+  <p>所以<b>读范围时要读的是「一组的 <span class="math-inline">n</span>」乘「组数」的那个总量</b>，不是单看 <span class="math-inline">n</span>。题目写「<span class="math-inline">n \le 1000</span>，<span class="math-inline">T \le 10^5</span>」的时候，真正的规模是 <span class="math-inline">10^8</span>。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "「n ≤ 1000，共 10^5 组测试数据」为什么是个陷阱？",
+    "opts": [
+      "真实规模是一组的 n 乘组数，共 10^8 量级",
+      "陷阱在于组数多，读入 10^5 组本身就很慢",
+      "不是陷阱，n ≤ 1000 时一组 0.01 秒",
+      "陷阱在于多组数据会互相影响，所以要先排序再处理"
+    ],
+    "ans": 0,
+    "why": "一组的 n = 1000 看着很小，本课实测平方版跑一组只要 0.0120 秒，确实随便写。但 10^5 组一乘：平方版一组的步数是 500500，乘 10^5 组是 5×10^10 步，除以每秒 5×10^7 得 1000 秒；按实测的 0.0120 秒算则是 1200 秒，对得上。所以读范围要读的是「一组的 n 乘组数」那个总量，不是单看 n。"
+  }
+]'></div>
+
+  <h2>问法也在提示算法</h2>
+
+  <p>范围之外，<b>问法</b>是第二条线索。同一个数据规模下，「求最大值」「求方案数」「问可不可达」指向的算法族完全不同。</p>
+
+  <p>下面这张表把学过的都收进来了：</p>
+
+  <table>
+    <thead>
+      <tr><th>问法长什么样</th><th>多半是</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>「最多能选几个」「最少要几个」且能证明局部最优不吃亏</td><td>贪心</td></tr>
+      <tr><td>「让最大值最小」「让最小值最大」</td><td>二分答案</td></tr>
+      <tr><td>「第 <span class="math-inline">k</span> 大」「动态地反复取最值」</td><td>堆</td></tr>
+      <tr><td>「分成几个连通块」「这两个点通不通」</td><td>并查集</td></tr>
+      <tr><td>「最少走几步」「能不能到达」</td><td>图搜索中的 BFS</td></tr>
+      <tr><td>「有多少种走法」「把所有方案列出来」</td><td>递归回溯 / DFS</td></tr>
+      <tr><td>「区间和」「多次询问同一批数据」</td><td>前缀和</td></tr>
+      <tr><td>「有序数组里找一对」「原地去重」</td><td>双指针</td></tr>
+      <tr><td>「方案数」「最优值且前后选择互相牵制」</td><td>动态规划</td></tr>
+    </tbody>
+  </table>
+
+  <div class="lesson-note">
+    <p>这张表<b>是线索，不是判决</b>。第 27 课实测过一个反例：题面里出现「重量」这个词，关键词表会把「合并果子」判成背包，而那题的正解是堆。<b>问法只用来缩小方向，最终要靠自己把题意读懂、把小样例手推一遍。</b></p>
+  </div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "「让最大值最小」「第 k 大」这类问法关键词，能直接当判决用吗？",
+    "opts": [
+      "不能，它只用来缩方向，判决还得靠读懂题意并手推",
+      "能，问法是出题人精心设计的，指向应该很准",
+      "能，只要关键词表列得足够全，就不会出错",
+      "不能，因为关键词表维护起来太麻烦，不如问模型"
+    ],
+    "ans": 0,
+    "why": "关键词能缩小方向，但会误报。第 27 课实测过一个真实的反例：题面里出现「重量」这个词，关键词表就把「合并果子」判成了背包，而那题的正解是堆——「重量」指的是石子堆的重量，不是背包的容量约束。同一课还量到，六道样例题面里有并列候选的情况不止一处。所以表用来缩方向，判决要靠自己把题意读懂、把小样例手推一遍。"
+  }
+]'></div>
+
+  <h2>一张可查的题型表</h2>
+
+  <p>把两条线索合起来用，就成了一个<b>先范围、后问法</b>的查表流程：</p>
+
+  <ol>
+    <li><b>读范围，算出复杂度上限。</b> 上限是 <span class="math-inline">O(n \log n)</span> 还是 <span class="math-inline">O(n^2)</span>？这一步就能划掉一大半候选。</li>
+    <li><b>读问法，缩小到两三个算法族。</b> 用上一节那张表。</li>
+    <li><b>看候选里哪几个的复杂度在上限之内。</b> 都行的，挑<b>实现最简单</b>的那个。</li>
+    <li><b>写之前先想清楚怎么验。</b> 上一课那套：小数据对拍、反例最小化。</li>
+  </ol>
+
+  <p>第 3 步里藏着一个很多人会做反的选择：<b>几个候选都跑得完的时候，要挑最好写的那个，不是最快的那个。</b></p>
+
+  <p>原因是，写错的代价远大于慢一点点的代价。一个 <span class="math-inline">O(n \log n)</span> 的正确解，和一个「理论上 <span class="math-inline">O(n)</span> 但边界漏了」的解，前者拿满分，后者拿零分——<b>而复杂的写法边界就是更多</b>。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "几个候选算法的复杂度都在上限之内时，该挑哪个？",
+    "opts": [
+      "挑实现最简单的那个，写错的代价大于慢一点点的代价",
+      "挑渐进复杂度最低的那个，考场时间紧，越快越保险",
+      "挑代码最短的那个，短代码不容易看出思路被人抄",
+      "挑你最熟的那个，熟不熟比复杂度更决定能不能写完"
+    ],
+    "ans": 0,
+    "why": "几个候选都跑得完的时候，写错的代价远大于慢一点点的代价：一个 O(n log n) 的正确解拿满分，一个「理论上 O(n) 但边界漏了」的解拿零分，而复杂写法的边界就是更多。本课量的最大子段和就是个例子——n ≤ 100 时三次方版（0.0029 秒）和线性版（0.000003 秒）答案完全一样（都是 24），差一千倍，但两个都能过；这时候挑好写的那个反而是对的。"
+  }
+]'></div>
+
+  <h2>这一课用到的判断</h2>
+
+  <ul>
+    <li><b>先读范围，再想算法。</b> 范围是题面给你的第一句话，也是最有用的一句话。</li>
+    <li><b>本机每秒约 <span class="math-inline">5 \times 10^7</span> 次</b>（本机实测，换机器会差几倍）。一秒的上限：<span class="math-inline">O(n)</span> 到 <span class="math-inline">5 \times 10^7</span>、<span class="math-inline">O(n \log n)</span> 到 <span class="math-inline">2.4 \times 10^6</span>、<span class="math-inline">O(n^2)</span> 到 <span class="math-inline">7 \times 10^3</span>、<span class="math-inline">O(n^3)</span> 到 <span class="math-inline">370</span>、<span class="math-inline">O(2^n)</span> 到 <span class="math-inline">26</span>。</li>
+    <li><b>量出来的增长倍数就是复杂度的指纹</b>：翻倍后涨 <span class="math-inline">8</span> 倍是三次方、<span class="math-inline">4</span> 倍是平方、<span class="math-inline">2</span> 倍是线性。这比数循环层数可靠。</li>
+    <li><b>同一道题不同范围就是不同的题。</b> 最大子段和在 <span class="math-inline">n \le 100</span> 上写三次方版没问题，在 <span class="math-inline">n \le 10^5</span> 上只能用线性版，而三版答案完全一样（实测都是 <span class="math-inline">24</span>）。</li>
+    <li><b>多组测试要乘起来看。</b> 「<span class="math-inline">n \le 1000</span>、<span class="math-inline">T \le 10^5</span>」的真实规模是 <span class="math-inline">10^8</span>。实测 <span class="math-inline">n = 1000</span> 平方版一组 <span class="math-inline">0.0120</span> 秒，<span class="math-inline">10^5</span> 组是 <span class="math-inline">1200</span> 秒。</li>
+    <li><b>「差一个数量级」比「完全不可能」更危险。</b> 平方版在 <span class="math-inline">n = 10^5</span> 上要 113 秒——不是 35 天，看起来还能等，于是容易被放过去。</li>
+    <li><b>所有上限都是量级参考，不是判决线。</b> 换 CPU、换写法、用不用内置函数都能差好几倍。取舍靠量级，卡线要靠实测。</li>
+    <li><b>候选都跑得完时，挑最好写的，不是最快的。</b> 写错的代价大于慢一点点的代价，而复杂写法的边界更多。</li>
+    <li><b>问法只是线索。</b> 「重量」把「合并果子」指向背包是实测过的假阳性。表用来缩方向，题意要自己读懂。</li>
+  </ul>
+
+  <div class="lesson-practice">
+    <div class="lesson-practice__head">
+      <span class="lesson-practice__level">上手做</span>
+      <span class="lesson-practice__title">只看范围与问法，先猜再验</span>
+    </div>
+
+      <p>这一课是概念课，动手部分不配 lab，落在纸面上和编辑器里。第一件事是量自己的尺子，这段先跑：</p>
+
+      <pre data-lang="python"><code>import time
+
+
+def loop_cost(n):
+    s = 0
+    for i in range(n):
+        s += i
+    return s
+
+
+for n in (10 ** 5, 10 ** 6, 10 ** 7, 10 ** 8):
+    t0 = time.perf_counter()
+    loop_cost(n)
+    dt = time.perf_counter() - t0
+    print(f'   n = {n:&gt;11,}   用时 {dt:6.3f} s   每次循环 {dt / n * 1e9:5.1f} ns')</code></pre>
+
+      <p><b>这一段的输出不要抄进作业里</b>——它是计时，每次跑都不一样。你要记下来的是「我这台机器每秒大约多少次」这一个数，写在纸片上，以后卡线时用它。别抄课件里的数，量自己的。</p>
+
+      <p>剩下三件：</p>
+
+      <ol>
+        <li><b>收集十道做过的题，只看范围与问法。</b> 把题面遮住，只留数据范围和最后一问，写下候选算法族和理由（要写出复杂度估算）。写完再揭开对照当时怎么做的，<b>把判断错的题单独记下来，标出是漏了哪条线索</b>。</li>
+        <li><b>给同一道题换三个范围。</b> 挑一道你会的题（比如最大子段和），分别假设 <span class="math-inline">n \le 100</span>、<span class="math-inline">n \le 3000</span>、<span class="math-inline">n \le 10^5</span>，写出三个版本并实测耗时，确认三版答案一致、而只有最后一版能在大范围上活下来。</li>
+        <li><b>算一次多组测试的总量。</b> 找一道有 <span class="math-inline">T</span> 组数据的题，把「一组的规模乘组数」算出来，对照尺子判断你原来的写法到底能不能过。<b>这一步是最容易发现自己以前一直在蒙的地方。</b></li>
+      </ol>
+  </div>
+
+  <ul class="lesson-resources">
+    <li>《算法竞赛进阶指南》题型与复杂度对应<span class="lesson-resources__meta">书 · 范围与算法的对应关系（具体章节待核实）</span></li>
+    <li><a href="https://oi-wiki.org/basic/complexity/">OI Wiki · 复杂度</a><span class="lesson-resources__meta">竞赛里常用的复杂度分析与常见量级</span></li>
+    <li><a href="0002-complexity-basics.html">第 2 课：同一道题，两种写法</a><span class="lesson-resources__meta">本课那把尺子就是那一课定的</span></li>
+    <li><a href="0022-binary-search-on-answer.html">第 22 课：二分答案：猜一个再验一遍</a><span class="lesson-resources__meta">「让最大值最小」这类问法该去的地方</span></li>
+    <li><a href="0024-dp-from-recursion.html">第 24 课：动态规划：把重复计算记下来</a><span class="lesson-resources__meta">「方案数」与「最优值」指向的那一族</span></li>
+    <li><a href="0027-lab-03-recommend-and-verify.html">第 27 课：实验三：让助手推荐并验证</a><span class="lesson-resources__meta">让程序替你判算法族，以及它为什么会误判</span></li>
+  </ul>
+
+  <!-- ── 提问提示：固定写法，别删 ── -->
+
+  <div class="lesson-ask">
+    <b>没看懂？随时问</b>
+    把看不懂的段落（或报错）原样复制回会话，说一句哪里不懂就行，我只解释这一段，不打断你的进度。
+  </div>
+
+  <!-- ── 上/下节课指针由渲染器按 curriculum.yaml 的 nodes 顺序算（第一课无 --prev、最后一课无 --next） ── -->
+
+  <nav class="lesson-nav" aria-label="上一课 / 下一课">
+    <a class="lesson-nav__link lesson-nav__link--prev" href="0027-lab-03-recommend-and-verify.html">
+      <span class="lesson-nav__dir">上节课</span>
+      <span class="lesson-nav__title">实验三：让助手推荐并验证</span>
+    </a>
+    <a class="lesson-nav__link lesson-nav__link--next" href="0029-constant-factor-tuning.html">
+      <span class="lesson-nav__dir">下节课</span>
+      <span class="lesson-nav__title">让 Python 再快一点</span>
+    </a>
+  </nav>
+
+  <footer class="lesson-footer">
+    StudyMate · 0028 看数据规模挑算法 · 本地学习工作区
+  </footer>
+
+</article>
+
+<script src="../../../assets/sayo/sayo.js"></script>
+<link rel="stylesheet" href="../../../assets/katex/katex.min.css">
+<script src="../../../assets/katex/katex.min.js" defer></script>
+<script src="../../../assets/lesson-math.js" defer></script>
+<script src="../assets/quiz.js" defer></script>
+<script src="../assets/lesson-toc.js" defer></script>
+<script>LearnTheme.wire(document.getElementById('lesson-theme-checkbox'));</script>
+</body>
+</html>

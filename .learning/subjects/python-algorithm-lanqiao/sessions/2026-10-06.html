@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>会话摘要 · 2026-10-06 · Python 算法与蓝桥杯</title>
+<link rel="stylesheet" href="../../../assets/sayo/sayo.css">
+<link rel="stylesheet" href="../../../assets/learn-theme.css">
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../../../assets/learn-theme.js"></script>
+<script>LearnTheme.apply();</script>
+<style>
+.lesson h1 {
+  margin: var(--syo-space-2, 8px) 0 var(--syo-space-4, 16px);
+  font-size: clamp(1.6rem, 3.2vw, 2.25rem);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  color: var(--syo-fg-default);
+}
+</style>
+</head>
+<body class="lesson-body">
+<nav class="lesson-bar">
+  <a href="../index.html">← 返回科目</a>
+  <span>Python 算法与蓝桥杯</span>
+  <span class="lesson-bar__no">会话摘要</span>
+  <label class="syo-toggle syo-toggle--theme lesson-bar__toggle" title="切换深浅主题" aria-label="切换深浅主题">
+    <input type="checkbox" id="attachment-theme-checkbox" checked>
+    <span class="syo-toggle-track"></span>
+    <span class="syo-toggle-knob">
+      <svg class="syo-toggle-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.5" stroke="#f57c00" stroke-width="1.5"/><path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.34 4.34l1.77 1.77M13.89 13.89l1.77 1.77M4.34 15.66l1.77-1.77M13.89 6.11l1.77-1.77" stroke="#f57c00" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <svg class="syo-toggle-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.5 12.5A6 6 0 019 4.5a6 6 0 007.5 8z" stroke="#5c6bc0" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </span>
+  </label>
+</nav>
+
+<article class="lesson">
+<h1>会话摘要 · 2026-10-06</h1>
+<h2>这次做了什么</h2>
+<p><strong>没有产课</strong>——这次会话的主要工作是<strong>环境搬盘后的抢修</strong>。</p>
+<p>学生把整个学习环境从 C 盘搬到了 D 盘（为了不写 C 盘），搬完之后主教练会话仍带着旧路径，表现为"失忆"：看不到技能、看不到配置、工作区目录看起来是空的。排查后确认<strong>学习资料一件没丢</strong>，只是三处路径没跟着更新。</p>
+<h2>抢修内容</h2>
+<div class="syo-table-wrap"><table class="syo-table"><thead><tr><th>问题</th><th>处置</th></tr></thead><tbody><tr><td><code>studymate-config.yaml</code> 里的 <code>workspace</code> 与 <code>root</code> 仍指向 <code>C:\Users\shark\...</code></td><td>已改为 <code>D:\CODE\StudyMate</code> 与 <code>D:\CODE\dsh-home\studymate\engine</code></td></tr><tr><td>引擎调用的 Python 解释器 <code>E:\MC\CODE\Py\python3.14t.exe</code> 已随盘消失</td><td>新位置 <code>D:\CODE\Py\python3.14t.exe</code>，已验证可用</td></tr><tr><td><code>D:\CODE\StudyMate\.venv</code> 写死旧盘符，调用即报错</td><td><strong>不修</strong>（引擎脚本不需要它）；已记入共享记忆，避免日后误修</td></tr></tbody></table></div>
+<p>修完后用新路径实跑 <code>check_lesson.py</code> 验证：第 5 课页面 <strong>OK</strong>（exit 0），第 7 课页面仍报编号不连续（老问题，等第 6 课页面产出即消失）。引擎与 12 个技能目录均完好。</p>
+<h2>课程进度（未变）</h2>
+<ul>
+<li><strong>已上线页面 6 个</strong>：0001–0005、0007（实验一）</li>
+<li><strong>正文已完成待出题 5 课</strong>：0006、0009、0010、0011、0016</li>
+<li><strong>在跑</strong>：第 6 课题库 + lab、第 8 课正文、第 9–11 课的题库排队中</li>
+</ul>
+<h2>待办（下次从这里接）</h2>
+<ol>
+<li>第 6 课页面是第 7 课页面通过校验的前置，优先补它的题库 + lab。</li>
+<li>第 8 课正文产出后，第 7 课页面的"下节课"悬空指针随之接上。</li>
+<li><strong>学生始终没有作答过任何题目</strong>：第 2 课的 4 道题与「先估后测」练习仍空着，<code>complexity-basics</code> 掌握度停在「学习中 / 0.1」。全部课件产出后应尽快转入互动教学。</li>
+<li>目标轮次上限已提到 2000（原 300、已用 165）。</li>
+</ol>
+<h2>教训</h2>
+<p><strong>搬盘要同步改三处</strong>：工作区路径、引擎根路径、解释器路径。工作区可以随便搬，但配置文件和解释器调用点不会自己跟着走——搬完先跑一次 <code>check_lesson.py</code>，能过就说明全对上了。</p>
+  <footer class="lesson-footer">
+    StudyMate · 会话摘要 · 2026-10-06 · 本地学习工作区
+  </footer>
+</article>
+
+<script src="../../../assets/sayo/sayo.js"></script>
+<script>LearnTheme.wire(document.getElementById('attachment-theme-checkbox'));</script>
+</body>
+</html>

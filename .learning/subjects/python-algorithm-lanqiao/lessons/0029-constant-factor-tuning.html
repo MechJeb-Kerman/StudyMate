@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>让 Python 再快一点 · Python 算法与蓝桥杯</title>
+
+<!-- 共享层在 .learning/assets/，课件在 .learning/subjects/<slug>/lessons/ 下，所以是 ../../../assets/ -->
+<link rel="stylesheet" href="../../../assets/sayo/sayo.css">
+<link rel="stylesheet" href="../../../assets/learn-theme.css">
+<link rel="stylesheet" href="../assets/style.css">
+
+<!-- 主题要在首帧前应用，避免闪白/闪黑 -->
+<script src="../../../assets/learn-theme.js"></script>
+<script>LearnTheme.apply();</script>
+</head>
+
+<body class="lesson-body">
+
+<nav class="lesson-bar">
+  <a href="../index.html">← 返回课程</a>
+  <span>Python 算法与蓝桥杯</span>
+  <span class="lesson-bar__no">0029</span>
+  <!-- 课件页自带主题开关：学生从文件管理器直接打开课件时也能切暗色 -->
+  <label class="syo-toggle syo-toggle--theme lesson-bar__toggle" title="切换深浅主题" aria-label="切换深浅主题">
+    <input type="checkbox" id="lesson-theme-checkbox" checked>
+    <span class="syo-toggle-track"></span>
+    <span class="syo-toggle-knob">
+      <svg class="syo-toggle-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.5" stroke="#f57c00" stroke-width="1.5"/><path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.34 4.34l1.77 1.77M13.89 13.89l1.77 1.77M4.34 15.66l1.77-1.77M13.89 6.11l1.77-1.77" stroke="#f57c00" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <svg class="syo-toggle-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.5 12.5A6 6 0 019 4.5a6 6 0 007.5 8z" stroke="#5c6bc0" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </span>
+  </label>
+</nav>
+
+<article class="lesson">
+
+  <header class="lesson-header">
+    <span class="lesson-header__eyebrow">0029 · 让 Python 再快一点</span>
+    <h1>让 Python 再快一点</h1>
+    <p class="lesson-goal"><b>本节目标：</b>能用实测定位瓶颈，并用常数优化把接近时限的解法压进时限内。</p>
+  </header>
+
+  <!-- ── 正文：渲染器按内容文件（lessons/<序号>-<节点id>.md）产出，块词汇见 docs/规范/课件内容格式.md ── -->
+
+  <h2>常数因子从哪来</h2>
+
+  <p>第 28 课讲的是复杂度的<b>量级</b>：<span class="math-inline">O(n^2)</span> 和 <span class="math-inline">O(n \log n)</span> 差的是指数。这一课讲另一件事——<b>同一个量级里，写法不同也能差出几百倍。</b></p>
+
+  <p>第 2 课量过：本机一次循环大约 20 纳秒，每秒约 <span class="math-inline">5 \times 10^7</span> 次。可那个「一次循环」是理想情况。真写起来，一次循环里可能有函数调用、属性查找、全局名查找、容器扫描，<b>每一样都要花时间</b>，加起来就是常数因子。</p>
+
+  <p>常数因子不是学术问题。一道题正解 <span class="math-inline">O(n)</span>、<span class="math-inline">n = 10^6</span>，按尺子算 <span class="math-inline">0.02</span> 秒，稳过。可如果在一次循环里调了个函数，实际可能翻倍；如果在循环里对一个列表做 <code>in</code>，那已经不是常数问题了，是<b>你把复杂度写坏了</b>。</p>
+
+  <div class="lesson-note">
+    <p>这一课里所有数字都是<b>本机实测</b>（Python 3.14，非通用值）。换机器、换版本都会变，浮动还不小。<b>要学的是方法和量级，不是这几个数。</b></p>
+  </div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "为什么说优化之前必须先量出瓶颈在哪？",
+    "opts": [
+      "凭代码形状猜瓶颈经常猜错，量过才知道力气该花在哪",
+      "因为量一遍很快，养成习惯比什么优化技巧都重要",
+      "因为不量就不知道自己的机器每秒能跑多少次循环",
+      "因为题目给的时限是固定的，量了才能算出够不够用"
+    ],
+    "ans": 0,
+    "why": "本课那段三段式代码里，看着最无害的一段（2000 次 in，容器是列表）要 1.9 秒，而看着规模大得多的两段（20 万元素建集合 0.0020 秒、排序 0.0006 秒）加起来才 0.0026 秒。瓶颈差在这里，猜是猜不出来的。定位的正确次序是：先数每段各执行多少次操作，再估每次有多贵，最后用计时确认。"
+  }
+]'></div>
+
+  <h2>别猜，先量出瓶颈</h2>
+
+  <p>「不测就猜瓶颈在哪」是这一课的第一个坑。看这样一段场景：</p>
+
+  <pre data-lang="python"><code>import random
+
+N = 200000
+ARR = [random.Random(3).randint(0, 10 ** 6) for _ in range(N)]
+KEYS = [random.Random(5).randint(0, 10 ** 6) for _ in range(2000)]</code></pre>
+
+  <p>三段分别做三件事：把 20 万个元素装进集合、排序这 20 万个元素、做 2000 次「这个键在不在数组里」。<b>凭直觉猜，哪一段最慢？</b></p>
+
+  <p>多数人会指向那两个 20 万规模的。实测是反的（本机实测，取中位数）：</p>
+
+  <table>
+    <thead>
+      <tr><th>段</th><th>干了什么</th><th>用时</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>A</td><td>20 万个元素装进集合</td><td>0.0020 s</td></tr>
+      <tr><td>B</td><td>排序 20 万个元素</td><td>0.0006 s</td></tr>
+      <tr><td>C</td><td>2000 次 <code>in</code>，容器是<b>列表</b></td><td><b>1.8992 s</b></td></tr>
+      <tr><td>C'</td><td>2000 次 <code>in</code>，容器是<b>集合</b></td><td>0.0021 s</td></tr>
+    </tbody>
+  </table>
+
+  <p>C 段看着最无害——只有 2000 次循环，比 A、B 的 20 万小两个数量级。可它要 <b>1.9 秒</b>，是 A 的 950 倍、B 的 3000 倍。</p>
+
+  <p>原因不全是常数因子，主要是复杂度：列表的 <code>in</code> 是线性扫描，20 万乘 2000 是 <span class="math-inline">4 \times 10^8</span> 次比较；集合的 <code>in</code> 平均一步。<b>所以「哪一段慢」不能看代码形状，要看每一段各执行多少次操作。</b></p>
+
+  <p>把这件事用次数算出来——不看时间，只看语句执行次数：</p>
+
+  <pre data-lang="python"><code>n_small = 30
+n_keys = 100000
+n_big = 100000
+
+inner_ops = n_small * n_small        # 两重循环，各 30
+list_in_ops = n_keys * n_big         # 列表的 in 是线性扫描
+set_in_ops = n_keys * 1              # 集合的 in 平均一步
+print('   三段各做多少次操作（按语句执行次数算，不看代码长什么样）：')
+print(f'     两重循环，各 30        ：{inner_ops:&gt;18,} 次内层操作')
+print(f'     一重循环里的 in，列表  ：{list_in_ops:&gt;18,} 次比较')
+print(f'     一重循环里的 in，集合  ：{set_in_ops:&gt;18,} 次比较')
+print(f'   看着凶的那段（两重循环）比看着无害的那段（一个 in）少 '
+      f'{list_in_ops / inner_ops:.2e} 倍的操作。')</code></pre>
+
+  <pre data-lang="text"><code>   三段各做多少次操作（按语句执行次数算，不看代码长什么样）：
+     两重循环，各 30        ：               900 次内层操作
+     一重循环里的 in，列表  ：    10,000,000,000 次比较
+     一重循环里的 in，集合  ：           100,000 次比较
+   看着凶的那段（两重循环）比看着无害的那段（一个 in）少 1.11e+07 倍的操作。</code></pre>
+
+  <p><b>两重循环（看着吓人）只有 900 次操作；一重的 <code>in</code> 写在列表上（看着无害）是 <span class="math-inline">10^{10}</span> 次。</b> 差一千万倍。</p>
+
+  <p>所以定位瓶颈的次序是：<b>先数每段跑多少次 → 再估每次有多贵 → 最后用计时确认。</b></p>
+
+  <h2>循环里少做重复的事</h2>
+
+  <p>同一段代码，把「每轮都要重新算一遍」的东西提到循环外面，就是最基础的一招。下面 🅐 是反例、🅑 是正例——注意看 <code>size()</code> 被调了几次：</p>
+
+  <pre data-lang="python"><code>class Counter:
+    """一个会自己数「被调用了几次」的对象。"""
+
+    def __init__(self):
+        self.n = 0
+
+    def size(self):
+        self.n += 1
+        return 1000
+
+
+def check_in_condition(cnt):
+    """把 cnt.size() 写在 while 的条件里。"""
+    i = 0
+    total = 0
+    while i &lt; cnt.size():
+        total += i
+        i += 1
+    return total
+
+
+def check_hoisted(cnt):
+    """先把长度取出来，循环里不再问。"""
+    limit = cnt.size()
+    i = 0
+    total = 0
+    while i &lt; limit:
+        total += i
+        i += 1
+    return total
+
+
+c1, c2 = Counter(), Counter()
+r1, r2 = check_in_condition(c1), check_hoisted(c2)
+print(f'   两版答案一致吗: {r1 == r2}（都是 {r1}）')
+print(f'   写在 while 条件里：size() 被调用了 {c1.n:&gt;5} 次')
+print(f'   提到循环外面  ：size() 被调用了 {c2.n:&gt;5} 次')</code></pre>
+
+  <pre data-lang="text"><code>   两版答案一致吗: True（都是 499500）
+   写在 while 条件里：size() 被调用了  1001 次
+   提到循环外面  ：size() 被调用了     1 次</code></pre>
+
+  <p><b>答案完全一样，调用次数差一千倍。</b> 而且 <code>while i &lt; cnt.size()</code> 是 <span class="math-inline">n + 1</span> 次而不是 <span class="math-inline">n</span> 次——最后一次是退出循环前那次失败的比较，很容易漏算。</p>
+
+  <p>同样的道理适用于循环体里所有<b>不随下标变化</b>的表达式：<code>len(a)</code>、<code>obj.attr</code>、<code>a.b.c</code>、反复算同一个常量。全部提到循环外面。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "把 while 条件里的 cnt.size() 提到循环外，收益有多大？",
+    "opts": [
+      "调用次数从 1001 次降到 1 次，答案完全不变",
+      "调用次数从 1000 次降到 1 次，答案完全不变",
+      "调用次数从 1001 次降到 1000 次，省下一次",
+      "调用次数完全一样，只是把全局查找换成了局部变量名"
+    ],
+    "ans": 0,
+    "why": "写在 while 条件里是 n + 1 次（1000 次进入循环加 1 次退出时的失败比较），提到外面是 1 次，差一千倍。注意不是 1000 次而是 1001 次——那个多出来的退出比较最容易漏算，也说明「循环条件每轮都要重新求值」这件事是逐字成立的。答案两版都是 499500。"
+  }
+]'></div>
+
+  <h2>全局名与局部名</h2>
+
+  <p>这一节要给你一个<b>反例</b>，因为它跟很多教程讲的不一样。</p>
+
+  <p>「局部变量比全局变量快」是常被引用的规律。本机实测下来，<b>它是真的，但幅度很小</b>：</p>
+
+  <table>
+    <thead>
+      <tr><th>规模</th><th>全局名（中位数）</th><th>局部名（中位数）</th><th>局部快</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><span class="math-inline">n = 10^6</span></td><td>0.0278 s</td><td>0.0247 s</td><td>1.13 倍</td></tr>
+      <tr><td><span class="math-inline">n = 10^7</span></td><td>0.2777 s</td><td>0.2621 s</td><td>1.06 倍</td></tr>
+      <tr><td><span class="math-inline">n = 10^6</span>（每轮引用两次）</td><td>0.0364 s</td><td>0.0335 s</td><td>1.09 倍</td></tr>
+    </tbody>
+  </table>
+
+  <p><b>只有 6% 到 13%。</b> 而第一次量的时候（<span class="math-inline">n = 10^6</span>、只跑 3 次）我量到的比值是 <span class="math-inline">1.00</span>——<b>完全看不出差别</b>，因为噪声比效应还大。</p>
+
+  <p>原因是新版本的 CPython 给全局名查找加了内联缓存，<code>LOAD_GLOBAL</code> 不再每次都真去查字典。所以这条规律<b>没有过时，但已经从「重要的一招」退化成「顺手可以做的事」</b>。</p>
+
+  <p>这对你的取舍有直接影响：<b>如果瓶颈分析指到别处（比如一个列表的 <code>in</code>，差 230 倍），把名字改成局部变量省下那 10% 是白费力气。</b> 先量，再决定值不值得动。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "本机实测「局部名比全局名快」，幅度是多少？",
+    "opts": [
+      "约 6% 到 13%，比很多教程说的幅度小得多",
+      "约 2 到 3 倍，是这一课最值钱的一招",
+      "约 10 倍，但前提是把循环体整个改写成函数",
+      "完全没有差别，这条规律在新版本里已经失效"
+    ],
+    "ans": 0,
+    "why": "本机实测 n=10^6 时 1.13 倍、n=10^7 时 1.06 倍、每轮引用两次时 1.09 倍，也就是 6% 到 13%。首轮只跑 3 次时甚至量到 1.00 倍，因为噪声比效应还大。原因是新版 CPython 给全局名查找加了内联缓存。所以这条规律没失效但幅度小：如果瓶颈分析指向别处（比如列表的 in 差 230 倍），为这 10% 改一片代码不划算。"
+  }
+]'></div>
+
+  <h2>输入输出最便宜</h2>
+
+  <p>有一类优化几乎不需要动脑筋，收益却最大：<b>读入</b>。</p>
+
+  <p>逐行 <code>input()</code> 每读一行都要走一次函数调用加一次解析；把整个输入一次读进来、再 <code>split()</code> 成 token，同样的活只让 C 层做一遍。实测读 <span class="math-inline">10^6</span> 行整数：</p>
+
+  <table>
+    <thead>
+      <tr><th>读法</th><th>用时（中位数）</th><th>相对</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>逐行 <code>int(input())</code>，<span class="math-inline">10^6</span> 行</td><td>0.4216 s</td><td>1</td></tr>
+      <tr><td><code>data = sys.stdin.buffer.read().split()</code></td><td>0.0534 s</td><td><b>快 7.9 倍</b></td></tr>
+    </tbody>
+  </table>
+
+  <p><b>7.9 倍</b>，而两种读法得到的数字完全一样。输入越大差距越明显，因为逐行 <code>input()</code> 的开销是<b>每行一次</b>，整体读只有<b>一次调用</b>。</p>
+
+  <p>真实代码的第二行是 <code>data = sys.stdin.buffer.read().split()</code>，剩下三行照写。把那行换成一个写死的字节串，整段就能单独跑起来看效果：</p>
+
+  <pre data-lang="python"><code>import io
+
+RAW = b'4\n3 1 4 1\n'                        # 假装这是题目给的输入
+
+data = io.BytesIO(RAW).read().split()        # 真代码这里是 sys.stdin.buffer.read().split()
+it = iter(data)
+n = int(next(it))
+a = [int(next(it)) for _ in range(n)]
+print(f'   读到 n = {n}，数组 = {a}')</code></pre>
+
+  <pre data-lang="text"><code>   读到 n = 4，数组 = [3, 1, 4, 1]</code></pre>
+
+  <div class="lesson-note">
+    <p>三件事要注意。第一，用 <code>sys.stdin.buffer</code>（字节流）而不是 <code>sys.stdin</code>，省掉一次解码。第二，<code>split()</code> 出来的是 <b>bytes</b>，<code>int()</code> 认它，但你要比字符串就得先解码。第三，<b>输出也要一起改</b>：把答案攒进列表、最后 <code>'\n'.join(...)</code> 打印一次，别在循环里 <code>print</code> 十万次。</p>
+  </div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "读 10^6 行整数，整体 read 后 split 比逐行 int(input()) 快多少？",
+    "opts": [
+      "约 7.9 倍，逐行 input 的开销是按行算的",
+      "约 2 倍，逐行 input 要每行解析一次字符串",
+      "约 100 倍，input 每行都走一次系统调用",
+      "差不多快，只有输入到几十 MB 才看得出差距"
+    ],
+    "ans": 0,
+    "why": "本机实测逐行 int(input()) 0.4216 秒，data = sys.stdin.buffer.read().split() 0.0534 秒，快 7.9 倍，而且两种读法得到的数字完全一样。原因是逐行 input() 的开销是每行一次函数调用加一次解析，整体读只有一次调用、后面全在 C 层里 split。输出同理：把答案攒进列表最后 join 一次打印，别在循环里 print 十万次。"
+  }
+]'></div>
+
+  <h2>能用内置就用内置</h2>
+
+  <p>第 2 课提过一句「内置函数是 C 写的」。这一课把它量出来。同样对 <span class="math-inline">10^6</span> 个元素求和：</p>
+
+  <table>
+    <thead>
+      <tr><th>写法</th><th>用时（中位数）</th><th>相对</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>手写 <code>for x in a: t += x</code></td><td>0.0196 s</td><td>1</td></tr>
+      <tr><td>内置 <code>sum(a)</code></td><td>0.0041 s</td><td><b>快 4.8 倍</b></td></tr>
+    </tbody>
+  </table>
+
+  <p>差距来自循环本身：手写版每轮要做一次 <code>FOR_ITER</code>、一次加法、一次 <code>STORE_FAST</code>，全在 Python 层；<code>sum(a)</code> 的整个循环在 C 里跑，Python 只付一次调用的钱。</p>
+
+  <p>排序上差距更大。<span class="math-inline">n = 3000</span>：</p>
+
+  <table>
+    <thead>
+      <tr><th>写法</th><th>用时</th><th>相对</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>内置 <code>sorted(a)</code></td><td>0.000200 s</td><td>1</td></tr>
+      <tr><td>手写冒泡排序</td><td>0.2269 s</td><td><b>慢 1134 倍</b></td></tr>
+    </tbody>
+  </table>
+
+  <p>这一栏要分开看：<b>1134 倍里，绝大部分来自复杂度（<span class="math-inline">O(n \log n)</span> 对 <span class="math-inline">O(n^2)</span>），只有一小部分来自常数。</b> 别把这一行当成「内置比手写快一千倍」的证据——它证明的是「别手写排序」。</p>
+
+  <p>该用的内置还有一批：<code>max</code>、<code>min</code>、<code>any</code>、<code>all</code>、<code>sorted</code>、<code>list.sort</code>、<code>map</code>、<code>sum</code>、<code>collections.deque</code>、<code>bisect</code>、<code>itertools.accumulate</code>。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "对 10^6 个元素求和，内置 sum 比手写 for 循环快多少，为什么？",
+    "opts": [
+      "约 4.8 倍，整个循环在 C 里跑，只付一次调用",
+      "约 4.8 倍，sum 用了分治，复杂度低了一档",
+      "约 1000 倍，和 sorted 对冒泡是同一个原因",
+      "其实差不多快，内置的优势主要体现在排序和聚合上"
+    ],
+    "ans": 0,
+    "why": "本机实测手写 for 累加 0.0196 秒，内置 sum 0.0041 秒，快 4.8 倍。差距来自循环本身：手写版每轮要做 FOR_ITER、加法、STORE_FAST，全在 Python 层；sum 的整个循环在 C 里跑。注意别和 sorted 那一栏混起来——sorted 比手写冒泡快 1134 倍，但那一千倍里绝大部分是复杂度（O(n log n) 对 O(n^2)）的功劳，只有一小部分是常数。"
+  }
+]'></div>
+
+  <h2>换个容器更值钱</h2>
+
+  <p>前面那段 1.9 秒的瓶颈，修法不是改循环写法，是<b>换容器</b>。同一批数据、同一件事，只把列表换成集合：</p>
+
+  <table>
+    <thead>
+      <tr><th>写法</th><th>用时（中位数）</th><th>找到的个数</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>2000 次 <code>k in ARR</code>（列表，20 万元素）</td><td>1.6830 s</td><td>351 个</td></tr>
+      <tr><td>2000 次 <code>k in S</code>（集合，同一批元素）</td><td>0.0073 s</td><td>351 个</td></tr>
+    </tbody>
+  </table>
+
+  <p><b>230 倍，答案一模一样。</b></p>
+
+  <p>这就是本课最重要的一条取舍：<b>换数据结构通常比抠语法值钱得多。</b> 抠一个局部变量省 10%，换容器省 23000%；而且换容器是改一行，抠语法要改一片。</p>
+
+  <p>类似的对应关系还有：</p>
+
+  <ul>
+    <li>反复取最小 → 别用 <code>min(a)</code>，用 <code>heapq</code></li>
+    <li>反复查在不在 → 别用列表，用 <code>set</code> 或 <code>dict</code></li>
+    <li>反复在队首删除 → 别用 <code>list.pop(0)</code>，用 <code>collections.deque</code></li>
+    <li>反复求区间和 → 别每次重算，用前缀和</li>
+  </ul>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "2000 次「在不在里面」的查询，容器从 20 万元素的列表换成集合，实测差多少？",
+    "opts": [
+      "约 230 倍，列表的 in 线性扫、集合平均一步",
+      "约 230 倍，集合把元素排好序，能二分查找",
+      "约 2 倍左右，因为集合要多花一次建表的开销",
+      "没有差别，2000 次查询太少，看不出容器的影响"
+    ],
+    "ans": 0,
+    "why": "本机实测列表 1.6830 秒、集合 0.0073 秒，230 倍，两边找到的个数都是 351 个。原因是复杂度：列表的 in 要线性扫过去，20 万乘 2000 是 4×10^8 次比较；集合的 in 靠哈希平均一步。这一课最重要的取舍就在这里——换容器通常比抠语法值钱得多，230 倍对 10%，而且换容器只改一行。"
+  }
+]'></div>
+
+  <h2>查表与分支</h2>
+
+  <p>「用查表代替分支判断」也是一条常被引用的规律。它<b>成立，但要看清前提</b>。</p>
+
+  <p>下面这张表是同一件事的两种写法（<span class="math-inline">10^6</span> 个值，两边答案逐字一致），只改分支链的长度：</p>
+
+  <table>
+    <thead>
+      <tr><th>分支数</th><th><code>if/elif</code> 链（中位数）</th><th>列表查表（中位数）</th><th>查表快</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>2</td><td>0.0189 s</td><td>0.0179 s</td><td>1.06 倍</td></tr>
+      <tr><td>3</td><td>0.0228 s</td><td>0.0176 s</td><td>1.30 倍</td></tr>
+      <tr><td>4</td><td>0.0276 s</td><td>0.0171 s</td><td>1.62 倍</td></tr>
+      <tr><td>8</td><td>0.0457 s</td><td>0.0172 s</td><td>2.65 倍</td></tr>
+      <tr><td>16</td><td>0.0749 s</td><td>0.0176 s</td><td>4.26 倍</td></tr>
+    </tbody>
+  </table>
+
+  <p><b>看最后两列的形状，而不是倍数：</b></p>
+
+  <ul>
+    <li><code>if/elif</code> 链的耗时<b>跟着分支数长</b>：2 个分支 0.0189，16 个分支 0.0749，差不多线性。</li>
+    <li>查表的耗时<b>几乎不动</b>：不管 2 项还是 16 项，都在 0.0175 上下。</li>
+  </ul>
+
+  <p>因为 <code>if/elif</code> 是一路比下来的，第 16 个分支平均要比 8 次；查表是一次索引。<b>这就是「<span class="math-inline">O(k)</span> 对 <span class="math-inline">O(1)</span>」在小 <span class="math-inline">k</span> 上的样子。</b></p>
+
+  <p>所以怎么选：</p>
+
+  <ul>
+    <li><b>2 到 3 个分支</b>：差别在噪声边缘（1.06 到 1.30 倍）。<b>按可读性选就行</b>，为了这 6% 把代码改成查表不值得。</li>
+    <li><b>8 个以上分支</b>：查表稳赢，2.65 倍起。分支越多越该换。</li>
+  </ul>
+
+  <div class="lesson-warn">
+    <p>我刚才第一次量这一项时写错了：查表版后面还留了一条 <code>if</code> 链去用查出来的值，等于「查表 <b>加</b> 分支」，量出来查表反而慢 12%。<b>去掉那条多余的 <code>if</code>、两边都直接取值之后，才是上面这张表。</b></p>
+
+    <p>这件事值得记住：<b>基准测试写错了，会得出刚好相反的结论，而且看起来一样可信。</b> 每次量之前先问自己——两个版本除了我要比的那一点，别的地方真的一样吗？</p>
+  </div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "「用查表代替 if 链」在什么情况下才明显划算？",
+    "opts": [
+      "分支多时查表才划算：8 个以上快 2.65 倍起",
+      "任何时候都划算：只要能把分支换成查表就换",
+      "只在判断字符串时才划算，数字分支本身很快",
+      "分支少时才划算：分支一多，查表索引就不准了"
+    ],
+    "ans": 0,
+    "why": "本机实测：2 个分支 if 链 0.0189 秒、查表 0.0179 秒（1.06 倍）；8 个分支 0.0457 对 0.0172（2.65 倍）；16 个分支 0.0749 对 0.0176（4.26 倍）。关键看形状——if/elif 的耗时跟着分支数线性长，查表的耗时几乎不动（不管 2 项还是 16 项都在 0.0175 上下），这就是 O(k) 对 O(1) 在小 k 上的样子。所以 2 到 3 个分支按可读性选就行，8 个以上才值得换。"
+  }
+]'></div>
+
+  <h2>大循环别用递归</h2>
+
+  <p>第三个坑：用递归写本来该迭代的大循环。实测 <span class="math-inline">n = 900</span> 求和：</p>
+
+  <table>
+    <thead>
+      <tr><th>写法</th><th>用时（中位数）</th><th>相对</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>递归 <code>sum_rec</code></td><td>0.000076 s</td><td>1</td></tr>
+      <tr><td>迭代 <code>sum_iter</code></td><td>0.000011 s</td><td><b>快 6.7 倍</b></td></tr>
+    </tbody>
+  </table>
+
+  <p>6.7 倍来自每层调用都要建一个栈帧。<b>但比速度更硬的问题是上限</b>——递归深度到不了任意大：</p>
+
+  <pre data-lang="python"><code>def sum_rec(a, i=0):
+    if i == len(a):
+        return 0
+    return a[i] + sum_rec(a, i + 1)
+
+
+def sum_iter(a):
+    t = 0
+    for x in a:
+        t += x
+    return t
+
+
+for n in (900, 990, 995, 996, 997, 998, 999, 1000):
+    a = list(range(n))
+    try:
+        r = sum_rec(a)
+        print(f'   n = {n:&gt;4}: 递归版跑通，和 {r}，迭代版和 {sum_iter(a)}，一致 {r == sum_iter(a)}')
+    except RecursionError:
+        print(f'   n = {n:&gt;4}: 递归版 RecursionError')</code></pre>
+
+  <pre data-lang="text"><code>   n =  900: 递归版跑通，和 404550，迭代版和 404550，一致 True
+   n =  990: 递归版跑通，和 489555，迭代版和 489555，一致 True
+   n =  995: 递归版跑通，和 494515，迭代版和 494515，一致 True
+   n =  996: 递归版跑通，和 495510，迭代版和 495510，一致 True
+   n =  997: 递归版跑通，和 496506，迭代版和 496506，一致 True
+   n =  998: 递归版跑通，和 497503，迭代版和 497503，一致 True
+   n =  999: 递归版 RecursionError
+   n = 1000: 递归版 RecursionError</code></pre>
+
+  <p><b>边界就在 998 和 999 之间</b>——跟第 12 课、第 17 课量到的是同一个数（默认上限 1000，主模块本身占一层）。</p>
+
+  <p>所以规则很简单：<b>深度靠 <span class="math-inline">n</span> 决定的递归，一律改迭代</b>，或者用显式栈。深度只跟 <span class="math-inline">\log n</span> 有关的（比如分治、树遍历）可以留着。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "深度跟着 n 长的递归为什么必须改迭代？",
+    "opts": [
+      "不只因为慢，更因为本机在 n = 999 就越界",
+      "只因为慢，实测 n = 900 时迭代快 6.7 倍",
+      "因为递归的答案会和迭代算得不一样，深了就会错",
+      "因为在递归里没法用局部变量，常数因子压不下去"
+    ],
+    "ans": 0,
+    "why": "本机实测 n = 900 时递归 0.000076 秒、迭代 0.000011 秒，快 6.7 倍。但速度只是次要问题——真正的硬约束是递归深度上限：实测 n = 998 还跑得通、n = 999 就 RecursionError（默认上限 1000，主模块本身占一层），和第 12 课、第 17 课量到的是同一个数。所以判据是「深度跟谁走」：深度靠 n 决定的递归一律改迭代或用显式栈，深度只跟 log n 有关的（分治、树遍历）可以留着。"
+  }
+]'></div>
+
+  <h2>优化不许改答案</h2>
+
+  <p>第二个坑是<b>为了优化牺牲正确性</b>。这一课教的每一招都会改代码，改代码就可能改错。所以<b>每改一处，都要回验答案</b>：</p>
+
+  <pre data-lang="python"><code>import random
+
+random.seed(11)
+bad_iter = 0
+bad_hoist = 0
+trials = 300
+for _ in range(trials):
+    n = random.randint(0, 50)
+    a = [random.randint(-9, 9) for _ in range(n)]
+    if sum_iter(a) != sum(a):
+        bad_iter += 1
+    if check_in_condition(Counter()) != check_hoisted(Counter()):
+        bad_hoist += 1
+print(f'   {trials} 组随机数据上，优化版与原版答案不一致的组数：')
+print(f'      手写循环 vs 内置 sum            : {bad_iter} 组')
+print(f'      size() 写在条件里 vs 提到外面   : {bad_hoist} 组')</code></pre>
+
+  <pre data-lang="text"><code>   300 组随机数据上，优化版与原版答案不一致的组数：
+      手写循环 vs 内置 sum            : 0 组
+      size() 写在条件里 vs 提到外面   : 0 组</code></pre>
+
+  <p><b>0 组。</b> 这就是第 15 课那套对拍：优化后的版本与被替换掉的版本，在同一批随机数据上必须逐字一致，边界包含空数组和负数。</p>
+
+  <p>顺序不能颠倒：<b>先让它对，再让它快，而且每快一次都要重新证明它对。</b> 反过来做（先快再想法子对）会把你带进「改一处、坏一处、看不出来」的泥潭。</p>
+
+  <div class="lesson-warn">
+    <p>还有一个更隐蔽的错法：<b>优化后把复杂度也改了，小数据上却看不出差别。</b> 比如把列表换成集合，<span class="math-inline">n = 10</span> 时两版耗时都是 0.000001 秒，对拍全过——可这不能说明你换对了，只能说明小数据测不出来。所以对拍的数据要<b>按题目的上限量级生成</b>，不能只用手边的小样例。</p>
+  </div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "每做一处常数优化之后，必须做什么？",
+    "opts": [
+      "回验答案：优化版与原版在同一批随机数据上逐字一致",
+      "再量一次耗时，确认这一招确实带来提升再留",
+      "把优化前后的代码各留一份，交卷时挑快的那份",
+      "重新算一遍复杂度，确认量级没有被这一招改坏"
+    ],
+    "ans": 0,
+    "why": "顺序不能颠倒：先让它对，再让它快，每快一次都要重新证明它对。本课用 300 组随机数据（含空数组和负数）对拍优化版与原版，不一致的组数是 0。还有一个更隐蔽的坑：优化后小数据上看不出差别不代表改对了，比如列表换集合在 n = 10 时两版耗时都是 0.000001 秒，对拍全过——那只说明小数据测不出来。所以对拍数据要按题目的上限量级生成。"
+  }
+]'></div>
+
+  <h2>这一课用到的判断</h2>
+
+  <ul>
+    <li><b>先量再动。</b> 不测就猜瓶颈，猜错的概率比你想象的高——本课那段 1.9 秒的瓶颈，看着是整段里最无害的。</li>
+    <li><b>定位瓶颈看次数，不看形状。</b> 两重循环各 30 只有 900 次操作；一重的 <code>in</code> 写在列表上是 <span class="math-inline">10^{10}</span> 次。差一千万倍。</li>
+    <li><b>换容器比抠语法值钱。</b> 列表换集合 230 倍、改一行；全局名改局部名 6% 到 13%、改一片。先做前者。</li>
+    <li><b>「局部变量比全局快」成立但很小</b>（本机实测 6% 到 13%，首轮甚至量到 1.00）。新 CPython 给全局查找加了内联缓存，这条规律没失效，但已经不值得优先动它。</li>
+    <li><b>读入是最便宜的提速。</b> 整体 <code>read().split()</code> 比逐行 <code>int(input())</code> 快 7.9 倍（<span class="math-inline">10^6</span> 行），输出同理，攒起来一次打印。</li>
+    <li><b>能用内置就用内置。</b> 求和 4.8 倍。但 <code>sorted</code> 快 1134 倍那一栏主要是复杂度的功劳，别记成常数。</li>
+    <li><b>查表的值随分支数长，查表的耗时不动。</b> 2 到 3 个分支按可读性选；8 个以上查表稳赢 2.65 倍起。</li>
+    <li><b>深度跟着 <span class="math-inline">n</span> 长的递归一律改迭代。</b> 不只因为慢 6.7 倍，更因为本机在 <span class="math-inline">n = 999</span> 就越界（<span class="math-inline">n = 998</span> 还行）。</li>
+    <li><b>每改一处都回验。</b> 对拍的数据要按题目上限的量级生成，小样例测不出容器换了等于没换。</li>
+    <li><b>基准测试写错会得出刚好相反的结论，而且看起来一样可信。</b> 两个版本除了要比的那一点，其余必须严格一样——本课那个「查表反而慢 12%」就是我自己写错量出来的。</li>
+  </ul>
+
+  <div class="lesson-practice">
+    <div class="lesson-practice__head">
+      <span class="lesson-practice__level">练习</span>
+      <span class="lesson-practice__title">四招优化，每招都留记录</span>
+    </div>
+
+      <p>这一课的动手部分落在 lab 里（任务与断言见 <a href="../lab/0029-constant-factor-tuning/">lab/0029-constant-factor-tuning/</a>，做完对照 <a href="../lab/solutions/">lab/solutions/</a>）。要做的是四件事。</p>
+
+      <ol>
+        <li><b>先量出瓶颈。</b> 拿一道接近时限的题（lab 里给了骨架），把代码分成几段，<b>每段单独计时</b>，再数一遍每段的语句执行次数。写下你<b>原以为</b>哪段最慢、实测是哪段——两个答案不一样才算做了这一步。</li>
+        <li><b>依次上三到四招，每招都记数。</b> 按「换容器 → 整体读入 → 提前算不变式 → 用内置」的顺序，<b>每改一招就重跑一次计时并回验答案</b>。做一张表：第几招、改了什么、耗时变成多少、答案还对吗。</li>
+        <li><b>和内置实现比一次。</b> 同一件事，用你优化后的写法再跑一遍，然后换成对应的内置（<code>sum</code>、<code>sorted</code>、<code>set</code>、<code>heapq</code>）跑一遍，看还差多少倍，写下差在哪一层。</li>
+        <li><b>故意写错一次。</b> 把某一招改坏（比如把 <code>while i &lt; limit</code> 写成 <code>while i &lt;= limit</code>），跑一次对拍，确认它能被抓出来；再改回来。<b>这一步是为了确认你的对拍真的有效</b>，不是摆设。</li>
+      </ol>
+  </div>
+
+  <ul class="lesson-resources">
+    <li><a href="https://docs.python.org/3/library/profile.html">Python 官方文档 · profile 与 pstats</a><span class="lesson-resources__meta">官方 · cProfile 的用法，比手工计时更系统地找瓶颈</span></li>
+    <li><a href="https://docs.python.org/3/library/timeit.html">Python 官方文档 · timeit</a><span class="lesson-resources__meta">官方 · 小段代码计时的标准工具，本课那些中位数就是用它这类做法量的</span></li>
+    <li><a href="https://wiki.python.org/moin/PythonSpeed">Python Wiki · PythonSpeed</a><span class="lesson-resources__meta">社区 · 常数优化的常见清单（部分条目较旧，要自己复测）</span></li>
+    <li><a href="0002-complexity-basics.html">第 2 课：同一道题，两种写法</a><span class="lesson-resources__meta">本课那把尺子与「内置是 C 写的」那句话的出处</span></li>
+    <li><a href="0015-lab-02-verify-by-brute-force.html">第 15 课：对拍：用小数据抓错</a><span class="lesson-resources__meta">本课「每改一处都回验」用的就是那一套</span></li>
+    <li><a href="0028-problem-pattern-recognition.html">第 28 课：看数据规模挑算法</a><span class="lesson-resources__meta">先定量级再谈常数，两课的顺序不能反</span></li>
+  </ul>
+
+  <!-- ── 提问提示：固定写法，别删 ── -->
+
+  <div class="lesson-ask">
+    <b>没看懂？随时问</b>
+    把看不懂的段落（或报错）原样复制回会话，说一句哪里不懂就行，我只解释这一段，不打断你的进度。
+  </div>
+
+  <!-- ── 上/下节课指针由渲染器按 curriculum.yaml 的 nodes 顺序算（第一课无 --prev、最后一课无 --next） ── -->
+
+  <nav class="lesson-nav" aria-label="上一课 / 下一课">
+    <a class="lesson-nav__link lesson-nav__link--prev" href="0028-problem-pattern-recognition.html">
+      <span class="lesson-nav__dir">上节课</span>
+      <span class="lesson-nav__title">看数据规模挑算法</span>
+    </a>
+    <a class="lesson-nav__link lesson-nav__link--next" href="0030-stress-test-and-review.html">
+      <span class="lesson-nav__dir">下节课</span>
+      <span class="lesson-nav__title">交卷之前你要检查什么</span>
+    </a>
+  </nav>
+
+  <footer class="lesson-footer">
+    StudyMate · 0029 让 Python 再快一点 · 本地学习工作区
+  </footer>
+
+</article>
+
+<script src="../../../assets/sayo/sayo.js"></script>
+<link rel="stylesheet" href="../../../assets/katex/katex.min.css">
+<script src="../../../assets/katex/katex.min.js" defer></script>
+<script src="../../../assets/lesson-math.js" defer></script>
+<script src="../assets/quiz.js" defer></script>
+<script src="../assets/lesson-toc.js" defer></script>
+<script>LearnTheme.wire(document.getElementById('lesson-theme-checkbox'));</script>
+</body>
+</html>

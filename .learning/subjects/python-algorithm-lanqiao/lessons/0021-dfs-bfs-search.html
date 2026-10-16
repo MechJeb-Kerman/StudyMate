@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>搜索：把图走一遍 · Python 算法与蓝桥杯</title>
+
+<!-- 共享层在 .learning/assets/，课件在 .learning/subjects/<slug>/lessons/ 下，所以是 ../../../assets/ -->
+<link rel="stylesheet" href="../../../assets/sayo/sayo.css">
+<link rel="stylesheet" href="../../../assets/learn-theme.css">
+<link rel="stylesheet" href="../assets/style.css">
+
+<!-- 主题要在首帧前应用，避免闪白/闪黑 -->
+<script src="../../../assets/learn-theme.js"></script>
+<script>LearnTheme.apply();</script>
+</head>
+
+<body class="lesson-body">
+
+<nav class="lesson-bar">
+  <a href="../index.html">← 返回课程</a>
+  <span>Python 算法与蓝桥杯</span>
+  <span class="lesson-bar__no">0021</span>
+  <!-- 课件页自带主题开关：学生从文件管理器直接打开课件时也能切暗色 -->
+  <label class="syo-toggle syo-toggle--theme lesson-bar__toggle" title="切换深浅主题" aria-label="切换深浅主题">
+    <input type="checkbox" id="lesson-theme-checkbox" checked>
+    <span class="syo-toggle-track"></span>
+    <span class="syo-toggle-knob">
+      <svg class="syo-toggle-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.5" stroke="#f57c00" stroke-width="1.5"/><path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.34 4.34l1.77 1.77M13.89 13.89l1.77 1.77M4.34 15.66l1.77-1.77M13.89 6.11l1.77-1.77" stroke="#f57c00" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <svg class="syo-toggle-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.5 12.5A6 6 0 019 4.5a6 6 0 007.5 8z" stroke="#5c6bc0" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </span>
+  </label>
+</nav>
+
+<article class="lesson">
+
+  <header class="lesson-header">
+    <span class="lesson-header__eyebrow">0021 · 搜索：把图走一遍</span>
+    <h1>搜索：把图走一遍</h1>
+    <p class="lesson-goal"><b>本节目标：</b>能写出 DFS 与 BFS 两套模板，并说出求最少步数为什么必须用 BFS。</p>
+  </header>
+
+  <!-- ── 正文：渲染器按内容文件（lessons/<序号>-<节点id>.md）产出，块词汇见 docs/规范/课件内容格式.md ── -->
+
+  <h2>从起点往外走</h2>
+
+  <p>上一课把图存进了内存。这一课回答第一个问题：<b>从起点出发，能走到哪些点，最少几步。</b></p>
+
+  <p>两种走法：</p>
+
+  <ul>
+    <li><b>深度优先（DFS）</b>：走到一个点，挑一个还没去过的邻居就继续往前走；走不动了再退回来换一个。</li>
+    <li><b>广度优先（BFS）</b>：先把起点的所有邻居走完，再把邻居的邻居走完，一圈一圈往外扩。</li>
+  </ul>
+
+  <p>两者都靠一个「记录去过哪里」的标记数组保证每个点只处理一次。这个数组叫 <code>visited</code>，用点数量大小的布尔列表就够了——它和第 15 课那个 <code>seen</code> 是同一个东西。</p>
+
+  <p>先用一个方格图当例子。<code>. </code> 是能走的格子，<code>#</code> 是墙，每次可以往上、下、左、右走一格：</p>
+
+  <pre data-lang="python"><code>from collections import deque
+
+DIRS = ((1, 0), (-1, 0), (0, 1), (0, -1))
+
+
+def make_blocked(n, m, cells):
+    g = [[False] * m for _ in range(n)]
+    for r, c in cells:
+        g[r][c] = True
+    return g
+
+
+def bfs(n, m, blocked, start, target):
+    """从 start 一层层往外扩，返回走到 target 的最少步数。"""
+    seen = [[False] * m for _ in range(n)]
+    q = deque([(start[0], start[1], 0)])
+    seen[start[0]][start[1]] = True
+    while q:
+        r, c, d = q.popleft()
+        if (r, c) == target:
+            return d
+        for dr, dc in DIRS:
+            nr, nc = r + dr, c + dc
+            if 0 &lt;= nr &lt; n and 0 &lt;= nc &lt; m and not blocked[nr][nc] and not seen[nr][nc]:
+                seen[nr][nc] = True
+                q.append((nr, nc, d + 1))
+    return -1
+
+
+n = m = 5
+b = make_blocked(n, m, [(1, 1), (1, 2), (2, 2), (3, 2)])
+print('  最少步数:', bfs(n, m, b, (0, 0), (4, 4)))</code></pre>
+
+  <pre data-lang="text"><code>  最少步数: 8</code></pre>
+
+  <p>队列里存的是 <code>(行, 列, 走了几步)</code>。每出队一个格子，就把它的四个邻居里没去过、不是墙的格子入队，步数写 <code>d + 1</code>。</p>
+
+  <p>步数是<b>跟格子一起存进队列的</b>，不是另外维护一个「当前第几层」的变量。这样写有两个好处：不用在换层时做额外判断，而且每个格子拿到的步数天然就是它自己的——同一个时刻队列里可能同时存在第 3 层和第 4 层的格子，用一个全局变量根本分不开。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "BFS 里的步数（层数）应该记在哪里？",
+    "opts": [
+      "跟每个格子一起存进队列，入队时写步数加一",
+      "用一个全局的层数变量，每次出队时给它加一",
+      "不用记，最后数队列一共出了多少次队就是步数",
+      "存在访问标记数组里，用它的真假来区分层"
+    ],
+    "ans": 0,
+    "why": "同一个时刻队列里可能同时存在第 3 层和第 4 层的格子，用一个全局变量根本分不开。把步数写进队列元素（(行, 列, 步数)），每个格子拿到的就是它自己的步数，换层时也不用做额外判断。"
+  }
+]'></div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "DFS 与 BFS 的搜索顺序，差别在哪里？",
+    "opts": [
+      "DFS 挑一个邻居钻到底，BFS 一圈走完再往外",
+      "DFS 只用递归写，BFS 只用队列来写",
+      "DFS 会漏掉一些点，BFS 保证每个都走到",
+      "DFS 走的是树，BFS 走的是图，对象不同"
+    ],
+    "ans": 0,
+    "why": "DFS 走到一个点就挑一个没去过的邻居继续往前走，走不动了退回来换一个；BFS 先把起点的邻居全走完，再走邻居的邻居，一圈圈往外扩。两者都能走遍同一个连通块，差的只是顺序——而顺序决定了「第一次到达终点时，能不能断定这就是最短」。"
+  }
+]'></div>
+
+  <h2>visited 标记的时机</h2>
+
+  <p>上面那段代码里有一句很容易挪错位置：<code>seen[nr][nc] = True</code> 写在<b>入队的时候</b>。</p>
+
+  <p>另一种写法是把它挪到<b>出队的时候</b>：入队时不看 <code>seen</code>，等出队了再检查、再标记。这样写出来的代码看起来更「顺」——先出队，再判断这个点是不是处理过，没处理过就标记并扩展。两种写法跑出来的答案完全一样：</p>
+
+  <pre data-lang="python"><code>def bfs2(n, m, blocked, start, target, mark_on_push):
+    """mark_on_push=True 在入队时标记；False 在出队时标记。返回 (步数, 入队次数, 队列最长)。"""
+    seen = [[False] * m for _ in range(n)]
+    q = deque([(start[0], start[1], 0)])
+    pushes = 1
+    maxq = 1
+    if mark_on_push:
+        seen[start[0]][start[1]] = True
+    while q:
+        if len(q) &gt; maxq:
+            maxq = len(q)
+        r, c, d = q.popleft()
+        if not mark_on_push:
+            if seen[r][c]:
+                continue
+            seen[r][c] = True
+        if (r, c) == target:
+            return d, pushes, maxq
+        for dr, dc in DIRS:
+            nr, nc = r + dr, c + dc
+            if 0 &lt;= nr &lt; n and 0 &lt;= nc &lt; m and not blocked[nr][nc]:
+                if mark_on_push:
+                    if not seen[nr][nc]:
+                        seen[nr][nc] = True
+                        q.append((nr, nc, d + 1))
+                        pushes += 1
+                else:
+                    q.append((nr, nc, d + 1))
+                    pushes += 1
+    return -1, pushes, maxq
+
+
+for size in (10, 50, 100):
+    e = make_blocked(size, size, [])
+    d1, p1, q1 = bfs2(size, size, e, (0, 0), (size - 1, size - 1), True)
+    d2, p2, q2 = bfs2(size, size, e, (0, 0), (size - 1, size - 1), False)
+    print(f'  {size}x{size}: 入队时标记 步数 {d1} 入队 {p1:&gt;6} 次 队列最长 {q1:&gt;5}')
+    print(f'  {" " * len(str(size))}      出队时标记 步数 {d2} 入队 {p2:&gt;6} 次 队列最长 {q2:&gt;5}  {p2 / p1:.2f} 倍')</code></pre>
+
+  <pre data-lang="text"><code>  10x10: 入队时标记 步数 18 入队    100 次 队列最长    10
+          出队时标记 步数 18 入队    359 次 队列最长    38  3.59 倍
+  50x50: 入队时标记 步数 98 入队   2500 次 队列最长    50
+          出队时标记 步数 98 入队   9799 次 队列最长   198  3.92 倍
+  100x100: 入队时标记 步数 198 入队  10000 次 队列最长   100
+           出队时标记 步数 198 入队  39599 次 队列最长   398  3.96 倍</code></pre>
+
+  <p><b>答案一模一样，代价差近四倍。</b></p>
+
+  <p>原因是：出队时才标记，同一个格子会被它的每个邻居各入队一次。一个格子最多有四个邻居，所以入队次数最多是点数的四倍——实测的倍数 3.59、3.92、3.96 正在往 4 收敛。队列最长的那一项也跟着涨：100×100 的图上从 100 涨到 398。</p>
+
+  <p>这个错误的危险程度和上一课的「无向图只加一个方向」不一样。那个会改答案，这个<b>不改答案、只是慢</b>，所以拿样例测永远测不出来，只有把数据开大、或者把入队次数打出来才看得见。</p>
+
+  <p><b>一句话记法：入队的那一刻就标记，别等到出队。</b></p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "BFS 里把 visited 标记挪到出队时才做，会怎样？",
+    "opts": [
+      "答案不变，只是每个格子被每个邻居各入队一次",
+      "答案会变大，因为同一个格子被算成了好几步",
+      "程序会陷入死循环，因为标记永远赶不上入队",
+      "没有影响，标记的早晚只是写法习惯上的差别"
+    ],
+    "ans": 0,
+    "why": "出队时才标记，同一个格子会被它的每个邻居各入队一次，一个格子最多四个邻居，所以入队次数最多是点数的四倍——实测 3.59、3.92、3.96 正在往 4 收敛，队列最长也涨到近四倍。答案一模一样（18/98/198），所以拿样例永远测不出来，只有把数据开大或把入队次数打出来才看得见。记法：入队的那一刻就标记。"
+  }
+]'></div>
+
+  <h2>求最少步数只能用 BFS</h2>
+
+  <p>DFS 也能算「最少步数」，但它的做法是<b>把所有路都试一遍，取最短的那条</b>。BFS 不是——BFS 第一次走到终点时，那个步数就是最短的。</p>
+
+  <p>为什么？因为 BFS 是一层一层扩的：第 <span class="math-inline">d</span> 步能到的所有格子，一定在第 <span class="math-inline">d+1</span> 步能到的格子之前全部出队。所以终点第一次被访问时，不可能存在另一条更短的路还没被走到。</p>
+
+  <p>DFS 没有这个性质。它一头扎进去，可能绕很远才到终点，而它没法因此断定「这就是最短」——必须退回来把别的路也走完。在空方格上量一下：</p>
+
+  <pre data-lang="python"><code>def dfs_shortest(n, m, blocked, start, target):
+    """把所有路径都试一遍，才敢说最短。返回 (最少步数, 递归调用次数)。"""
+    best = [None]
+    seen = [[False] * m for _ in range(n)]
+    calls = [0]
+
+    def walk(r, c, d):
+        calls[0] += 1
+        if (r, c) == target:
+            if best[0] is None or d &lt; best[0]:
+                best[0] = d
+            return
+        seen[r][c] = True
+        for dr, dc in DIRS:
+            nr, nc = r + dr, c + dc
+            if 0 &lt;= nr &lt; n and 0 &lt;= nc &lt; m and not blocked[nr][nc] and not seen[nr][nc]:
+                walk(nr, nc, d + 1)
+        seen[r][c] = False
+
+    walk(start[0], start[1], 0)
+    return best[0], calls[0]
+
+
+for size in (4, 5, 6):
+    e = make_blocked(size, size, [])
+    steps, calls = dfs_shortest(size, size, e, (0, 0), (size - 1, size - 1))
+    best = bfs(size, size, e, (0, 0), (size - 1, size - 1))
+    print(f'  {size}x{size}: BFS {best} 步   DFS {steps} 步，试了 {calls} 次')</code></pre>
+
+  <pre data-lang="text"><code>  4x4: BFS 6 步   DFS 6 步，试了 1271 次
+  5x5: BFS 8 步   DFS 8 步，试了 90111 次
+  6x6: BFS 10 步   DFS 10 步，试了 18470411 次</code></pre>
+
+  <p>两个都给出正确答案，但 DFS 的尝试次数是 <b>1271 → 90111 → 18470411</b>：边长每加一格，次数就涨七十倍、再涨两百倍。这是指数增长，方格再大一点就再也算不完了。</p>
+
+  <table>
+    <thead>
+      <tr><th>规模</th><th>BFS 耗时</th><th>DFS 耗时</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>4×4</td><td>0.000020 秒</td><td>0.000627 秒</td></tr>
+      <tr><td>5×5</td><td>0.000013 秒</td><td>0.039947 秒</td></tr>
+      <tr><td>6×6</td><td>0.000024 秒</td><td>9.678944 秒</td></tr>
+    </tbody>
+  </table>
+
+  <p>（本机实测，跑两遍结果一致。BFS 那三个数在噪声里几乎没动，DFS 在翻倍。）</p>
+
+  <p>6×6 的方格上，DFS 已经要 9.68 秒，BFS 还是 0.000024 秒——<b>差四十万倍</b>。边长再加一格，DFS 还要按两百倍继续涨，也就是半小时上下；而竞赛的时限通常只有一两秒。这就是「求最少步数别用 DFS」的真实后果：不是答案错，是<b>根本跑不完</b>。</p>
+
+  <p>判断规则：<b>题目里出现「最少」「最短」「至少几步」，且每走一步的代价相同 —— 用 BFS，不要用 DFS。</b> 如果每步代价不同（比如修路费用不一样），BFS 也不够用，那是后面最短路算法的事。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "题目问「最少几步」，为什么不能用 DFS？",
+    "opts": [
+      "DFS 要把所有路都试一遍才敢说最短，数量指数级",
+      "DFS 在图上会漏掉一些点，所以可能找不到终点",
+      "DFS 递归太深会爆栈，改成显式栈就可以用了",
+      "DFS 只能处理树，一般图上的最短路它算不出来"
+    ],
+    "ans": 0,
+    "why": "BFS 一层层扩，第 d 步能到的格子一定在第 d+1 步的之前全部出队，所以终点第一次被访问时不可能还有更短的路没走到。DFS 一头扎进去，没法断定眼前这条就是最短，必须退回来把别的路也走完——实测空方格上尝试次数 1271 → 90111 → 18470411，6×6 就要 9.68 秒（BFS 是 0.000024 秒）。注意「每步代价相同」这个前提：代价不同要用最短路算法。"
+  }
+]'></div>
+
+  <h2>队列该用哪种容器</h2>
+
+  <p>BFS 需要一个「队尾进、队头出」的容器。Python 里两个候选：<code>list</code> 配 <code>pop(0)</code>，或者 <code>collections.deque</code> 配 <code>popleft()</code>。</p>
+
+  <p><code>list.pop(0)</code> 要把后面所有元素往前挪一格，是 <span class="math-inline">O(\text{队列长度})</span>；<code>deque.popleft()</code> 是 <span class="math-inline">O(1)</span>。按这个说法，<code>list</code> 应该慢很多。但实测在方格图上两者<b>没有差别</b>：</p>
+
+  <table>
+    <thead>
+      <tr><th>方格图 BFS</th><th><code>deque</code></th><th><code>list.pop(0)</code></th><th>慢多少</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>60×60</td><td>0.0016 秒</td><td>0.0014 秒</td><td>0.9 倍</td></tr>
+      <tr><td>120×120</td><td>0.0065 秒</td><td>0.0067 秒</td><td>1.0 倍</td></tr>
+      <tr><td>200×200</td><td>0.0199 秒</td><td>0.0187 秒</td><td>0.9 倍</td></tr>
+    </tbody>
+  </table>
+
+  <p>原因在这一课开头那个数字里：<b>方格图的队列从来就不长。</b> BFS 队列里装的是「当前这一圈还没处理完的格子」，而一圈的长度就是周长。200×200 的方格有 40000 个格子，队列最长只有 798 个——挪 798 个元素的代价，和扩展这些格子的代价是同一个量级，所以看不出来。</p>
+
+  <p>队列真的会变长的时候，差别立刻出现。造一个「中心点连到一大堆叶子」的图（菊花图）：</p>
+
+  <pre data-lang="python"><code>def bfs_star(k, use_deque):
+    n = k + 1
+    adj = [[] for _ in range(n)]
+    for i in range(1, n):
+        adj[0].append(i)
+        adj[i].append(0)
+    seen = [False] * n
+    q = deque([0]) if use_deque else [0]
+    seen[0] = True
+    while q:
+        u = q.popleft() if use_deque else q.pop(0)
+        for v in adj[u]:
+            if not seen[v]:
+                seen[v] = True
+                q.append(v)</code></pre>
+
+  <p>中心的四个邻居一入队，队列就涨到 <span class="math-inline">k</span> 个元素，而且一直保持那么长：</p>
+
+  <table>
+    <thead>
+      <tr><th>叶子数</th><th><code>deque</code></th><th><code>list.pop(0)</code></th><th>慢多少</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>20000</td><td>0.0027 秒</td><td>0.0134 秒</td><td>4.9 倍</td></tr>
+      <tr><td>50000</td><td>0.0066 秒</td><td>0.0806 秒</td><td>12.2 倍</td></tr>
+      <tr><td>100000</td><td>0.0110 秒</td><td>0.3272 秒</td><td>29.7 倍</td></tr>
+    </tbody>
+  </table>
+
+  <p>（都是本机实测。）</p>
+
+  <p>结论不是「必须用 deque」，而是更准确的一句：<b>队列长度会不会涨到接近点数，取决于图的形状。</b> 方格图不会，菊花图会。既然 <code>deque</code> 用起来不比 <code>list</code> 麻烦，默认用它——省得去判断「我这张图算不算宽」。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "BFS 的队列用 deque 还是 list.pop(0)，什么时候才看得出差别？",
+    "opts": [
+      "队列长到接近点数时，网格图队列只有周长那么长",
+      "点数超过一千以后，网格图上就会出现明显差距",
+      "两者的复杂度一样，任何图上都测不出差别",
+      "只在带权图上才有差别，无权图两者完全等价"
+    ],
+    "ans": 0,
+    "why": "list.pop(0) 要挪动后面所有元素，代价是队列长度；deque.popleft() 是常数。但网格 BFS 的队列装的是「当前这一圈」，长度就是周长——200×200 的方格有 40000 个格子，队列最长只有 798，所以实测两者没差别（0.9 到 1.0 倍）。菊花图那种队列涨到接近点数的图上差别立刻出现：叶子 20000/50000/100000 时分别慢 4.9、12.2、29.7 倍。既然 deque 不麻烦，默认用它。"
+  }
+]'></div>
+
+  <h2>迷宫、岛屿与连通块</h2>
+
+  <p>同一套模板改几行就是三道不同的题。</p>
+
+  <p><b>岛屿数量</b>：给一个由 <code>1</code>（陆地）和 <code>0</code>（海）组成的网格，问有多少块互不相连的陆地。做法是遍历每个格子，遇到没访问过的陆地就计数加一，然后从这个格子开始把整块陆地走完、全部标记。</p>
+
+  <pre data-lang="python"><code>sea = [
+    '11000',
+    '11010',
+    '00100',
+    '00011',
+]
+n = len(sea)
+m = len(sea[0])
+b = make_blocked(n, m, [(r, c) for r in range(n) for c in range(m) if sea[r][c] == '0'])
+seen = [[False] * m for _ in range(n)]
+islands = 0
+for r in range(n):
+    for c in range(m):
+        if b[r][c] or seen[r][c]:
+            continue
+        islands += 1
+        q = deque([(r, c)])
+        seen[r][c] = True
+        while q:
+            cr, cc = q.popleft()
+            for dr, dc in DIRS:
+                nr, nc = cr + dr, cc + dc
+                if 0 &lt;= nr &lt; n and 0 &lt;= nc &lt; m and not b[nr][nc] and not seen[nr][nc]:
+                    seen[nr][nc] = True
+                    q.append((nr, nc))
+for row in sea:
+    print('    ' + row)
+print('  岛屿数量', islands)</code></pre>
+
+  <pre data-lang="text"><code>    11000
+    11010
+    00100
+    00011
+  岛屿数量 4</code></pre>
+
+  <p><b>连通块计数</b>：把「陆地」换成「所有格子」，就是第 19 课用并查集数过的那个量。两条路都得同一个答案——并查集不遍历，搜索遍历，但数出来的是同一个东西。</p>
+
+  <p><b>迷宫最短路</b>：和本课第一个例子的区别只在「能走的条件」。方格图判的是邻格不是墙，迷宫判的可能是「这一格能不能踩」「转向要不要额外代价」等等，模板本身不动。</p>
+
+  <p>给迷宫加墙时注意一点：<code>make_blocked</code> 里的 <code>True</code> 表示<b>不能走</b>，而不是「能走」。这个约定写反了程序也能跑，只是答案全错——第 20 课那个「编号错一位」是同一类问题。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "「岛屿数量」和「连通块计数」是同一件事吗？",
+    "opts": [
+      "是，同一套模板，只换「能不能走」的判断条件",
+      "不是，岛屿数量要处理上下左右四个方向，连通块不止",
+      "不是，岛屿数量必须用 BFS，连通块必须用并查集",
+      "是，但岛屿数量只能数出个数，不能给出每块的成员"
+    ],
+    "ans": 0,
+    "why": "岛屿数量是把「能不能走」判成「这一格是陆地」，连通块计数是判成「有边相连」，模板本身一个字都不用改。而且第 19 课的并查集不遍历也能数出同一个数——两条路数的是同一个量，结果必须一致，这正好可以拿来自查。"
+  }
+]'></div>
+
+  <h2>状态也是点</h2>
+
+  <p>三道题里的「点」都长着格子的样子，容易让人以为 BFS 只能走网格。其实不是——<b>任何「东西」都能当点</b>，包括看不见的状态。</p>
+
+  <p>回想第 20 课开头那四段描述里的最后一段：「若干个状态，每次操作从一个状态变到另一个状态」。那里：</p>
+
+  <ul>
+    <li><b>一个状态就是一个点</b>。</li>
+    <li><b>一次合法操作就是一条边</b>，从操作前的状态指向操作后的状态。</li>
+    <li>起点是初始状态，终点是目标状态。</li>
+    <li>求「最少几步到目标状态」就是求最短路，用 BFS。</li>
+    <li><code>visited</code> 不再是「这个格子走过吗」，而是「这个状态出现过吗」。</li>
+  </ul>
+
+  <p>迷宫是它的一个特例：状态就是「人在哪个格子」。倒水问题、开关灯、拼图、数字变换，全都是同一套模板——<b>把状态编码成一个能放进 <code>set</code> 或当作列表下标的东西</b>（一个整数、一个元组、一段字符串都行），剩下的和走迷宫一模一样。</p>
+
+  <p>这一步抽象做不出来，就会觉得「这题不是网格，BFS 用不上」，然后去写枚举或者 DFS。<b>看出状态就是点，是搜索题最重要的一步。</b></p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "「每次操作从一个状态变到另一个状态」这类题，点和边是什么？",
+    "opts": [
+      "一个状态是一个点，一次合法操作是一条带方向的边",
+      "一次操作是一个点，状态是连接两次操作的边",
+      "没有点也没有边，这类题只能用枚举逐层试",
+      "操作次数是点，状态转移的总次数是边的条数"
+    ],
+    "ans": 0,
+    "why": "状态就是点，一次合法操作就是一条从操作前指向操作后的边，起点是初始状态、终点是目标状态，求最少几步就是求最短路、用 BFS。visited 的含义从「这个格子走过吗」变成「这个状态出现过吗」，所以要把状态编码成能放进 set 或当下标的东西（整数、元组、字符串都行）。迷宫是它的特例——状态就是「人在哪个格子」。"
+  }
+]'></div>
+
+  <h2>DFS 递归会爆栈</h2>
+
+  <p>DFS 的递归写法和第 12 课一样，深度受 <code>sys.getrecursionlimit()</code> 限制。方格图上一条路最长可以走到几千格，递归写法会当场爆栈：</p>
+
+  <pre data-lang="python"><code>import sys
+
+print('  递归深度上限:', sys.getrecursionlimit())
+
+
+def chain(n):
+    """一条 n 格长的直走廊，递归写法。"""
+    if n == 0:
+        return 0
+    return 1 + chain(n - 1)
+
+
+def chain_stack(n):
+    """同一条走廊，显式栈写法。"""
+    depth = 0
+    stack = [(0, n)]
+    while stack:
+        depth, left = stack.pop()
+        if left &gt; 0:
+            stack.append((depth + 1, left - 1))
+    return depth
+
+
+for n in (996, 997, 998, 999, 1000):
+    try:
+        print(f'  走廊 {n} 格：递归写法交回 {chain(n)}')
+    except RecursionError:
+        print(f'  走廊 {n} 格：递归写法 RecursionError')
+print('  走廊 200000 格：显式栈交回', chain_stack(200000))</code></pre>
+
+  <pre data-lang="text"><code>  递归深度上限: 1000
+  走廊 996 格：递归写法交回 996
+  走廊 997 格：递归写法交回 997
+  走廊 998 格：递归写法交回 998
+  走廊 999 格：递归写法 RecursionError
+  走廊 1000 格：递归写法 RecursionError
+  走廊 200000 格：显式栈交回 200000</code></pre>
+
+  <p>第 12 课量过：上限 1000，实际能到 998 层。一条 1000 格长的走廊就会把递归写法的 DFS 顶爆。</p>
+
+  <p>两种应对：</p>
+
+  <ul>
+    <li><b>改写成显式栈</b>。用一个列表当栈，<code>while stack:</code> 循环，不再有递归深度这回事。前几课的 DFS 都是这么写的，就是为了避开这一点。</li>
+    <li><b>调大递归上限</b>（<code>sys.setrecursionlimit(300000)</code>）。能顶一时，但 Python 的栈是有限的，调得太大可能真的把解释器撞崩，而且爆栈时给的是崩溃而不是报错。</li>
+  </ul>
+
+  <p>竞赛里推荐第一种。方格图、隐式图这类「深度可能很深」的题，一律用显式栈写 DFS。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "DFS 的递归写法在网格图上为什么容易爆栈？",
+    "opts": [
+      "一条路最长能走上千格，递归上限只有一千层",
+      "网格图的分支太多，每一层递归都要复制一份栈",
+      "网格图的点没有编号，递归函数找不到终止条件",
+      "墙会把递归路径切断，反复重启函数耗尽栈空间"
+    ],
+    "ans": 0,
+    "why": "递归深度受 sys.getrecursionlimit() 限制（默认 1000，实际能到 998 层，第 12 课量过）。网格图上一条路可以走上千格，当场 RecursionError。两条应对：改写成显式栈（推荐，前几课的 DFS 都这么写），或者调大 sys.setrecursionlimit——但 Python 的栈是有限的，调太大可能真的把解释器撞崩，而且爆栈时给的是崩溃而不是报错。"
+  }
+]'></div>
+
+  <h2>这一课用到的判断</h2>
+
+  <ul>
+    <li><b>DFS 走一条路走到黑，BFS 一圈一圈往外扩</b>；两者都靠 <code>visited</code> 保证每个点只处理一次。</li>
+    <li><b><code>visited</code> 必须在入队（或入栈）的那一刻标记，不能等到出队</b>：出队时标记会让同一个格子被每个邻居各入队一次，实测入队次数涨到 3.96 倍、答案却完全一样。</li>
+    <li><b>求「最少步数」必须用 BFS</b>：BFS 一层层扩，第一次到达即最短；DFS 得把所有路试完才敢下结论，实测在空方格上尝试次数 1271 → 90111 → 18470411、6×6 上要 9.68 秒（BFS 是 0.000024 秒）。</li>
+    <li><b>每步代价相同才谈得上「最少步数」</b>；代价不同要用最短路算法，不是 BFS。</li>
+    <li><b>网格 BFS 的队列长度是周长，不是点数</b>（200×200 的图上只有 798），所以 <code>deque</code> 和 <code>list.pop(0)</code> 在网格上没差别；菊花图上队列涨到接近点数，差别就变成 29.7 倍。默认用 <code>deque</code>。</li>
+    <li><b>BFS 的层数跟着队列里的元素一起存</b>：入队时写 <code>d + 1</code>，不用另外记层。</li>
+    <li><b>数连通块与岛屿数量是同一套模板</b>，只是「能不能走」的判断换一下；结果必然与第 19 课并查集数出的一致。</li>
+    <li><b>DFS 递归会爆栈</b>（上限 1000、实际 998 层），深度可能很深的题一律用显式栈写。</li>
+  </ul>
+
+  <div class="lesson-practice">
+    <div class="lesson-practice__head">
+      <span class="lesson-practice__level">上手做</span>
+      <span class="lesson-practice__title">两套模板三答题</span>
+    </div>
+
+      <p>这一课的动手部分落在 lab 里（任务与断言见 <a href="../lab/0021-dfs-bfs-search/">lab/0021-dfs-bfs-search/</a>，做完对照 <a href="../lab/solutions/">lab/solutions/</a>）。要做的是四件事。</p>
+
+      <ol>
+        <li>写出 <b>DFS 显式栈</b>与 <b>BFS 队列</b>两套模板，都能返回「从起点能到达的所有点」的个数。用同一个图跑两套模板，确认个数相同。</li>
+        <li>做<b>迷宫最短路</b>：给一个带墙的网格与起点终点，BFS 交回最少步数；再故意用 DFS 写一遍同一个函数，把网格开大到 12×12，量出两者耗时并把 DFS 跑不完的现象记下来。</li>
+        <li>做<b>岛屿数量</b>与<b>连通块计数</b>：前者给 <code>1</code>/<code>0</code> 网格，后者给一般的点边列表。用并查集再算一遍连通块，两组答案对照。</li>
+        <li>把 BFS 改一版「出队时才标记 <code>visited</code>」，在同一个网格上打出<b>入队次数</b>与<b>队列最长长度</b>，和正确版本对照，确认答案相同而次数涨到近四倍。</li>
+      </ol>
+  </div>
+
+  <ul class="lesson-resources">
+    <li><a href="https://oi-wiki.org/graph/dfs/">OI Wiki · DFS（图论）</a><span class="lesson-resources__meta">深度优先搜索的图论口径、递归与栈、时间戳与 DFS 序</span></li>
+    <li><a href="https://oi-wiki.org/graph/bfs/">OI Wiki · BFS（图论）</a><span class="lesson-resources__meta">广度优先搜索、层数与最短步数、队列的实现</span></li>
+    <li><a href="https://docs.python.org/3/library/collections.html#collections.deque">Python 官方文档 · collections.deque</a><span class="lesson-resources__meta"><code>popleft()</code> 是 O(1)，两端操作都支持</span></li>
+    <li>《算法导论（第 3 版）》第 22 章 图的基本算法<span class="lesson-resources__meta">书 · 广度优先搜索与深度优先搜索、最短路径性质</span></li>
+    <li><a href="0020-graph-representation.html">第 20 课：把问题画成一张图</a><span class="lesson-resources__meta">上一课把图存进内存，这一课开始在图上走</span></li>
+  </ul>
+
+  <!-- ── 提问提示：固定写法，别删 ── -->
+
+  <div class="lesson-ask">
+    <b>没看懂？随时问</b>
+    把看不懂的段落（或报错）原样复制回会话，说一句哪里不懂就行，我只解释这一段，不打断你的进度。
+  </div>
+
+  <!-- ── 上/下节课指针由渲染器按 curriculum.yaml 的 nodes 顺序算（第一课无 --prev、最后一课无 --next） ── -->
+
+  <nav class="lesson-nav" aria-label="上一课 / 下一课">
+    <a class="lesson-nav__link lesson-nav__link--prev" href="0020-graph-representation.html">
+      <span class="lesson-nav__dir">上节课</span>
+      <span class="lesson-nav__title">把问题画成一张图</span>
+    </a>
+    <a class="lesson-nav__link lesson-nav__link--next" href="0022-binary-search-on-answer.html">
+      <span class="lesson-nav__dir">下节课</span>
+      <span class="lesson-nav__title">二分答案：猜一个再验一遍</span>
+    </a>
+  </nav>
+
+  <footer class="lesson-footer">
+    StudyMate · 0021 搜索：把图走一遍 · 本地学习工作区
+  </footer>
+
+</article>
+
+<script src="../../../assets/sayo/sayo.js"></script>
+<link rel="stylesheet" href="../../../assets/katex/katex.min.css">
+<script src="../../../assets/katex/katex.min.js" defer></script>
+<script src="../../../assets/lesson-math.js" defer></script>
+<script src="../assets/quiz.js" defer></script>
+<script src="../assets/lesson-toc.js" defer></script>
+<script>LearnTheme.wire(document.getElementById('lesson-theme-checkbox'));</script>
+</body>
+</html>

@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>实验三：让助手推荐并验证 · Python 算法与蓝桥杯</title>
+
+<!-- 共享层在 .learning/assets/，课件在 .learning/subjects/<slug>/lessons/ 下，所以是 ../../../assets/ -->
+<link rel="stylesheet" href="../../../assets/sayo/sayo.css">
+<link rel="stylesheet" href="../../../assets/learn-theme.css">
+<link rel="stylesheet" href="../assets/style.css">
+
+<!-- 主题要在首帧前应用，避免闪白/闪黑 -->
+<script src="../../../assets/learn-theme.js"></script>
+<script>LearnTheme.apply();</script>
+</head>
+
+<body class="lesson-body">
+
+<nav class="lesson-bar">
+  <a href="../index.html">← 返回课程</a>
+  <span>Python 算法与蓝桥杯</span>
+  <span class="lesson-bar__no">0027</span>
+  <!-- 课件页自带主题开关：学生从文件管理器直接打开课件时也能切暗色 -->
+  <label class="syo-toggle syo-toggle--theme lesson-bar__toggle" title="切换深浅主题" aria-label="切换深浅主题">
+    <input type="checkbox" id="lesson-theme-checkbox" checked>
+    <span class="syo-toggle-track"></span>
+    <span class="syo-toggle-knob">
+      <svg class="syo-toggle-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.5" stroke="#f57c00" stroke-width="1.5"/><path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.34 4.34l1.77 1.77M13.89 13.89l1.77 1.77M4.34 15.66l1.77-1.77M13.89 6.11l1.77-1.77" stroke="#f57c00" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <svg class="syo-toggle-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.5 12.5A6 6 0 019 4.5a6 6 0 007.5 8z" stroke="#5c6bc0" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </span>
+  </label>
+</nav>
+
+<article class="lesson">
+
+  <header class="lesson-header">
+    <span class="lesson-header__eyebrow">0027 · 实验三：让助手推荐并验证</span>
+    <h1>实验三：让助手推荐并验证</h1>
+    <p class="lesson-goal"><b>本节目标：</b>做出题目文本进、候选算法出、自动验证收尾的端到端脚本，并能说清每个环节的判据。</p>
+  </header>
+
+  <!-- ── 正文：渲染器按内容文件（lessons/<序号>-<节点id>.md）产出，块词汇见 docs/规范/课件内容格式.md ── -->
+
+  <h2>这次要做出什么</h2>
+
+  <p>前面 26 课学的是<b>你自己会做</b>。这次要做的是<b>让程序替你判断</b>——这是配套项目 AI 刷题助手的主干能力：</p>
+
+  <p><b>输入一段题目文本 → 判断它像哪一类算法 → 给出候选实现 → 自动跑验证 → 输出结论。</b></p>
+
+  <p>判断「这题像哪一类」的依据，正是第 16 到 22 课学过的东西：哈希、树、堆、并查集、图与搜索、二分答案、贪心。而验证模块就是实验二那套对拍脚本。</p>
+
+  <p>做完这一课，这个项目第一次<b>真的能用</b>：题目进，候选算法与验证结论一起出。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "这个助手最终要输出的结论，应该以什么为准？",
+    "opts": [
+      "跑出来的验证结果，算法名只是候选",
+      "模型给出的算法名，因为它理解题意",
+      "关键词表的打分，因为它是程序算的",
+      "几率的最高项，取三个来源里最常见的"
+    ],
+    "ans": 0,
+    "why": "算法名只是候选，名字下面可以挂无数种写法，其中大部分是错的。实测同一族「贪心」下，按开始时间排选出 1 个、按结束时间排选出 6 个，而最优是 6 个——名字相同，结论相反。结论里必须带验证结果，没有验证结果的推荐要标成「未验证」，不许混进「可用」里。"
+  }
+]'></div>
+
+  <h2>三段式与那道缝</h2>
+
+  <p>整条链有三段，每段都有明确的输入输出：</p>
+
+  <table>
+    <thead>
+      <tr><th>段</th><th>输入</th><th>输出</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>推荐</td><td>题目文本</td><td>一段<b>文本</b>（希望是 JSON）</td></tr>
+      <tr><td>解析</td><td>那段文本</td><td>一个<b>字典</b> <code>{family, confidence, why}</code></td></tr>
+      <tr><td>验证</td><td>候选实现 + 数据生成器</td><td>通过 / 被否掉（附反例）</td></tr>
+    </tbody>
+  </table>
+
+  <p>中间那道缝值得单独说：<b>调用模型是要联网的</b>，而测试不能依赖网络。所以要把「发请求」这件事做成一个<b>可以换掉的函数</b>——真正跑的时候它是 <code>call_model</code>，离线测试时换成一个假的。</p>
+
+  <p>这就是<b>接缝</b>：把不可控的部分（网络、时间、随机）收在一个函数里，其余部分就都成了纯逻辑，可以反复跑、可以对拍。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "把「发请求」做成一个可替换的函数，是为了什么？",
+    "opts": [
+      "把不可控的部分收在一处，好离线测",
+      "让代码看起来更短，方便一次读完",
+      "让请求发得更快，少等几次网络往返",
+      "让模型回答得更准，提示词更集中"
+    ],
+    "ans": 0,
+    "why": "网络、时间、随机这三样是不可控的。把它们收在一个函数里，其余部分就成了纯逻辑，可以反复跑、可以对拍、可以断网测。如果不留这道缝，测试就只能联网跑，一断网全废，而链路上的错误会藏进网络噪声里。"
+  }
+]'></div>
+
+  <h2>提示词要约束格式</h2>
+
+  <p>提示词不是「说清楚要什么」就完了。既然下一步要用<b>程序</b>解析返回文本，就必须在提示词里把<b>格式</b>钉死。</p>
+
+  <pre data-lang="python"><code>def build_prompt(problem):
+    """把题面裹成一条有格式约束的提示词。"""
+    return (
+        '你是一个算法助教。读下面的题目，判断它最像哪一类算法。\n'
+        '\n'
+        '只输出一个 JSON 对象，不要输出任何别的文字，不要用代码块围栏。\n'
+        '格式固定为：\n'
+        '{"family": "&lt;算法族名&gt;", "confidence": "高|中|低", "why": "&lt;一句话理由&gt;"}\n'
+        '字符串里的引号必须转义。\n'
+        '\n'
+        '可选的算法族：二分答案、并查集、堆、图的搜索、背包、贪心、前缀和、双指针。\n'
+        '\n'
+        '题目：\n' + problem.strip()
+    )
+
+
+def call_model(prompt):
+    """真正跑的时候这里发一次 API 请求；离线测试时换成假的。"""
+    raise NotImplementedError('离线环境不联网，测试时请换掉这个函数')
+
+
+def fake_model(prompt):
+    """假的模型：只认题目里有没有「木头」这个词，用来离线跑通链路。"""
+    if '木头' in prompt:
+        return '{"family": "二分答案", "confidence": "高", "why": "要让最小长度最大化"}'
+    return '{"family": "贪心", "confidence": "中", "why": "没认出来，先猜一个"}'
+
+
+def recommend(problem, model):
+    """题目进、候选算法出。model 就是那道缝。"""
+    prompt = build_prompt(problem)
+    raw = model(prompt)
+    return raw
+
+
+P = '有 n 根木头，要切成 k 段等长的小段。求每小段最长的长度，即让最小长度最大化。'
+print('   —— 提示词长这样 ——')
+for line in build_prompt(P).splitlines():
+    print(f'   | {line}')
+print()
+print(f'   假模型返回: {recommend(P, fake_model)}')</code></pre>
+
+  <pre data-lang="text"><code>   —— 提示词长这样 ——
+   | 你是一个算法助教。读下面的题目，判断它最像哪一类算法。
+   | 
+   | 只输出一个 JSON 对象，不要输出任何别的文字，不要用代码块围栏。
+   | 格式固定为：
+   | {"family": "&lt;算法族名&gt;", "confidence": "高|中|低", "why": "&lt;一句话理由&gt;"}
+   | 字符串里的引号必须转义。
+   | 
+   | 可选的算法族：二分答案、并查集、堆、图的搜索、背包、贪心、前缀和、双指针。
+   | 
+   | 题目：
+   | 有 n 根木头，要切成 k 段等长的小段。求每小段最长的长度，即让最小长度最大化。
+
+   假模型返回: {"family": "二分答案", "confidence": "高", "why": "要让最小长度最大化"}</code></pre>
+
+  <p>提示词里有四样东西，缺一样后面就会出麻烦：</p>
+
+  <ol>
+    <li><b>输出格式</b>（<code>格式固定为：</code>）——后面要按这个键名取值。</li>
+    <li><b>不许有别的文字、不许用围栏</b>（<code>只输出一个 JSON 对象</code>、<code>不要用代码块围栏</code>）——减少解析要处理的形态。</li>
+    <li><b>取值范围</b>（<code>可选的算法族：…</code>）——不限定的话，模型可能给出「动态规划优化版」这种你在项目里根本没有对应实现的名字。</li>
+    <li><b>转义的约定</b>（<code>字符串里的引号必须转义</code>）——这是最难察觉的一条，下一节会看到为什么。</li>
+  </ol>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "提示词里为什么要写明「不要用代码块围栏」？",
+    "opts": [
+      "因为围栏会让下一步的解析多几种要处理的形态",
+      "因为围栏里的 JSON 一定是错的，没法解析",
+      "因为围栏会消耗更多 token，增加调用成本",
+      "因为围栏会让模型输出得更慢，影响体验"
+    ],
+    "ans": 0,
+    "why": "围栏本身不是错的——加固版解析器照样能剥掉它。但真实返回的文本会有浮动：可能套围栏、可能前后带解释。提示词里写明不许用围栏，是在减少要处理的形态；而解析器那两层是兜底。六种形态样本里朴素写法只过 1 种，加固版过 5 种——两层都要有。"
+  }
+]'></div>
+
+  <h2>返回文本的两层解析</h2>
+
+  <p>即使提示词写了「不要围栏」，真实返回的文本仍然可能带围栏、带前后解释。这不是模型不听话，是<b>文本生成本身就有浮动</b>。所以解析器要分两层：</p>
+
+  <p>第一层<b>剥围栏</b>，第二层<b>取第一个 <code>{</code> 到最后一个 <code>}</code> 之间那段</b>。</p>
+
+  <pre data-lang="python"><code>import json
+import re
+
+FENCE = '`' * 3
+
+SAMPLES = {
+    '干净 JSON': '{"family": "二分答案", "confidence": "高"}',
+    '套了 json 围栏': FENCE + 'json\n{"family": "二分答案", "confidence": "高"}\n' + FENCE,
+    '围栏 + 前面一段话': '根据题意，答案具有单调性。\n\n' + FENCE + 'json\n'
+                        '{"family": "二分答案", "confidence": "高"}\n' + FENCE,
+    '围栏 + 后面一段话': FENCE + 'json\n{"family": "二分答案", "confidence": "高"}\n'
+                        + FENCE + '\n\n希望有帮助，有疑问可以继续追问。',
+    '没有围栏，但有前后解释': '这道题我建议用二分答案。\n'
+                              '{"family": "二分答案", "confidence": "高"}\n'
+                              '理由如上。',
+    '内容本身不是合法 JSON': '{"family": "二分答案", "why": "题目说"最小化最大值""}',
+}
+
+
+def parse_naive(raw):
+    """直接 json.loads——最直觉的写法。"""
+    try:
+        return json.loads(raw)
+    except Exception as e:
+        return f'&lt;{type(e).__name__}&gt;'
+
+
+def parse_robust(raw):
+    """先剥围栏，再取第一个 { 到最后一个 } 之间那段。"""
+    text = raw.strip()
+    fence = re.search(r'`{3}(?:json)?\s*(.+?)`{3}', text, re.S)
+    if fence:
+        text = fence.group(1).strip()
+    lo, hi = text.find('{'), text.rfind('}')
+    if lo == -1 or hi == -1 or hi &lt; lo:
+        return '&lt;没有找到 JSON 对象&gt;'
+    try:
+        return json.loads(text[lo:hi + 1])
+    except Exception as e:
+        return f'&lt;{type(e).__name__}&gt;'
+
+
+ok_naive = ok_robust = 0
+for name, raw in SAMPLES.items():
+    a, b = parse_naive(raw), parse_robust(raw)
+    ok_a, ok_b = not isinstance(a, str), not isinstance(b, str)
+    ok_naive += ok_a
+    ok_robust += ok_b
+    print(f'   {name}')
+    print(f'       朴素: {a["family"] if ok_a else a}')
+    print(f'       加固: {b["family"] if ok_b else b}')
+print(f'   六种里成功解析：朴素 {ok_naive} 种，加固 {ok_robust} 种')</code></pre>
+
+  <pre data-lang="text"><code>   干净 JSON
+       朴素: 二分答案
+       加固: 二分答案
+   套了 json 围栏
+       朴素: &lt;JSONDecodeError&gt;
+       加固: 二分答案
+   围栏 + 前面一段话
+       朴素: &lt;JSONDecodeError&gt;
+       加固: 二分答案
+   围栏 + 后面一段话
+       朴素: &lt;JSONDecodeError&gt;
+       加固: 二分答案
+   没有围栏，但有前后解释
+       朴素: &lt;JSONDecodeError&gt;
+       加固: 二分答案
+   内容本身不是合法 JSON
+       朴素: &lt;JSONDecodeError&gt;
+       加固: &lt;JSONDecodeError&gt;
+   六种里成功解析：朴素 1 种，加固 5 种</code></pre>
+
+  <p>上表这六种是<b>构造出来的形态样本</b>（不是某次真实调用的记录），用来比较两个解析器的覆盖面。<b>朴素写法六种里只过一种；加两层之后过五种。</b></p>
+
+  <div class="lesson-note">
+    <p><code>re.search(r'</code>{3}(?:json)?\s<em>(.+?)<code>{3}', text, re.S)</code> 里的 <code>re.S</code> 是必需的——不加它，<code>.</code> 不匹配换行，而 JSON 一定是多行的，围栏里的内容就抓不到。这里用 `<code> </code>{3} `` 而不是直接写三个反引号，是因为三个反引号会把 Markdown 的代码围栏提前截断——</em><em>这个坑我在写这一课时踩过一次，页面上整块代码都错位了</em>*。</p>
+  </div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "解析器为什么既要在第一层剥围栏，又要在第二层取大括号？",
+    "opts": [
+      "围栏和前后解释是两种不同的浮动，各管一层",
+      "两层做的是同一件事，重复一遍更保险",
+      "第一层管围栏，第二层管转义出错的内容",
+      "顺序反了也没关系，两层结果完全一样"
+    ],
+    "ans": 0,
+    "why": "这是两种独立的浮动：有的返回套了围栏但没别的文字，有的没围栏但前后各有一段解释，还有的两样都有。剥围栏管第一种，取第一个 { 到最后一个 } 之间那段管第二种，合起来才能覆盖五种。第二层管不了转义出错——那是内容本身坏了。"
+  }
+]'></div>
+
+  <h2>解析器救不了的那种</h2>
+
+  <p>第六种两种写法都失败了。<b>再看一眼它到底坏在哪：</b></p>
+
+  <pre data-lang="python"><code>BAD = SAMPLES['内容本身不是合法 JSON']
+print(f'   原文: {BAD}')
+print(f'   朴素: {parse_naive(BAD)}')
+print(f'   加固: {parse_robust(BAD)}')
+print(f'   大括号配平吗: {BAD.count("{") == BAD.count("}")}')
+print('   括号是配平的，坏的是字符串内容本身。')</code></pre>
+
+  <pre data-lang="text"><code>   原文: {"family": "二分答案", "why": "题目说"最小化最大值""}
+   朴素: &lt;JSONDecodeError&gt;
+   加固: &lt;JSONDecodeError&gt;
+   大括号配平吗: True
+   括号是配平的，坏的是字符串内容本身。</code></pre>
+
+  <p><code>"题目说"最小化最大值""</code> —— 里面那对引号<b>没有转义</b>，于是 JSON 解析器在 <code>题目说</code> 之后就认为字符串结束了，后面接的 <code>最小化最大值</code> 就成了非法内容。</p>
+
+  <p><b>这一层任何「找大括号」的招数都救不了。</b> 括号是配平的，位置也对，坏的是内容本身。</p>
+
+  <p>所以修复要往前挪一层，挪到提示词：</p>
+
+  <ul>
+    <li>提示词里那句 <code>字符串里的引号必须转义</code>；</li>
+    <li>更保险的是直接用<b>结构化输出</b>：DeepSeek 的 <code>response_format={"type": "json_object"}</code>。官方文档对它的说明是「<b>该模式保证模型生成的消息是有效的 JSON</b>」。</li>
+  </ul>
+
+  <div class="lesson-warn">
+    <p><b>解析器的能力有边界。</b> 「多剥一层」能处理格式浮动（围栏、前后解释），但处理不了<b>内容本身不合法</b>。碰到后面这一类，只能回到提示词和接口参数去修。分不清这两类问题，就会一直在解析器里打补丁而修不好。</p>
+  </div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "为什么「找大括号」的招数救不了没转义的引号？",
+    "opts": [
+      "括号是配平的、位置也对，坏的是字符串内容",
+      "括号不配平，所以找不到该从哪儿切起",
+      "括号被围栏吃掉了，得先剥围栏才行",
+      "这种错误只在多行文本里出现，单行没事"
+    ],
+    "ans": 0,
+    "why": "看那个样本：{\"family\": \"二分答案\", \"why\": \"题目说\"最小化最大值\"\"}——大括号的数量一样、位置也对，可中间那对没转义的引号让解析器认为字符串提前结束了。实测两种解析器都失败，且「大括号配平吗」是 True。这一类只能回到提示词（要求转义）或接口参数（response_format 的 json_object 模式）去修。"
+  }
+]'></div>
+
+  <h2>把题面映射到算法族</h2>
+
+  <p>这一段可以<b>完全不靠模型</b>：拿题面里的关键词，给每个算法族打分。它不是主力，但它是<b>交叉检查</b>——模型给了一个结论，关键词表给不出任何支持，就值得警惕。</p>
+
+  <pre data-lang="python"><code>FAMILIES = [
+    ('二分答案', ['最大化', '最小化', '最小值的最大', '最大值的最小', '单调',
+                  '猜一个', '判定一个值行不行', '最长', '最短']),
+    ('并查集', ['连通块', '属于同一组', '合并集合', '是否连通', '朋友的朋友']),
+    ('堆', ['前 k 大', '前 k 小', '第 k 大', '中位数', '每次取最小', '每次取最大']),
+    ('图的搜索', ['最短步数', '最少几步', '网格', '迷宫', '走法', '扩散', '可达']),
+    ('背包', ['容量', '重量', '价值', '装下', '每件最多选一次', '选与不选']),
+    ('贪心', ['区间', '不相交', '最多能选几个活动', '按结束时间']),
+    ('前缀和', ['区间和', '连续子数组的和', '多次询问', '子矩阵']),
+    ('双指针', ['有序数组', '两数之和', '左右两个指针', '原地去重']),
+]
+
+
+def classify(text):
+    """按关键词命中数给算法族打分，返回排好序的候选。"""
+    scores = []
+    for family, keys in FAMILIES:
+        hit = [k for k in keys if k in text]
+        if hit:
+            scores.append((len(hit), family, hit))
+    scores.sort(key=lambda t: (-t[0], t[1]))
+    return scores
+
+
+PROBLEMS = {
+    '木材加工': '有 n 根木头，要切成 k 段等长的小段。求每小段最长的长度，即让最小长度最大化。',
+    '岛屿数量': '一个由 0 和 1 组成的网格，1 表示陆地。求有多少个连通块。',
+    '合并果子': '每次把两堆合并，代价是重量之和。求最小总代价，每次取最小的两堆。',
+    '区间调度': '给出若干个区间，选出最多几个互不相交的区间，按结束时间排。',
+    '第 k 大': '在一个数据流里随时回答第 k 大是多少。',
+    '跳石头': '一条河里有若干块石头，最多移走 M 块，求最短跳跃距离的最大值。',
+}
+for title, text in PROBLEMS.items():
+    got = classify(text)
+    if not got:
+        print(f'   题面「{title}」：一个都没命中')
+        continue
+    print(f'   题面「{title}」首选 {got[0][1]}（命中 {got[0][0]} 个：{got[0][2]}）')
+    if len(got) &gt; 1:
+        mark = '并列' if got[1][0] == got[0][0] else '次选'
+        print(f'        {mark} {got[1][1]}（命中 {got[1][0]} 个：{got[1][2]}）')</code></pre>
+
+  <pre data-lang="text"><code>   题面「木材加工」首选 二分答案（命中 2 个：['最大化', '最长']）
+   题面「岛屿数量」首选 图的搜索（命中 1 个：['网格']）
+        并列 并查集（命中 1 个：['连通块']）
+   题面「合并果子」首选 堆（命中 1 个：['每次取最小']）
+        并列 背包（命中 1 个：['重量']）
+   题面「区间调度」首选 贪心（命中 3 个：['区间', '不相交', '按结束时间']）
+   题面「第 k 大」首选 堆（命中 1 个：['第 k 大']）
+   题面「跳石头」首选 二分答案（命中 1 个：['最短']）</code></pre>
+
+  <p>前六道题的判断都说得过去，而且「岛屿数量」那一行的<b>并列本身就是有用信息</b>——网格连通块用图的搜索或并查集都能做，两个候选都交下去试就是了。这也说明为什么这一段要返回<b>候选列表</b>而不是一个答案。</p>
+
+  <h2>关键词会误报</h2>
+
+  <p>看「合并果子」那一行：关键词表把<b>背包</b>也列成了并列候选，理由只有一个词——题面里有「<b>重量</b>」。</p>
+
+  <p>而这道题的正确答案是<b>堆</b>（或者叫优先队列），跟背包毫无关系。「重量」在这里指的是石子堆的重量，不是背包的容量约束。</p>
+
+  <p>这就是<b>关键词匹配的假阳性</b>：一个词在不同题目里指的不是同一件事。</p>
+
+  <p>所以这一段的定位要说准：</p>
+
+  <ul>
+    <li>它是<b>提示</b>，不是<b>判决</b>；</li>
+    <li>它给出的是<b>排序的候选</b>，不是唯一答案；</li>
+    <li>它最可靠的用法是当<b>交叉检查</b>：模型选了 A 而关键词表一条都不支持 A，就要多看一眼。</li>
+  </ul>
+
+  <p>真正理解题意的那一步必须靠模型，关键词表补不上。<b>这也是为什么这一课的主体是提示词，而不是规则表。</b></p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "关键词表为什么把「合并果子」也说成背包？",
+    "opts": [
+      "题面里的「重量」命中了背包的关键词表",
+      "因为这道题确实能用背包做，只是比较慢",
+      "因为背包和堆在实现上其实是同一类算法",
+      "因为关键词表里把堆这一类算法给漏掉了"
+    ],
+    "ans": 0,
+    "why": "关键词表里背包那一行有「重量」，而合并果子的题面写着「代价是重量之和」——命中 1 个，于是并列。可这道题跟背包没关系：「重量」在这里指石子堆的重量，不是背包的容量约束。这就是关键词匹配的假阳性：同一个词在不同题目里指的不是同一件事。它说明关键词只是提示和交叉检查，理解题意那一步必须靠模型。"
+  }
+]'></div>
+
+  <h2>验证验的是实现不是名字</h2>
+
+  <p>前面三段给出的是<b>候选</b>。最后这一段决定要不要信它。</p>
+
+  <p>拿「区间调度」当例子：推荐给出「贪心」，然后写两个实现——<b>都叫贪心，只是排序关键字不同</b>。</p>
+
+  <pre data-lang="python"><code>def greedy_by_start(intervals):
+    """按开始时间排的贪心——很自然，但错。"""
+    picked = []
+    last_end = -1
+    for s, e in sorted(intervals):
+        if s &gt;= last_end:
+            picked.append((s, e))
+            last_end = e
+    return picked
+
+
+def greedy_by_end(intervals):
+    """按结束时间排的贪心——正确。"""
+    picked = []
+    last_end = -1
+    for s, e in sorted(intervals, key=lambda p: p[1]):
+        if s &gt;= last_end:
+            picked.append((s, e))
+            last_end = e
+    return picked
+
+
+def brute_intervals(intervals):
+    """枚举所有子集，找两两不相交的最大个数。"""
+    best = 0
+    n = len(intervals)
+    for mask in range(1 &lt;&lt; n):
+        chosen = sorted(intervals[i] for i in range(n) if mask &gt;&gt; i &amp; 1)
+        if all(chosen[i][1] &lt;= chosen[i + 1][0] for i in range(len(chosen) - 1)):
+            best = max(best, len(chosen))
+    return best
+
+
+CASE = [(0, 100)] + [(2 * i + 1, 2 * i + 2) for i in range(6)]
+A, B, WANT = greedy_by_start(CASE), greedy_by_end(CASE), brute_intervals(CASE)
+print(f'   推荐给出的算法族: 贪心')
+print(f'   实现 A（按开始时间排）选出 {len(A)} 个: {A}')
+print(f'   实现 B（按结束时间排）选出 {len(B)} 个: {B}')
+print(f'   暴力验证给出的最优: {WANT} 个')
+print(f'   A 通过吗: {len(A) == WANT}    B 通过吗: {len(B) == WANT}')</code></pre>
+
+  <pre data-lang="text"><code>   推荐给出的算法族: 贪心
+   实现 A（按开始时间排）选出 1 个: [(0, 100)]
+   实现 B（按结束时间排）选出 6 个: [(1, 2), (3, 4), (5, 6), (7, 8), (9, 10), (11, 12)]
+   暴力验证给出的最优: 6 个
+   A 通过吗: False    B 通过吗: True</code></pre>
+
+  <p><b>推荐给出的名字是对的，两个实现却一个好一个坏。</b></p>
+
+  <p>这就是这一课最要紧的一句话：<b>验证环节要验的是具体实现，不是算法名。</b> 只报出一个名字的推荐落不了地——名字下面可以挂无数种写法，其中大部分是错的。</p>
+
+  <p>所以整条链的结论不该是「推荐用贪心」，而该是这样一个结构（这是<b>格式示意</b>，不是某次运行的输出）：</p>
+
+  <div class="lesson-note">
+    <p><b>推荐</b> 贪心（置信度 中）</p>
+
+    <p><b>候选实现 A</b> 按开始时间排 → 被否掉：选出 1 个，最优 6 个，反例 <code>[(0,100)]</code></p>
+
+    <p><b>候选实现 B</b> 按结束时间排 → 通过</p>
+  </div>
+
+  <p><b>有反例的否掉，比没有反例的通过更有价值</b>——前者告诉你这条路走不通，而且给了你一个能复现的证据。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "为什么说验证环节要验具体实现，而不是算法名？",
+    "opts": [
+      "同一个算法名下可以有多种写法，对错不一",
+      "算法名是模型给的，模型的名字常常拼错",
+      "算法名没有统一标准，各家叫法不一样",
+      "验算法名太快了，浪费了一次对拍机会"
+    ],
+    "ans": 0,
+    "why": "实测：推荐给出「贪心」，实现 A（按开始时间排）在反例上只选出 1 个，实现 B（按结束时间排）选出 6 个，最优是 6 个。推荐的名字是对的，两个实现却一个好一个坏。名字下面可以挂无数种写法，所以验证必须落到能跑的代码上。有反例的否掉比没有反例的通过更有价值——它给了你一个能复现的证据。"
+  }
+]'></div>
+
+  <h2>怎么算过</h2>
+
+  <p>这一课的练习在 <a href="../lab/0027-lab-03-recommend-and-verify/">lab/0027-lab-03-recommend-and-verify/</a>，四个任务拼成一条完整的链：</p>
+
+  <table>
+    <thead>
+      <tr><th>任务</th><th>文件</th><th>做出什么</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>1</td><td><code>task1_prompt.py</code></td><td>造提示词，四样约束一个不少</td></tr>
+      <tr><td>2</td><td><code>task2_parse.py</code></td><td>两层解析，六种形态里过五种</td></tr>
+      <tr><td>3</td><td><code>task3_classify.py</code></td><td>关键词打分，返回排好序的候选</td></tr>
+      <tr><td>4</td><td><code>task4_pipeline.py</code></td><td>端到端：题面进，候选实现 + 验证结论出</td></tr>
+    </tbody>
+  </table>
+
+  <p><b>算过的标准是判分脚本全绿</b>，具体在跑之前先看 <code>../lab/README.md</code> 的说明。要件是这几条：</p>
+
+  <ol>
+    <li>提示词里<b>四样约束齐全</b>（格式、不许别的话、取值范围、转义约定）。</li>
+    <li>解析器在六种形态样本里<b>至少过五种</b>，且失败的那一种要<b>返回一个明确的失败标记</b>，不能抛异常、不能返回半个字典。</li>
+    <li>关键词打分对给定的题面<b>返回排序的候选列表</b>；「合并果子」那一行要能出现背包的并列（这是<b>如实反映</b>关键词的假阳性，不许藏）。</li>
+    <li>端到端脚本对同一个算法族下的<b>两个实现给出不同结论</b>：一个通过、一个被否掉并附反例。</li>
+    <li><b>离线可跑</b>：测试版不许联网，模型调用必须走那道缝。</li>
+  </ol>
+
+  <h2>怎么跑</h2>
+
+  <pre data-lang="sh"><code>cd lab/0027-lab-03-recommend-and-verify
+python run_tests.py</code></pre>
+
+  <p>参考解在 <code>../lab/solutions/0027-lab-03-recommend-and-verify/</code>，可以直接进那个目录跑一遍对照。</p>
+
+  <p>要接真模型时，把 <code>call_model</code> 换成真实请求即可——<b>但先让离线版全绿</b>。链路上任何一个环节没接好，联网跑只是把错误藏进网络噪声里。</p>
+
+  <div class="lesson-practice">
+    <div class="lesson-practice__head">
+      <span class="lesson-practice__level">上手做</span>
+      <span class="lesson-practice__title">四段拼成一条链</span>
+    </div>
+
+      <ol>
+        <li>先写 <code>task1_prompt.py</code>：把四样约束写进提示词，并打印出来自己读一遍。<b>缺哪一样，后面就会在哪一段出问题。</b></li>
+        <li>再写 <code>task2_parse.py</code>：朴素版与加固版都写，用六种形态样本对拍，确认朴素过 1 种、加固过 5 种。</li>
+        <li>然后 <code>task3_classify.py</code>：关键词表打分，对六道样例题面跑出候选。<b>看到假阳性不要改数据，那是要如实报告的现象。</b></li>
+        <li>最后 <code>task4_pipeline.py</code>：把三段串起来，末端接上实验二那套对拍验证，对两个实现给出不同结论。</li>
+      </ol>
+
+      <p>卡住了先读 <code>../lab/README.md</code> 的「卡壳顺序」。</p>
+  </div>
+
+  <h2>自查清单</h2>
+
+  <ul>
+    <li>提示词里<b>四样约束</b>都在吗？（格式固定、不要别的话、取值范围、引号转义）</li>
+    <li>解析器对<b>六种形态</b>都试过了吗？失败那一种返回的是明确的失败标记吗？</li>
+    <li>解析失败时，你的代码是<b>抛异常中断</b>还是<b>返回失败标记</b>？整条链要能带着「这一段失败了」继续往下走。</li>
+    <li>关键词表对「合并果子」给出背包并列了吗？如果<b>没有</b>，是你把关键词改窄了——那是把现象藏起来了。</li>
+    <li>端到端脚本对<b>两个实现的结论不同</b>吗？如果两个都通过，验证段大概是假的。</li>
+    <li>被否掉的那个实现，<b>反例打印出来了吗</b>？</li>
+    <li><code>call_model</code> 是不是唯一的联网点？测试时换成假的还能跑通吗？</li>
+    <li>有没有哪一处把<b>算法名</b>当成了答案，而不是把<b>具体实现的验证结果</b>当答案？</li>
+  </ul>
+
+  <h2>最可能卡在哪</h2>
+
+  <p><b>一、模型给的算法名与自己的实现接不上。</b> 这是本课最典型的卡点。推荐说「二分答案」，但你的项目里没有对应的可执行代码——<b>只有名词，没有方案</b>。解法：候选实现必须是你自己写好的、能跑的代码，推荐只在「选哪一个候选」这一层起作用。</p>
+
+  <p><b>二、提示词没约束格式，返回内容没法解析。</b> 少了「不要用代码块围栏」，六种形态里立刻有四种解析不了。解法：把四样约束写全，并且<b>用形态样本测一遍</b>，别等真实调用才发现。</p>
+
+  <p><b>三、只信推荐，不跑验证就当成答案。</b> 这是最危险的一条，因为它<b>不会报错</b>——脚本跑完了，输出了一个看着很合理的结论，你把它当答案交上去。解法：让结论里<b>必须</b>带验证结果；没有验证结果的推荐，在输出里标成「未验证」，不许混进「可用」里。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "「只信推荐不跑验证」为什么是三条坑里最危险的？",
+    "opts": [
+      "它不会报错，跑完还给出一个看着合理的结论",
+      "它会让脚本变慢，跑一次要等很久很久",
+      "它会让提示词失效，模型下次就不听话了",
+      "它会让离线测试跑不通，只能联网去跑"
+    ],
+    "ans": 0,
+    "why": "另两条坑都会留下痕迹：接不上就写不出可执行的候选，格式不约束就有解析失败。而这一条是静默的——脚本正常退出、输出一个看着很合理的结论，你把它当答案交上去。所以工程上的对策是把验证结果做成结论的必需字段，没有它就标成「未验证」。"
+  }
+]'></div>
+
+  <p><b>四、把不可控的部分撒得到处都是。</b> 网络调用如果在代码里直接写死，测试就只能联网跑，一断网全废。解法：所有不可控的东西（网络、时间、随机）都收在一处，做成可替换的函数。</p>
+
+  <h2>卡壳顺序</h2>
+
+  <ol>
+    <li><b>读错误信息</b>，先分清楚是解析失败还是验证失败——这两类的修法完全不同。</li>
+    <li><b>单独跑那一段</b>，别在整条链里猜。提示词问题就只跑提示词那段，把输出打出来看。</li>
+    <li><b>看失败标记</b>。解析器返回的失败标记里带上原文和异常类型，比 <code>None</code> 有用得多。</li>
+    <li><b>对拍</b>。验证段的结论跟暴力版不一致，先用小数据手算一遍。</li>
+    <li>上面四步都过了还是不通，再来问，<b>把你打印出来的东西一起带上</b>。</li>
+  </ol>
+
+  <h2>做完之后</h2>
+
+  <p>用一句话回答：<b>这个助手给出的结论，凭什么值得相信？</b></p>
+
+  <p>如果回答是「因为它分析得挺有道理」，那这一课还没做完——<b>道理不是判据，跑出来的对拍结果才是。</b></p>
+
+  <p>到这里项目的主干就长出来了。后面第 31 课的实验四会给它加上间隔重复的刷题计划，第 33 课的综合实战把它用在一整套题上。</p>
+
+  <ul class="lesson-resources">
+    <li><a href="https://api-docs.deepseek.com/">DeepSeek 开放平台 API 文档</a><span class="lesson-resources__meta">官方文档 · 模型调用与 <code>response_format</code> 结构化输出</span></li>
+    <li><a href="https://docs.python.org/3/library/json.html">Python 官方文档 json</a><span class="lesson-resources__meta">官方文档 · 结构化结果的解析与异常</span></li>
+    <li><a href="0015-lab-02-verify-by-brute-force.html">第 15 课：实验二：用暴力验证你的解</a><span class="lesson-resources__meta">上一课 · 本课验证段直接沿用那一套对拍</span></li>
+    <li><a href="0022-binary-search-on-answer.html">第 22 课：二分答案：猜一个再验一遍</a><span class="lesson-resources__meta">上一课 · 「猜一个再验一遍」正是本课的骨架</span></li>
+    <li><a href="0023-greedy-and-intervals.html">第 23 课：贪心：每一步都选当前最好</a><span class="lesson-resources__meta">上一课 · 区间调度的两个实现与这个反例都在那一课</span></li>
+  </ul>
+
+  <!-- ── 提问提示：固定写法，别删 ── -->
+
+  <div class="lesson-ask">
+    <b>没看懂？随时问</b>
+    把看不懂的段落（或报错）原样复制回会话，说一句哪里不懂就行，我只解释这一段，不打断你的进度。
+  </div>
+
+  <!-- ── 上/下节课指针由渲染器按 curriculum.yaml 的 nodes 顺序算（第一课无 --prev、最后一课无 --next） ── -->
+
+  <nav class="lesson-nav" aria-label="上一课 / 下一课">
+    <a class="lesson-nav__link lesson-nav__link--prev" href="0026-dp-sequence-interval.html">
+      <span class="lesson-nav__dir">上节课</span>
+      <span class="lesson-nav__title">序列与区间的状态设计</span>
+    </a>
+    <a class="lesson-nav__link lesson-nav__link--next" href="0028-problem-pattern-recognition.html">
+      <span class="lesson-nav__dir">下节课</span>
+      <span class="lesson-nav__title">看数据规模挑算法</span>
+    </a>
+  </nav>
+
+  <footer class="lesson-footer">
+    StudyMate · 0027 实验三：让助手推荐并验证 · 本地学习工作区
+  </footer>
+
+</article>
+
+<script src="../../../assets/sayo/sayo.js"></script>
+
+<script src="../assets/quiz.js" defer></script>
+<script src="../assets/lesson-toc.js" defer></script>
+<script>LearnTheme.wire(document.getElementById('lesson-theme-checkbox'));</script>
+</body>
+</html>

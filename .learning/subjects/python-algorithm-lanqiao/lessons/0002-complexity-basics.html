@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>同一道题，两种写法 · Python 算法与蓝桥杯</title>
+
+<!-- 共享层在 .learning/assets/，课件在 .learning/subjects/<slug>/lessons/ 下，所以是 ../../../assets/ -->
+<link rel="stylesheet" href="../../../assets/sayo/sayo.css">
+<link rel="stylesheet" href="../../../assets/learn-theme.css">
+<link rel="stylesheet" href="../assets/style.css">
+
+<!-- 主题要在首帧前应用，避免闪白/闪黑 -->
+<script src="../../../assets/learn-theme.js"></script>
+<script>LearnTheme.apply();</script>
+</head>
+
+<body class="lesson-body">
+
+<nav class="lesson-bar">
+  <a href="../index.html">← 返回课程</a>
+  <span>Python 算法与蓝桥杯</span>
+  <span class="lesson-bar__no">0002</span>
+  <!-- 课件页自带主题开关：学生从文件管理器直接打开课件时也能切暗色 -->
+  <label class="syo-toggle syo-toggle--theme lesson-bar__toggle" title="切换深浅主题" aria-label="切换深浅主题">
+    <input type="checkbox" id="lesson-theme-checkbox" checked>
+    <span class="syo-toggle-track"></span>
+    <span class="syo-toggle-knob">
+      <svg class="syo-toggle-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.5" stroke="#f57c00" stroke-width="1.5"/><path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.34 4.34l1.77 1.77M13.89 13.89l1.77 1.77M4.34 15.66l1.77-1.77M13.89 6.11l1.77-1.77" stroke="#f57c00" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <svg class="syo-toggle-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.5 12.5A6 6 0 019 4.5a6 6 0 007.5 8z" stroke="#5c6bc0" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </span>
+  </label>
+</nav>
+
+<article class="lesson">
+
+  <header class="lesson-header">
+    <span class="lesson-header__eyebrow">0002 · 同一道题，两种写法</span>
+    <h1>同一道题，两种写法</h1>
+    <p class="lesson-goal"><b>本节目标：</b>能数出一段代码的基本操作次数、写成大 O 记号，并按数据规模与实测判断它会不会超时。</p>
+  </header>
+
+  <!-- ── 正文：渲染器按内容文件（lessons/<序号>-<节点id>.md）产出，块词汇见 docs/规范/课件内容格式.md ── -->
+
+  <p>上一课结尾留了一句话：从这一课起，把「看数据范围、估操作次数、定复杂度上限」练成一套固定动作。这一课就把它做成一个能反复使用的记号。</p>
+
+  <p>先回到那个上一课已经踩过的坑。样例只有三五个数，跑起来永远飞快，所以「样例通过」对「会不会超时」几乎没有预测力——真正的问题在评测机用最大数据跑你代码的那一刻才暴露。蓝桥杯每道题都写明数据范围与时限，能不能过，几乎在你选定写法的瞬间就定了。这一课要做的，是把「这种写法会不会超时」这个判断，提前到动手写代码之前。判断之前照例先想清楚输入和输出是什么——这一步上一课刚走过，这里不再展开，但它永远是第一步。</p>
+
+  <h2>先数基本操作</h2>
+
+  <p>同一个算法在不同机器上跑，速度会有差别，实际用时难以在理论上计算，实测又麻烦。所以衡量算法效率时，通常数的是算法需要执行的<b>基本操作数量</b>：在普通计算机上，加减乘除、访问变量、给变量赋值，都可以算作一次基本操作。</p>
+
+  <p><b>时间复杂度</b>衡量的，是这个数量随<b>数据规模</b>增长的趋势：数据规模越大，算法用时越长，但最重要的不是某个规模下的用时，而是用时随规模增长的趋势。为什么看趋势，而不是看某一次的用时，有两条理由：</p>
+
+  <ul>
+    <li>现代计算机每秒能处理数亿乃至更多次基本运算，我们处理的数据规模通常很大。以来源里的对比为例：用时 <span class="math-inline">100n</span> 的算法一秒能处理数百万规模，用时 <span class="math-inline">n^2</span> 的算法只能处理数万规模——数据规模一大，两档的差距立刻拉开。</li>
+    <li>不同基本操作的实际用时不同，加减远快于除法。只看操作次数、忽略它们之间的差别，能消除这种影响。</li>
+  </ul>
+
+  <p>上面「每秒数亿次」是来源里针对编译型语言的一般说法，它的例子是 C++；Python 每执行一条语句要拆成很多条底层运算，实测速率会慢一截。Python 这边该是多少，稍后用 <code>timeit</code> 单独量出来，不套用这个数字。</p>
+
+  <p>补充一点：实际用时也跟输入内容有关，所以复杂度分<b>最坏</b>与<b>平均</b>两类。竞赛里输入可以在数据范围内任意给定，为了保证任何数据都能过，我们只关心<b>最坏时间复杂度</b>。</p>
+
+  <h2>大 O 记号</h2>
+
+  <p>「增长趋势」是个模糊的说法，需要一套记号把它写下来。这套记号叫<b>渐近符号</b>：它忽略一个函数里增长较慢的部分和各项的系数（系数在复杂度分析里通常叫「常数」），只保留决定增长趋势的那部分。</p>
+
+  <p>记号的名字有来历。大 O 的 O 来自希腊字母 Omicron，字形与拉丁字母 O 相同；小 o 同源。一个记忆法：含等于用大写、不含用小写；相等是 <span class="math-inline">\Theta</span>、小于（上界）是 <span class="math-inline">O</span>、大于（下界）是 <span class="math-inline">\Omega</span>。竞赛里最常用的是 <span class="math-inline">O</span>，因为我们关心的是程序用时的上界。</p>
+
+  <p>形式化定义是这样：设 <span class="math-inline">f(n)</span> 与 <span class="math-inline">g(n)</span> 是定义在正整数上的函数，<span class="math-inline">f(n) = O(g(n))</span> 当且仅当存在正常数 <span class="math-inline">c</span> 与 <span class="math-inline">n_0</span>，使得对一切 <span class="math-inline">n \ge n_0</span>，都有 <span class="math-inline">0 \le f(n) \le c \cdot g(n)</span>。</p>
+
+  <p>翻译成普通话：当 <span class="math-inline">n</span> 足够大之后，<span class="math-inline">f(n)</span> 的增长不超过 <span class="math-inline">g(n)</span> 的某个常数倍。所以 <span class="math-inline">O(g(n))</span> 说的是「增长趋势的上界」，不是一个精确值。例如 <span class="math-inline">3n^2 + 5n - 3 = O(n^2)</span>——当 <span class="math-inline">n</span> 足够大，<span class="math-inline">3n^2 + 5n - 3</span> 始终不超过 <span class="math-inline">4n^2</span>，取 <span class="math-inline">c = 4</span> 即可。</p>
+
+  <h2>常数与数量级</h2>
+
+  <p>渐近符号丢掉系数和低阶项，带来一条最容易踩的判断：<span class="math-inline">O(2n)</span> 与 <span class="math-inline">O(n)</span> 是<b>同一档</b>，<span class="math-inline">O(100n)</span> 与 <span class="math-inline">O(n)</span> 也是同一档。它们差的只是常数倍，而常数倍在数量级面前可以忽略——<span class="math-inline">n</span> 放大十倍，<span class="math-inline">2n</span> 与 <span class="math-inline">100n</span> 也都只放大十倍，增长趋势一样。真正分档的是最高阶项：</p>
+
+  <table>
+    <thead>
+      <tr><th>写法</th><th>大 O 记号</th><th>档次</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>3n + 7</code></td><td><span class="math-inline">O(n)</span></td><td>线性</td></tr>
+      <tr><td><code>2n^2 + 100n</code></td><td><span class="math-inline">O(n^2)</span></td><td>平方</td></tr>
+      <tr><td><code>n^3 + n^2</code></td><td><span class="math-inline">O(n^3)</span></td><td>立方</td></tr>
+      <tr><td><code>100</code>（固定几次操作）</td><td><span class="math-inline">O(1)</span></td><td>常数</td></tr>
+    </tbody>
+  </table>
+
+  <p>每个记号都只保留最高阶项、丢掉系数：<code>2n^2 + 100n</code> 里的 <code>100n</code> 是低阶项、<code>2</code> 是系数，都不出现在记号里。</p>
+
+  <p>反过来，哪些量算常量也要分清。一段固定跑 <code>N = 100000</code> 次的循环，如果这个 <code>N</code> 不被看作输入规模，它的复杂度就是 <span class="math-inline">O(1)</span>。判断的关键是「哪个量是输入规模」：所有与输入规模无关的量，计算复杂度时都当作 <span class="math-inline">1</span> 处理。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "关于大 O 记号，下面哪个说法是对的？",
+    "opts": [
+      "O(2n) 与 O(n) 是同一档",
+      "O(2n) 与 O(n) 是不同档",
+      "O(100n) 与 O(n) 是不同档",
+      "O(n) 与 O(n²) 是同一档"
+    ],
+    "ans": 0,
+    "why": "大 O 只留最高阶项、丢掉系数和低阶项：O(2n)、O(100n) 都只是 O(n) 的常数倍，属于同一档；而 O(n) 与 O(n²) 的最高阶不同，是不同档。比如 3n²+5n−3 的最高阶是 n²，所以记作 O(n²)。"
+  }
+]'></div>
+
+  <h2>从代码里读出复杂度</h2>
+
+  <p>有了记号，下一步是从一段代码里把它读出来。规则和循环的嵌套层数直接对应：</p>
+
+  <ul>
+    <li>没有循环、或只做固定次数操作，是 <span class="math-inline">O(1)</span>；</li>
+    <li>一层循环跑 <span class="math-inline">n</span> 次，是 <span class="math-inline">O(n)</span>；</li>
+    <li>两层循环嵌套、各跑 <span class="math-inline">n</span> 次，是 <span class="math-inline">O(n^2)</span>。</li>
+  </ul>
+
+  <p>先看上一课的求和题。写法一是循环：</p>
+
+  <pre data-lang="python"><code>n = int(input())
+total = 0
+for i in range(1, n + 1):
+    total += i
+print(total)</code></pre>
+
+  <p>循环执行 <span class="math-inline">n</span> 次，每次做一次加法、一次赋值，基本操作次数随 <span class="math-inline">n</span> 线性增长，写做 <span class="math-inline">O(n)</span>。写法二是公式：</p>
+
+  <pre data-lang="python"><code>n = int(input())
+print(n * (n + 1) // 2)</code></pre>
+
+  <p>不管 <span class="math-inline">n</span> 多大，都只做固定几次乘除，操作次数不随 <span class="math-inline">n</span> 增长，写做 <span class="math-inline">O(1)</span>。</p>
+
+  <p>再看一道题：数一数 <span class="math-inline">1</span> 到 <span class="math-inline">n</span> 之间有多少个无序数对 <span class="math-inline">(i, j)</span>，满足 <span class="math-inline">i &lt; j</span>。最直接的写法是两层循环：</p>
+
+  <pre data-lang="python"><code>count = 0
+for i in range(1, n + 1):
+    for j in range(i + 1, n + 1):
+        count += 1
+print(count)</code></pre>
+
+  <p>内层循环一共跑了 <span class="math-inline">(n-1) + (n-2) + \dots + 1</span> 次，也就是 <span class="math-inline">\dfrac{n(n-1)}{2}</span> 次，写做 <span class="math-inline">O(n^2)</span>。同一道题的另一种写法是公式：从 <span class="math-inline">n</span> 个数里选两个，结果是 <span class="math-inline">\dfrac{n(n-1)}{2}</span>，直接算：</p>
+
+  <pre data-lang="python"><code>n = int(input())
+print(n * (n - 1) // 2)</code></pre>
+
+  <p>这是 <span class="math-inline">O(1)</span>。同一道题，<span class="math-inline">O(n^2)</span> 与 <span class="math-inline">O(1)</span>，差距比上一题更大：<span class="math-inline">n</span> 每放大十倍，前一种写法慢一百倍。</p>
+
+  <p>两层循环是竞赛里最常见的超时来源。很多两层循环都能降到一层，那是后面课程的主题（比如区间求和用前缀和，一层预处理加一步查询）；这里先记住：写出循环之前，先数它套了几层。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "下面这段代码的大 O 记号是哪个？\n\n```python\nn = int(input())\ns = 0\nfor i in range(n):\n    for j in range(n):\n        s += i * j\nprint(s)\n```",
+    "opts": [
+      "O(1)",
+      "O(n)",
+      "O(n²)",
+      "O(log n)"
+    ],
+    "ans": 2,
+    "why": "两层循环嵌套、各跑 n 次，内层循环体一共执行 n×n = n² 次，所以是 O(n²)。两层循环是竞赛里最常见的超时来源，写之前先数套了几层。"
+  }
+]'></div>
+
+  <h2>数据规模反推上限</h2>
+
+  <p>有了 <span class="math-inline">O</span> 记号，再加一把本机实测的「每秒能做多少次基本操作」的尺子，就能把数据范围翻译成「这道题最多能接受哪档复杂度」；反过来，看数据范围，也能反推该用哪档写法。</p>
+
+  <p>上一课已经量过：这台机器（Python 3.14 的 free-threading 构建）跑最简单的累加循环，约 <span class="math-inline">189</span> 毫秒跑完 <span class="math-inline">10^7</span> 次，折合每秒约 <span class="math-inline">5\times10^7</span> 次。这比上面「每秒数亿次」的通用说法慢一截，因为那说的是编译型语言的量级，Python 每执行一条语句要拆成很多条底层运算。这个数字只属于这台机器、这个 Python 版本，换一台要重新量——它就是本课的尺子。假设一秒约做 <span class="math-inline">5\times10^7</span> 次基本操作，把各档复杂度在 1 秒内能处理的最大 <span class="math-inline">n</span> 解出来：</p>
+
+  <table>
+    <thead>
+      <tr><th>复杂度</th><th>本机 1 秒能处理的最大 <span class="math-inline">n</span>（量级）</th><th>换算</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><span class="math-inline">O(1)</span></td><td>几乎任意</td><td>操作次数不随 <span class="math-inline">n</span> 增长</td></tr>
+      <tr><td><span class="math-inline">O(n)</span></td><td><span class="math-inline">5\times10^7</span></td><td><span class="math-inline">n = 5\times10^7</span></td></tr>
+      <tr><td><span class="math-inline">O(n^2)</span></td><td><span class="math-inline">7\times10^3</span></td><td><span class="math-inline">n = \sqrt{5\times10^7}</span></td></tr>
+      <tr><td><span class="math-inline">O(n^3)</span></td><td><span class="math-inline">4\times10^2</span></td><td><span class="math-inline">n = \sqrt[3]{5\times10^7}</span></td></tr>
+    </tbody>
+  </table>
+
+  <p>还有两档现在先认识名字：<span class="math-inline">O(\log n)</span> 是每步把范围砍半，比线性还快，二分那课展开；<span class="math-inline">O(2^n)</span> 是把每种可能都枚举一遍，只能处理 <span class="math-inline">n</span> 二十几，搜索那课常见。排序这类算法常是 <span class="math-inline">O(n\log n)</span>，介于 <span class="math-inline">O(n)</span> 与 <span class="math-inline">O(n^2)</span> 之间。</p>
+
+  <p>这张表的用法分正反两个方向：</p>
+
+  <ul>
+    <li><b>正向</b>：拿到数据范围 <span class="math-inline">n</span>，先估自己写法的复杂度，再查表看它在时限内能不能跑完。</li>
+    <li><b>反向</b>：拿到数据范围 <span class="math-inline">n</span>，先由 <span class="math-inline">n</span> 定出「可接受的复杂度上限」，再去想符合这档的写法。比如 <span class="math-inline">n = 10^9</span> 只可能是 <span class="math-inline">O(1)</span> 或 <span class="math-inline">O(\log n)</span>，连 <span class="math-inline">O(n)</span> 都跑不完。</li>
+  </ul>
+
+  <div class="lesson-warn">
+    <b>别背这张表里的数字</b>
+    <p>表里的「每秒 <span class="math-inline">5\times10^7</span> 次」是本机实测值，换机器、换 Python 版本都会变。正确动作是：用 <code>timeit</code> 在自己机器上量出这个数，再按同一套方程把表重算一遍。背一个「Python 一秒 <span class="math-inline">10^8</span> 次」的通用数字，是常见且有害的做法。</p>
+  </div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "一道题的数据范围是 n ≤ 10^5，时限 1 秒。\n你写了一个两层循环 O(n²) 的解法。\n\n① 用本课的本机尺子（约 5×10^7 次/秒）判断：\n这个解法会不会超时？写出推算。\n② 由 n = 10^5 反推：这道题能接受的复杂度上限是哪档？\n③ 你的解法要往哪个方向改才稳（说清思路即可，不写代码）。",
+    "answer": "① 会超时。O(n²) 在 n=10^5 时执行约 10^10 次基本操作，\n10^10 ÷ 5×10^7 = 200 秒，远超 1 秒。\n\n② 1 秒的操作预算约 5×10^7 次：\nO(n)=10^5 次、O(n log n)≈1.7×10^6 次，都够；\nO(n²)=10^10 次，不够。\n所以可接受的复杂度上限是 O(n) 或 O(n log n)。\n\n③ 把两层循环降成一层，或者找“一步算出结果”的公式/预处理，\n核心是把“对每一对都算一遍”改成“每个元素只处理常数次”。",
+    "criteria": "① 答出“约 10^10 次、约 200 秒、超时”，并写出除以 5×10^7 的推算。\n② 必须由数据范围反推出 O(n) 或 O(n log n)，并说明 O(n²) 为什么不够。\n③ 说出“降嵌套层数 / 用公式或预处理”这类方向即可，不要求写代码。"
+  }
+]'></div>
+
+  <p>现在回头看开头的结论为什么成立：「样例通过」没有预测力，是因为样例的数据规模离上限差着好几个数量级——样例跑得动，只说明最小那一档能过。判断会不会超时，要看的是题目给出的最大数据范围落在表的哪一行。配套项目「AI 刷题助手」在推荐候选算法时，第一步也正是这样：按题目数据范围，先把复杂度不达标的那批算法筛掉。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "一位同学写了这段代码，用样例 n=10 一跑就出结果，\n高兴地说「过了」：\n\n```python\nn = int(input())\ncnt = 0\nfor i in range(n):\n    for j in range(n):\n        cnt += 1\nprint(cnt)\n```\n\n但题目数据范围写的是 n ≤ 10^5、时限 1 秒。\n这位同学的判断错在哪一步？用本课的方法说清楚。",
+    "answer": "错在“样例通过就认为最大数据也能过”。\n样例 n=10 时循环只跑 100 次，当然快；\n但 n=10^5 时这段 O(n²) 要跑约 10^10 次，\n按本机 5×10^7 次/秒算要约 200 秒，远超 1 秒。\n样例的数据规模离上限差好几个数量级，\n“样例通过”只说明最小那一档能过，对“会不会超时”没有预测力。",
+    "criteria": "必须指出“样例通过 ≠ 最大范围能过”，\n并用 O(n²) 在 n=10^5 下的约 10^10 次操作、\n除以 5×10^7 次/秒推算出约 200 秒超时。\n只说“样例太小”而不给量级推算的，不算过。"
+  }
+]'></div>
+
+  <h2>空间复杂度</h2>
+
+  <p>类似的，算法使用的<b>空间</b>随规模增长的趋势叫<b>空间复杂度</b>。通常不计输入本身占的空间，只算算法额外开的那部分。</p>
+
+  <p>上面两道题正好是两面：求和公式版与数对公式版都不额外开数组，空间复杂度 <span class="math-inline">O(1)</span>；而有些算法会用一份 <span class="math-inline">O(n)</span> 大小的额外空间，把时间从 <span class="math-inline">O(n^2)</span> 降到 <span class="math-inline">O(n)</span>——这种「空间换时间」是后面课程的主题，眼下先记住时间与空间常常可以互换这一条。</p>
+
+  <h2>练习</h2>
+
+  <div class="lesson-practice">
+    <div class="lesson-practice__head">
+      <span class="lesson-practice__level">练习</span>
+      <span class="lesson-practice__title">先估三档规模，再实测对答案</span>
+    </div>
+
+      <p>这一节的动作都在本机 Python 里做，写一个 <code>guess.py</code> 就够。</p>
+
+      <p><b>第一步 · 准备两种写法。</b> 把「数无序数对」的两种写法抄进文件：</p>
+
+      <pre data-lang="python"><code>import timeit
+
+def pair_loop(n):
+    count = 0
+    for i in range(1, n + 1):
+        for j in range(i + 1, n + 1):
+            count += 1
+    return count
+
+def pair_formula(n):
+    return n * (n - 1) // 2</code></pre>
+
+      <p>先用小 <span class="math-inline">n</span> 验一下两个函数结果一致（<span class="math-inline">n = 10</span> 时都该是 45）。</p>
+
+      <p><b>第二步 · 先估后测。</b> 对下面三档规模，先凭这一课学到的尺子估「跑不跑得完 1 秒」，再实测前两档：</p>
+
+      <pre data-lang="python"><code>for n in (10**3, 10**4):
+    t = min(timeit.repeat(lambda: pair_loop(n), number=1, repeat=3))
+    print(n, f"{t:.3f} 秒")</code></pre>
+
+      <p>第三档 <span class="math-inline">n = 10^5</span> 别真跑——把估计写下来（约几十秒），这一步的价值正在于「不动手也能判断」。</p>
+
+      <p><b>第三步 · 找错在哪一步。</b> 把每档的「我的估计」和「实测耗时」各写一句，标出哪几档估对了、哪几档估错了。对估错的那几档，回查是「数循环次数」数错了，还是「每秒能做多少次」这把尺子记错了——找出这一步，比答对更值钱。</p>
+  </div>
+
+  <h2>这一课用到的 Python</h2>
+
+  <table>
+    <thead>
+      <tr><th>要做的事</th><th>写法</th><th>边界</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>数清一段循环跑了多少次</td><td>看 <code>range</code> 的起点、终点、步长</td><td><code>range(i + 1, n + 1)</code> 是 <span class="math-inline">i{+}1</span> 到 <span class="math-inline">n</span>，共 <span class="math-inline">n - i</span> 次</td></tr>
+      <tr><td>单次计时的正确姿势</td><td><code>min(timeit.repeat(f, number=1, repeat=3))</code></td><td>取多次重复里的最小值，单次计时会被别的程序干扰</td></tr>
+      <tr><td>判断会不会超时</td><td>先估操作次数，再对照本机实测</td><td>估的尺子每台机器不同，换机器要重新量</td></tr>
+    </tbody>
+  </table>
+
+  <p>课程讲到后面，这些「数基本操作、写 <span class="math-inline">O</span> 记号、反推上限」的动作会一遍遍重复，直到成为拿到题就自动做的第一步。</p>
+
+  <ul class="lesson-resources">
+    <li>OI Wiki · 复杂度<span class="lesson-resources__meta">复杂度定义、渐近符号（O/Θ/Ω）与最坏/平均复杂度，本课「数基本操作」与 <span class="math-inline">O</span> 的定义出自这里</span></li>
+    <li><a href="https://docs.python.org/zh-cn/3/library/timeit.html">Python 官方文档 · timeit</a><span class="lesson-resources__meta">性能测量的官方用法，练习里的实测照它写</span></li>
+    <li>《Python 编程：从入门到实践（第 2 版）》第 4 章 操作列表<span class="lesson-resources__meta">用循环处理一批数据的写法，本地教材</span></li>
+  </ul>
+
+  <!-- ── 提问提示：固定写法，别删 ── -->
+
+  <div class="lesson-ask">
+    <b>没看懂？随时问</b>
+    把看不懂的段落（或报错）原样复制回会话，说一句哪里不懂就行，我只解释这一段，不打断你的进度。
+  </div>
+
+  <!-- ── 上/下节课指针由渲染器按 curriculum.yaml 的 nodes 顺序算（第一课无 --prev、最后一课无 --next） ── -->
+
+  <nav class="lesson-nav" aria-label="上一课 / 下一课">
+    <a class="lesson-nav__link lesson-nav__link--prev" href="0001-intro-what-is-algorithm.html">
+      <span class="lesson-nav__dir">上节课</span>
+      <span class="lesson-nav__title">从一道蓝桥杯题说起</span>
+    </a>
+    <a class="lesson-nav__link lesson-nav__link--next" href="0003-python-list-dict-cost.html">
+      <span class="lesson-nav__dir">下节课</span>
+      <span class="lesson-nav__title">列表与字典的隐藏价格</span>
+    </a>
+  </nav>
+
+  <footer class="lesson-footer">
+    StudyMate · 0002 同一道题，两种写法 · 本地学习工作区
+  </footer>
+
+</article>
+
+<script src="../../../assets/sayo/sayo.js"></script>
+<link rel="stylesheet" href="../../../assets/katex/katex.min.css">
+<script src="../../../assets/katex/katex.min.js" defer></script>
+<script src="../../../assets/lesson-math.js" defer></script>
+<script src="../assets/quiz.js" defer></script>
+<script src="../assets/lesson-toc.js" defer></script>
+<script>LearnTheme.wire(document.getElementById('lesson-theme-checkbox'));</script>
+</body>
+</html>

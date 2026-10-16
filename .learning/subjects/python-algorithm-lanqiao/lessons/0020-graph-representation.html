@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>把问题画成一张图 · Python 算法与蓝桥杯</title>
+
+<!-- 共享层在 .learning/assets/，课件在 .learning/subjects/<slug>/lessons/ 下，所以是 ../../../assets/ -->
+<link rel="stylesheet" href="../../../assets/sayo/sayo.css">
+<link rel="stylesheet" href="../../../assets/learn-theme.css">
+<link rel="stylesheet" href="../assets/style.css">
+
+<!-- 主题要在首帧前应用，避免闪白/闪黑 -->
+<script src="../../../assets/learn-theme.js"></script>
+<script>LearnTheme.apply();</script>
+</head>
+
+<body class="lesson-body">
+
+<nav class="lesson-bar">
+  <a href="../index.html">← 返回课程</a>
+  <span>Python 算法与蓝桥杯</span>
+  <span class="lesson-bar__no">0020</span>
+  <!-- 课件页自带主题开关：学生从文件管理器直接打开课件时也能切暗色 -->
+  <label class="syo-toggle syo-toggle--theme lesson-bar__toggle" title="切换深浅主题" aria-label="切换深浅主题">
+    <input type="checkbox" id="lesson-theme-checkbox" checked>
+    <span class="syo-toggle-track"></span>
+    <span class="syo-toggle-knob">
+      <svg class="syo-toggle-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.5" stroke="#f57c00" stroke-width="1.5"/><path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.34 4.34l1.77 1.77M13.89 13.89l1.77 1.77M4.34 15.66l1.77-1.77M13.89 6.11l1.77-1.77" stroke="#f57c00" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <svg class="syo-toggle-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.5 12.5A6 6 0 019 4.5a6 6 0 007.5 8z" stroke="#5c6bc0" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </span>
+  </label>
+</nav>
+
+<article class="lesson">
+
+  <header class="lesson-header">
+    <span class="lesson-header__eyebrow">0020 · 把问题画成一张图</span>
+    <h1>把问题画成一张图</h1>
+    <p class="lesson-goal"><b>本节目标：</b>能把实际问题抽象成点和边，选邻接表或邻接矩阵把它存进内存。</p>
+  </header>
+
+  <!-- ── 正文：渲染器按内容文件（lessons/<序号>-<节点id>.md）产出，块词汇见 docs/规范/课件内容格式.md ── -->
+
+  <h2>先找点和边</h2>
+
+  <p>前面几课处理的数据都是一串数。从这里开始，处理的是<b>关系</b>。</p>
+
+  <p>四段题目描述，表面上毫不相干：</p>
+
+  <ul>
+    <li>若干城市之间有公路，问从 A 城能不能开到 B 城。</li>
+    <li>若干课程有先修关系，问能不能排出一个满足全部先修要求的顺序。</li>
+    <li>若干个格子，每步可以走到上下左右相邻的格子，问最少几步到终点。</li>
+    <li>若干个状态，每次操作从一个状态变到另一个状态，问几步能到目标状态。</li>
+  </ul>
+
+  <p>抽象的做法是问两个问题：<b>这里有哪些「东西」？这些东西之间有哪些「直接联系」？</b> 第一问的答案就是点，第二问的答案就是边。</p>
+
+  <ul>
+    <li>城市是点，公路是边。</li>
+    <li>课程是点，先修关系是边，方向是「先修课 → 后续课」。</li>
+    <li>格子是点，相邻关系是边。</li>
+    <li>状态是点，一次操作能到达是边。</li>
+  </ul>
+
+  <p>抽象做完，四道题变成了同一道题：<b>在一个由点和边组成的结构上，从某个点出发能走到哪些点。</b> 后面两课学的遍历算法只要会处理这一件事，四道题就都会了。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "把一段题目描述抽象成图，要找的是什么？",
+    "opts": [
+      "有哪些东西，以及这些东西之间的直接联系",
+      "有哪些数字，以及这些数字之间的运算关系",
+      "有哪些语句，以及这些语句的执行先后次序",
+      "有哪些变量，以及这些变量占用的内存大小"
+    ],
+    "ans": 0,
+    "why": "抽象就两问：这里有哪些「东西」（点），这些东西之间有哪些「直接联系」（边）。城市公路、课程先修、格子走步、状态转移四段描述，抽象完是同一个东西——点和边组成的结构，后面两课的遍历算法只处理这一件事。"
+  }
+]'></div>
+
+  <h2>有向图与无向图</h2>
+
+  <p>公路是双向的：能从 A 开到 B，就能从 B 开到 A。先修关系是单向的：学过「变量」才能学「函数」，反过来不成立。</p>
+
+  <ul>
+    <li><b>无向图</b>：边没有方向，<span class="math-inline">(u, v)</span> 和 <span class="math-inline">(v, u)</span> 是同一条边。</li>
+    <li><b>有向图</b>：边有方向，<span class="math-inline">u \to v</span> 和 <span class="math-inline">v \to u</span> 是两条不同的边。</li>
+  </ul>
+
+  <p>这个区别会直接落到代码里。无向图的一条边要<b>在两边各记一次</b>：</p>
+
+  <pre data-lang="python"><code>def dfs_list(adj, s):
+    seen = [False] * len(adj)
+    stack = [s]
+    seen[s] = True
+    order = []
+    while stack:
+        u = stack.pop()
+        order.append(u)
+        for v in adj[u]:
+            if not seen[v]:
+                seen[v] = True
+                stack.append(v)
+    return order
+
+
+def build_undirected_wrong(n, edges):
+    adj = [[] for _ in range(n + 1)]
+    for u, v in edges:
+        adj[u].append(v)          # 只加了 u -&gt; v
+    return adj
+
+
+def build_undirected_right(n, edges):
+    adj = [[] for _ in range(n + 1)]
+    for u, v in edges:
+        adj[u].append(v)
+        adj[v].append(u)          # 两个方向都加
+    return adj
+
+
+g = [(1, 2), (2, 3), (3, 4)]
+w = build_undirected_wrong(4, g)
+r = build_undirected_right(4, g)
+print('  只加一个方向:', [w[i] for i in range(1, 5)])
+print('  两个方向都加:', [r[i] for i in range(1, 5)])
+print('  从 4 出发，只加一个方向能到的点:', sorted(dfs_list(w, 4)))
+print('  从 4 出发，两个方向都加能到的点:', sorted(dfs_list(r, 4)))</code></pre>
+
+  <pre data-lang="text"><code>  只加一个方向: [[2], [3], [4], []]
+  两个方向都加: [[2], [1, 3], [2, 4], [3]]
+  从 4 出发，只加一个方向能到的点: [4]
+  从 4 出发，两个方向都加能到的点: [1, 2, 3, 4]</code></pre>
+
+  <p>（<code>dfs_list</code> 是下一课要写的遍历，这里先用一个简版，它回答的正是「从某个点出发能走到哪些点」。）</p>
+
+  <p>这个 bug 阴的地方在于：<b>从 1 出发看不出问题。</b> 因为边恰好是 <span class="math-inline">1 \to 2 \to 3 \to 4</span> 顺着给的，从起点 1 出发照样能走遍四个点。只有换个起点——从 4 出发——才暴露出来：只能到 <code>[4]</code> 自己。</p>
+
+  <p>所以「无向图只记一个方向」这种错，用一组数据试是试不出来的，得换起点试。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "无向图只加了一个方向的边，为什么往往测不出来？",
+    "opts": [
+      "换个起点就暴露了，从起点出发时恰好走得通",
+      "程序会当场报越界，但不影响前面几组数据",
+      "答案会小一点，但不报错也不影响正确答案",
+      "只在带权图上才出错，无权图上没有影响"
+    ],
+    "ans": 0,
+    "why": "边 (1,2),(2,3),(3,4) 只记一个方向时，从 1 出发照样能走到 1、2、3、4——因为方向恰好顺着读入顺序。但从 4 出发只能到 [4]。所以这类错用一组数据试不出来，得换起点试；无向图必须 adj[u].append(v) 与 adj[v].append(u) 各写一次。"
+  }
+]'></div>
+
+  <h2>边上的数字：带权图</h2>
+
+  <p>公路有长度，课程有学分，操作有代价。这类数字<b>挂在边上</b>，不挂在点上。</p>
+
+  <p>存法很自然：把 <code>adj[u].append(v)</code> 改成 <code>adj[u].append((v, w))</code>，每个元素从「终点」变成「终点与边权」。</p>
+
+  <p>带权图的遍历要跟着改：取 <code>v</code> 的时候得写 <code>v, w = item</code>。这一步漏改，后面算出来的一切都错，而且不报错——<code>v</code> 会绑成一个元组，比较和索引都还能跑下去，只是答案不对。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "边权这类数字应该存在哪里？",
+    "opts": [
+      "挂在边上，每个出边元素从终点变成终点加权值",
+      "挂在点上，给每个点再加一个权值属性",
+      "单独存一列，按边的读入顺序与边对齐",
+      "存在点的编号里，把权值编进点的下标"
+    ],
+    "ans": 0,
+    "why": "长度属于公路、学分属于课程、代价属于一次操作——这些数字描述的是「联系」而不是「东西」，所以挂在边上：把 adj[u].append(v) 改成 adj[u].append((v, w))。带权图的遍历要跟着改，写 v, w = item；漏改不报错，但 v 会绑成元组，答案悄悄全错。"
+  }
+]'></div>
+
+  <h2>直接存边</h2>
+
+  <p>最朴素的存法：一个列表，每个元素是一条边。</p>
+
+  <pre data-lang="python"><code>def build_edges(n, edges):
+    return [(u, v) for u, v in edges]
+
+
+e = build_edges(4, [(1, 2), (2, 3), (3, 4), (4, 1)])
+print('  边表:', e)
+print('  1 的出边:', [v for u, v in e if u == 1])
+print('  找 2 到 3 这条边在不在:', (2, 3) in e)</code></pre>
+
+  <pre data-lang="text"><code>  边表: [(1, 2), (2, 3), (3, 4), (4, 1)]
+  1 的出边: [2]
+  找 2 到 3 这条边在不在: True</code></pre>
+
+  <p>存法省地方，但用它做任何事都要把整个边表扫一遍：问「1 的出边有哪些」要扫 <span class="math-inline">m</span> 条边，问 <span class="math-inline">m</span> 次就是 <span class="math-inline">O(m^2)</span>。它只在<b>需要把所有边按权值排序</b>的场合才合适（比如第 20 课之后会碰到的最小生成树）。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "直接存边这种最朴素的存法什么时候反而合适？",
+    "opts": [
+      "需要把所有边按权值排序时，比如求最小生成树",
+      "需要频繁查询某两个点之间有没有边的时候",
+      "需要遍历整张图、把每个点都走到的时候",
+      "点数很大、边数也很大需要省内存的时候"
+    ],
+    "ans": 0,
+    "why": "直接存边问一次「某点的出边」要扫全部 m 条，遍历整张图是 O(nm)，所以不适合遍历。它的用处是要按权值排序的场合——边本来就是一个一个躺着的，排完序就能按顺序处理，比如后面的最小生成树。加速方案是另存两边（原图与反图）或先存边、要用时再建图。"
+  }
+]'></div>
+
+  <h2>邻接矩阵</h2>
+
+  <p>开一个二维数组 <code>adj</code>，<code>adj[u][v] = 1</code> 表示有 <span class="math-inline">u \to v</span> 这条边，<code>0</code> 表示没有。带权图就把 <code>1</code> 换成边权。</p>
+
+  <pre data-lang="python"><code>def build_matrix(n, edges):
+    adj = [[0] * (n + 1) for _ in range(n + 1)]
+    for u, v in edges:
+        adj[u][v] = 1
+    return adj
+
+
+def build_list(n, edges):
+    adj = [[] for _ in range(n + 1)]
+    for u, v in edges:
+        adj[u].append(v)
+    return adj
+
+
+edges = [(1, 2), (2, 3), (3, 4), (4, 1), (1, 3)]
+n = 4
+m = build_matrix(n, edges)
+a = build_list(n, edges)
+print('  邻接矩阵:')
+for r in range(1, n + 1):
+    print('    ', m[r][1:])
+print('  邻接表:')
+for r in range(1, n + 1):
+    print('    ', r, '-&gt;', a[r])
+print('  矩阵里有多少个格子:', (n + 1) * (n + 1))
+print('  表里一共存了几个数:', sum(len(x) for x in a))</code></pre>
+
+  <pre data-lang="text"><code>  邻接矩阵:
+     [0, 1, 1, 0]
+     [0, 0, 1, 0]
+     [0, 0, 0, 1]
+     [1, 0, 0, 0]
+  邻接表:
+     1 -&gt; [2, 3]
+     2 -&gt; [3]
+     3 -&gt; [4]
+     4 -&gt; [1]
+  矩阵里有多少个格子: 25
+  表里一共存了几个数: 5</code></pre>
+
+  <p>矩阵最大的好处是<b>查一条边在不在只要 <span class="math-inline">O(1)</span></b>——直接读 <code>adj[u][v]</code>。代价是格子数是 <span class="math-inline">n^2</span>，跟边数无关。</p>
+
+  <h2>邻接表</h2>
+
+  <p>邻接表是「每个点挂一个自己的出边列表」：<code>adj[u]</code> 存下所有从 <span class="math-inline">u</span> 出发能直接到的点。</p>
+
+  <p>开 <code>n + 1</code> 个空列表，读一条边就往对应列表里塞一个数：</p>
+
+  <pre data-lang="python"><code>def build_list(n, edges):
+    adj = [[] for _ in range(n + 1)]
+    for u, v in edges:
+        adj[u].append(v)
+    return adj
+
+
+adj = build_list(3, [(1, 2), (1, 3)])
+print('  1 的出边:', adj[1])
+print('  2 的出边:', adj[2])
+print('  1 的度:', len(adj[1]))</code></pre>
+
+  <pre data-lang="text"><code>  1 的出边: [2, 3]
+  2 的出边: []
+  1 的度: 2</code></pre>
+
+  <p>注意 <code>range(n + 1)</code> 这个 <code>+ 1</code>。题目里的点通常从 1 开始编号，而列表下标从 0 开始；<b>开 <code>n</code> 个位置就少了一格</b>，遇到编号为 <span class="math-inline">n</span> 的点会直接报错：</p>
+
+  <pre data-lang="python"><code>def build_buggy(n, edges):
+    adj = [[] for _ in range(n)]        # 应该开 n + 1
+    for u, v in edges:
+        adj[u].append(v)
+    return adj
+
+
+try:
+    build_buggy(4, [(1, 2), (2, 3), (3, 4), (4, 1)])
+    print('  没报错？')
+except IndexError as exc:
+    print('  IndexError:', exc)</code></pre>
+
+  <pre data-lang="text"><code>  IndexError: list index out of range</code></pre>
+
+  <p>这类越界是好事——它当场就报。真正麻烦的是另一种：点编号从 0 开始，你却按 <code>n + 1</code> 开、按 1 开始读，程序不报错，只是<b>所有点的编号都错了一位</b>，答案悄悄错掉。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "点从 1 开始编号时，邻接表的数组要开多大？",
+    "opts": [
+      "开 n + 1 个，下标 0 空着不用",
+      "开 n 个，下标 0 到 n - 1 正好够用",
+      "开 n - 1 个，把下标 0 当成点 1",
+      "开 2 * n 个，留一半作扩容的余地"
+    ],
+    "ans": 0,
+    "why": "题目里的点通常从 1 开始编号，而列表下标从 0 开始。开 n 个位置就少了一格，遇到编号为 n 的点直接 IndexError: list index out of range——这反而是好事，它当场就报。真正麻烦的是另一种：点从 0 开始却按 1 开始读，程序不报错，只是所有编号都错了一位。"
+  }
+]'></div>
+
+  <h2>矩阵和表选哪个</h2>
+
+  <p>差距在数据大起来之后非常明显。<span class="math-inline">n</span> 个点、<span class="math-inline">m</span> 条边，矩阵要 <span class="math-inline">n^2</span> 个格子，表要 <span class="math-inline">m</span> 个位置：</p>
+
+  <table>
+    <thead>
+      <tr><th>规模</th><th>邻接矩阵</th><th>邻接表</th><th>差</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><span class="math-inline">n = 10, m = 15</span></td><td>100 个格子</td><td>30 个位置</td><td>3 倍</td></tr>
+      <tr><td><span class="math-inline">n = 1000, m = 1500</span></td><td>1,000,000 个格子</td><td>3,000 个位置</td><td>333 倍</td></tr>
+      <tr><td><span class="math-inline">n = 100000, m = 150000</span></td><td>10,000,000,000 个格子</td><td>300,000 个位置</td><td>33,333 倍</td></tr>
+    </tbody>
+  </table>
+
+  <p>那 100 亿个格子不是「慢一点」的问题，是<b>内存根本装不下</b>、程序直接起不来。</p>
+
+  <p>真造一次看看。<span class="math-inline">n = 4000</span>、6000 条边的稀疏图，用 <code>tracemalloc</code> 量：</p>
+
+  <table>
+    <thead>
+      <tr><th>存法</th><th>占用内存</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>邻接矩阵</td><td>122.41 MB</td></tr>
+      <tr><td>邻接表</td><td>0.37 MB</td></tr>
+    </tbody>
+  </table>
+
+  <p><b>327 倍。</b>（本机实测；具体数字随 Python 版本与机器变化，看的是倍数这个量级。）</p>
+
+  <p>代价还在遍历上。同一个图走一遍，矩阵每次都要把 <span class="math-inline">1 \ldots n</span> 全部检查一遍（<span class="math-inline">O(n^2)</span>），表只走真实存在的边（<span class="math-inline">O(n + m)</span>）：</p>
+
+  <table>
+    <thead>
+      <tr><th>遍历整张图（<span class="math-inline">n = 4000</span>，6000 条边）</th><th>耗时</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>邻接矩阵</td><td>0.1917 秒</td></tr>
+      <tr><td>邻接表</td><td>0.0010 秒</td></tr>
+    </tbody>
+  </table>
+
+  <p><b>慢了 191.8 倍。</b>（同样是本机实测，同一台机器同一个图。）</p>
+
+  <p>所以选择规则很简单：</p>
+
+  <ul>
+    <li><b>边数远小于 <span class="math-inline">n^2</span>（稀疏图）→ 邻接表。</b> 竞赛里的图绝大多数是稀疏的，默认选它。</li>
+    <li><b>需要频繁问「<span class="math-inline">u</span> 到 <span class="math-inline">v</span> 这条边在不在」，且 <span class="math-inline">n</span> 很小 → 邻接矩阵。</b> 稠密图（<span class="math-inline">m</span> 接近 <span class="math-inline">n^2</span>）才用得上。</li>
+  </ul>
+
+  <p>顺带说一句：邻接矩阵还有一个限制，<b>同一条边只能记一个值</b>。有重边的图（比如「A 到 B 有两条不同长度的路」）用它就必须挑一个留下，而邻接表天然能存下全部。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "边数远小于 n 平方的稀疏图，为什么不能用邻接矩阵？",
+    "opts": [
+      "格子数是 n 平方，跟边数无关，装不下",
+      "查一条边要扫一整行，比邻接表慢得多",
+      "矩阵存不下带权的边，只能表示无权图",
+      "矩阵的遍历顺序是乱的，答案不稳定"
+    ],
+    "ans": 0,
+    "why": "邻接矩阵要 n 平方个格子，与边数无关；邻接表只要 m 个位置。n = 4000、6000 条边时实测 122.41 MB 对 0.37 MB，差 327 倍；n = 100000 时矩阵是 100 亿个格子，程序直接起不来。遍历上矩阵也是 O(n 平方) 对 O(n + m)，同一个图实测慢 191.8 倍。矩阵的真正优势是 O(1) 查边，只适合点少或稠密图。"
+  }
+]'></div>
+
+  <h2>度与连通</h2>
+
+  <p>两个只跟图结构有关、不跟算法有关的量，先认下来：</p>
+
+  <ul>
+    <li><b>度</b>：一个点连出去多少条边。有向图分<b>出度</b>（从它出发的边数）和<b>入度</b>（指向它的边数）。无向图不分方向，只有度数。</li>
+    <li><b>连通</b>：两个点之间存在一条通路。无向图里，能互相到达的点归成一个<b>连通块</b>；有向图里，能互相到达的点归成一个<b>强连通分量</b>。</li>
+  </ul>
+
+  <p>度在代码里就是 <code>len(adj[u])</code>。连通要算法来算——下一课就是这件事。</p>
+
+  <p>有个容易混的地方：<b>度只数直接相邻，连通看的是能不能绕过去。</b> 一个点可能度为 1（只连着一个邻居），但通过那个邻居连着一大片点。所以「度小的点不重要」这种直觉是错的。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "一个点的度很小，说明它和别的点都不连通吗？",
+    "opts": [
+      "不说明，度只数直接相邻，绕着走还能连一大片",
+      "说明，度小就意味着它能到达的点也少",
+      "说明，度为 1 的点只能连到它唯一的邻居",
+      "不说明，但度小的点在图上确实不重要"
+    ],
+    "ans": 0,
+    "why": "度只数直接相邻的边，连通看的是能不能绕过去。一个点可以度为 1，却通过那个唯一的邻居连着一大片点——一条链的端点和中间点的度可能都是 2，但它们的可达范围完全一样。所以「度小的点不重要」这种直觉是错的。"
+  }
+]'></div>
+
+  <h2>这一课用到的判断</h2>
+
+  <ul>
+    <li><b>抽象就两步</b>：找出有哪些「东西」（点），找出这些东西之间有哪些「直接联系」（边）。</li>
+    <li><b>无向图的边要在两端各记一次</b>；只记一个方向时，换个起点就会漏掉一大片点。</li>
+    <li><b>边权挂在边上</b>，存成 <code>(终点, 权值)</code>；带权图的遍历要把 <code>v, w</code> 一起取出来，漏改不报错但答案全错。</li>
+    <li><b>直接存边适合需要按权值排序的场合</b>（如后面的最小生成树），不适合遍历：问一次出边要扫全部 <span class="math-inline">m</span> 条。</li>
+    <li><b>邻接矩阵查边 <span class="math-inline">O(1)</span>，代价是 <span class="math-inline">O(n^2)</span> 空间</b>；只适合点少或稠密图，且存不下重边。</li>
+    <li><b>邻接表是稀疏图的默认选择</b>：<span class="math-inline">O(n + m)</span> 空间，遍历整个图 <span class="math-inline">O(n + m)</span>。</li>
+    <li><b>点从 1 开始编号时要开 <code>n + 1</code></b>；开小了当场 <code>IndexError</code>，而编号错位不会报错、只会悄悄算错。</li>
+    <li><b>度只数直接相邻的边，连通看能不能绕过去</b>；无向图里度数是 <code>len(adj[u])</code>。</li>
+  </ul>
+
+  <div class="lesson-practice">
+    <div class="lesson-practice__head">
+      <span class="lesson-practice__level">上手做</span>
+      <span class="lesson-practice__title">四段描述，四张图</span>
+    </div>
+
+      <p>这一课的动手落在纸上和代码里，做完对照课件里的表。要做的是四件事。</p>
+
+      <ol>
+        <li>拿课件开头的四段描述（城市公路、课程先修、格子走步、状态转移），各写出<b>点的集合</b>与<b>边的集合</b>，并注明是有向还是无向、有没有边权。写完自己检查一遍：把边集合念出来，能不能还原出原来的描述。</li>
+        <li>把「课程先修」那一段读成 <code>n</code>、<code>m</code> 与 <code>m</code> 条边，写一个函数建出<b>邻接表</b>并打印，确认先修关系是 <code>先修课 -&gt; 后续课</code> 这个方向，别写反。</li>
+        <li>用同一组数据再建一个<b>邻接矩阵</b>，打印出来，和邻接表逐行对照，确认两张图表示的是同一张图。</li>
+        <li>用一个 <span class="math-inline">n</span> 稍大的稀疏图（比如 <span class="math-inline">n = 4000</span>、6000 条边）各建一次，量出内存占用与遍历耗时，做成一张两行的表。算出矩阵是表的几倍。</li>
+      </ol>
+  </div>
+
+  <ul class="lesson-resources">
+    <li><a href="https://oi-wiki.org/graph/save/">OI Wiki · 图的存储</a><span class="lesson-resources__meta">直接存边、邻接矩阵、邻接表、链式前向星四种存法与各自复杂度（本课口径出自这里）</span></li>
+    <li>《算法导论（第 3 版）》第 22 章 图的基本算法<span class="lesson-resources__meta">书 · 邻接链表与邻接矩阵的表示、度的定义</span></li>
+    <li><a href="0019-union-find.html">第 19 课：并查集：谁和谁是一伙的</a><span class="lesson-resources__meta">上一课用「集合归属」绕过了遍历，这一课先把图存进内存</span></li>
+  </ul>
+
+  <!-- ── 提问提示：固定写法，别删 ── -->
+
+  <div class="lesson-ask">
+    <b>没看懂？随时问</b>
+    把看不懂的段落（或报错）原样复制回会话，说一句哪里不懂就行，我只解释这一段，不打断你的进度。
+  </div>
+
+  <!-- ── 上/下节课指针由渲染器按 curriculum.yaml 的 nodes 顺序算（第一课无 --prev、最后一课无 --next） ── -->
+
+  <nav class="lesson-nav" aria-label="上一课 / 下一课">
+    <a class="lesson-nav__link lesson-nav__link--prev" href="0019-union-find.html">
+      <span class="lesson-nav__dir">上节课</span>
+      <span class="lesson-nav__title">并查集：谁和谁是一伙的</span>
+    </a>
+    <a class="lesson-nav__link lesson-nav__link--next" href="0021-dfs-bfs-search.html">
+      <span class="lesson-nav__dir">下节课</span>
+      <span class="lesson-nav__title">搜索：把图走一遍</span>
+    </a>
+  </nav>
+
+  <footer class="lesson-footer">
+    StudyMate · 0020 把问题画成一张图 · 本地学习工作区
+  </footer>
+
+</article>
+
+<script src="../../../assets/sayo/sayo.js"></script>
+<link rel="stylesheet" href="../../../assets/katex/katex.min.css">
+<script src="../../../assets/katex/katex.min.js" defer></script>
+<script src="../../../assets/lesson-math.js" defer></script>
+<script src="../assets/quiz.js" defer></script>
+<script src="../assets/lesson-toc.js" defer></script>
+<script>LearnTheme.wire(document.getElementById('lesson-theme-checkbox'));</script>
+</body>
+</html>

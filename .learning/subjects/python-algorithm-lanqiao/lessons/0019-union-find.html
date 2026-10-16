@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>并查集：谁和谁是一伙的 · Python 算法与蓝桥杯</title>
+
+<!-- 共享层在 .learning/assets/，课件在 .learning/subjects/<slug>/lessons/ 下，所以是 ../../../assets/ -->
+<link rel="stylesheet" href="../../../assets/sayo/sayo.css">
+<link rel="stylesheet" href="../../../assets/learn-theme.css">
+<link rel="stylesheet" href="../assets/style.css">
+
+<!-- 主题要在首帧前应用，避免闪白/闪黑 -->
+<script src="../../../assets/learn-theme.js"></script>
+<script>LearnTheme.apply();</script>
+</head>
+
+<body class="lesson-body">
+
+<nav class="lesson-bar">
+  <a href="../index.html">← 返回课程</a>
+  <span>Python 算法与蓝桥杯</span>
+  <span class="lesson-bar__no">0019</span>
+  <!-- 课件页自带主题开关：学生从文件管理器直接打开课件时也能切暗色 -->
+  <label class="syo-toggle syo-toggle--theme lesson-bar__toggle" title="切换深浅主题" aria-label="切换深浅主题">
+    <input type="checkbox" id="lesson-theme-checkbox" checked>
+    <span class="syo-toggle-track"></span>
+    <span class="syo-toggle-knob">
+      <svg class="syo-toggle-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.5" stroke="#f57c00" stroke-width="1.5"/><path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.34 4.34l1.77 1.77M13.89 13.89l1.77 1.77M4.34 15.66l1.77-1.77M13.89 6.11l1.77-1.77" stroke="#f57c00" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <svg class="syo-toggle-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.5 12.5A6 6 0 019 4.5a6 6 0 007.5 8z" stroke="#5c6bc0" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </span>
+  </label>
+</nav>
+
+<article class="lesson">
+
+  <header class="lesson-header">
+    <span class="lesson-header__eyebrow">0019 · 并查集：谁和谁是一伙的</span>
+    <h1>并查集：谁和谁是一伙的</h1>
+    <p class="lesson-goal"><b>本节目标：</b>能实现带路径压缩与按大小合并的并查集，用它判断两点是否连通、数出连通块个数。</p>
+  </header>
+
+  <!-- ── 正文：渲染器按内容文件（lessons/<序号>-<节点id>.md）产出，块词汇见 docs/规范/课件内容格式.md ── -->
+
+  <h2>谁和谁是一伙的</h2>
+
+  <p><b>亲戚判定</b>：给出若干对「甲和乙是亲戚」，再给出若干组询问「丙和丁是不是亲戚」。亲戚关系会传递——甲和乙是亲戚、乙和丙是亲戚，那么甲和丙也是亲戚。</p>
+
+  <p>把每个人看成一个点，每对亲戚关系看成一条边，问题就变成：<b>丙和丁在不在同一个连通块里</b>。第 20 课会讲怎么用遍历回答这个问题，但这里有一条更省的路。</p>
+
+  <p>遍历的做法要先把整张图走一遍才能回答一次询问；而这类问题的边会在过程中不断加进来，每来一条边就得重新走一遍。并查集（disjoint set union，缩写 DSU）换了一个想法：<b>别去记录谁和谁直接相连，只记录每个人属于哪个集合。</b></p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "判断两点是否连通，并查集与遍历的做法差在哪里？",
+    "opts": [
+      "遍历每次都要重新走一遍，并查集只维护集合归属",
+      "遍历只能处理小图，并查集能处理任意大的图",
+      "并查集不建图，所以它回答不了连通性的问题",
+      "并查集要先排序，遍历不需要排序就能回答"
+    ],
+    "ans": 0,
+    "why": "两者回答的是同一个问题，差别在代价。遍历要先走一遍才能回答一次询问，边在过程中不断加进来时每来一条就得重走；并查集不记录谁和谁直接相连，只记录每个人属于哪个集合，合并一条边是对数时间。第 21 课会拿两者对照，数出的连通块个数必然一致。"
+  }
+]'></div>
+
+  <h2>每个集合挑一个代表</h2>
+
+  <p>并查集里每个集合挑一个<b>代表元</b>（也叫根）。判断两个人是不是亲戚，只看他们所在集合的代表元是不是同一个——不需要知道中间隔了多少层关系。</p>
+
+  <p>存储只需要一个数组：<code>parent[i]</code> 表示「<code>i</code> 的上级是谁」。代表元的上级是它自己。一开始每个人各自成一个集合：</p>
+
+  <pre data-lang="python"><code>class DSU:
+    def __init__(self, n):
+        self.parent = list(range(n))     # 一开始每个元素自己就是代表元
+        self.size = [1] * n              # 每个集合的大小，按大小合并要用
+
+    def find(self, x):
+        while self.parent[x] != x:       # 顺着上级一路往上找
+            x = self.parent[x]
+        return x
+
+    def union(self, a, b):
+        ra, rb = self.find(a), self.find(b)
+        if ra == rb:                     # 已经是一伙的，什么都不用做
+            return False
+        self.parent[ra] = rb             # 让一个代表元认另一个当上级
+        return True</code></pre>
+
+  <p><code>parent</code> 数组画出的是<b>一片森林</b>：每个集合是一棵树，根就是代表元。前面几课学的树在这里又出现了——只不过这次不关心左右孩子，只关心「往上的路通向谁」。</p>
+
+  <p><code>union</code> 里那句 <code>if ra == rb: return False</code> 不是可有可无的。少了它，<code>parent[ra] = rb</code> 会在两个代表元之间来回指，<code>find</code> 就再也走不到头了。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "find 一直顺着上级往上找，找的是什么？",
+    "opts": [
+      "所在集合的代表元，也就是那片树的根",
+      "数值最小的元素，也就是编号最小的那个",
+      "深度最大的元素，也就是树上的叶子",
+      "上一个被合并进来的元素，也就是上级"
+    ],
+    "ans": 0,
+    "why": "代表元的上级指向自己，所以「一直往上」必然停在它身上。判断两个元素是否属于同一集合，就是比这两个根是否相同。parent 数组画出的是一片森林，每个集合是一棵树。"
+  }
+]'></div>
+
+  <h2>亲戚判定与连通块</h2>
+
+  <p>两个基本操作搭好之后，两类问题都是一行：</p>
+
+  <pre data-lang="python"><code>d = DSU(7)
+for a, b in [(0, 1), (1, 2), (3, 4), (5, 6)]:
+    d.union(a, b)
+
+print('0 和 2 是亲戚:', d.find(0) == d.find(2))
+print('0 和 3 是亲戚:', d.find(0) == d.find(3))
+print('2 和 3 是亲戚:', d.find(2) == d.find(3))
+print('连通块个数:', sum(1 for i in range(7) if d.parent[i] == i))</code></pre>
+
+  <pre data-lang="text"><code>0 和 2 是亲戚: True
+0 和 3 是亲戚: False
+2 和 3 是亲戚: False
+连通块个数: 3</code></pre>
+
+  <p>连通块的个数就是<b>代表元的个数</b>——只有代表元的 <code>parent</code> 指向自己，其余人的 <code>parent</code> 都指着别人。</p>
+
+  <p>这两个量对着一道题就够了：判断两点是否连通（第 21 课会拿它和 BFS 对照），以及数连通块。第 21 课的搜索也是这样数连通块的，两者结果必然一致。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "数连通块个数的时候，为什么数代表元就够了？",
+    "opts": [
+      "只有代表元的上级指向自己，一个集合一个",
+      "代表元是最早加入那个集合的元素编号",
+      "每个连通块里代表元的编号一定是最小的",
+      "代表元的数量等于边数减去点数再加一"
+    ],
+    "ans": 0,
+    "why": "除代表元之外，每个元素的 parent 都指着别人，所以「parent[i] == i 的个数」正好是集合个数，也就是连通块个数。用 (0,1),(1,2),(3,4),(5,6) 建出来是 {0,1,2}、{3,4}、{5,6} 三个集合，数出来是 3。"
+  }
+]'></div>
+
+  <h2>合并方向会决定树高</h2>
+
+  <p>上面那个 <code>union</code> 有一处偷懒：<code>self.parent[ra] = rb</code> 永远是<b>把第一个代表元挂到第二个下面</b>。方向固定，数据一「配合」，树就退化成一条链。</p>
+
+  <p>用递增的边 <code>(0, 1), (1, 2), (2, 3), …</code> 试一下，量两件事：树有多高、<code>find</code> 要走多少步。</p>
+
+  <pre data-lang="python"><code>def height_of(parent):
+    h = 0
+    for i in range(len(parent)):
+        k = 0
+        x = i
+        while parent[x] != x:
+            x = parent[x]
+            k += 1
+        if k &gt; h:
+            h = k
+    return h
+
+N = 4000
+d = DSU(N)
+for i in range(N - 1):
+    d.union(i, i + 1)
+
+print('树高', height_of(d.parent))
+print('find(0) 走', end=' ')
+steps = 0
+x = 0
+while d.parent[x] != x:
+    x = d.parent[x]
+    steps += 1
+print(steps, '步')</code></pre>
+
+  <pre data-lang="text"><code>树高 3999
+find(0) 走 3999 步</code></pre>
+
+  <p>四个元素以上的链，查询就退化成了线性扫描。这正是这一课要防的那件事：<b>并查集的快不是白来的，它取决于树的形状。</b></p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "合并时固定写成 parent[ra] = rb，遇到递增的边会怎样？",
+    "opts": [
+      "每次新元素都挂到上一个下面，串成一条长链",
+      "两个根互相指来指去，find 会陷进死循环",
+      "合并会失败，因为两个根已经属于同一集合",
+      "树会变得很宽，但树高仍然保持在对数级"
+    ],
+    "ans": 0,
+    "why": "边按 (0,1),(1,2),(2,3)… 递增给出时，每一步都把上一个根挂到新结点下面，n = 4000 的树高就是 3999，find(0) 每次要走 3999 步。这是并查集唯一真正的性能陷阱：快不快取决于树的形状，而形状由合并方向决定。"
+  }
+]'></div>
+
+  <h2>路径压缩</h2>
+
+  <p>第一处改进叫<b>路径压缩</b>（path compression）：<code>find</code> 顺着路往上走的时候，顺手把路上遇到的每个结点都直接挂到根上。</p>
+
+  <pre data-lang="python"><code>class DSU2(DSU):
+    def find(self, x):
+        root = x
+        while self.parent[root] != root:
+            root = self.parent[root]
+        while self.parent[x] != root:          # 把这条路上的人都挂到根上
+            self.parent[x], x = root, self.parent[x]
+        return root</code></pre>
+
+  <p>第一遍走上去找根，第二遍把沿途所有人的上级直接改成根。效果在同一个链上量：</p>
+
+  <table>
+    <thead>
+      <tr><th><code>find(0)</code></th><th>第 1 次</th><th>第 2 次</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>不压缩</td><td>3999 步</td><td>3999 步</td></tr>
+      <tr><td>路径压缩</td><td>3999 步</td><td><b>1 步</b></td></tr>
+    </tbody>
+  </table>
+
+  <p>第一次仍然要走满 3999 步（路本来就那么长），但它顺手把路压平了，<b>第二次只要 1 步</b>。这就是「压缩」这个名字的来处。</p>
+
+  <p>注意一件事：压缩是在查询时发生的，不是在建树时。同一棵树，压缩之后 <code>height_of</code> 量出来是 1，但它本来有 3999 层高——<b>树高在变，而且是被查询改的</b>。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "路径压缩是在什么时候把路压平的？",
+    "opts": [
+      "在查询时顺手改指针，第一次之后才变快",
+      "在合并时一次性把两棵树都压成一层",
+      "在初始化时预先算好每个元素的根",
+      "在每次插入新元素时把它直接挂到根上"
+    ],
+    "ans": 0,
+    "why": "find 走上去找根之后，再走一遍把沿途所有人都直接挂到根上。所以第一次仍然要走满全长（链上是 3999 步），第二次只要 1 步。它改的是树形，因此树高是被查询改变的——压缩后同一棵树量出来只有 1 层，而它本来有 3999 层。"
+  }
+]'></div>
+
+  <h2>按大小合并</h2>
+
+  <p>第二处改进在 <code>union</code> 里：<b>每次把较小的那棵树挂到较大的那棵下面</b>，而不是按固定方向挂。</p>
+
+  <pre data-lang="python"><code>class DSU3(DSU2):
+    def union(self, a, b):
+        ra, rb = self.find(a), self.find(b)
+        if ra == rb:
+            return False
+        if self.size[ra] &lt; self.size[rb]:      # 让 ra 一定是较大的那个根
+            ra, rb = rb, ra
+        self.parent[rb] = ra                   # 小的挂到大的下面
+        self.size[ra] += self.size[rb]
+        return True</code></pre>
+
+  <p>为什么这一句就够了？把一个有 <span class="math-inline">s</span> 个结点的树挂到另一棵下面，那 <span class="math-inline">s</span> 个结点的深度各加一。<b>被挂的是较小的那棵，所以一条路每往上走一层，它所在的集合大小至少翻一倍</b>——翻倍最多翻 <span class="math-inline">\log_2 n</span> 次，所以树高不超过 <span class="math-inline">\log_2 n</span>。</p>
+
+  <p>这就是第 3 课「规模翻倍才涨一层」那种思路的又一次出现。同样的递增边输入，这一次树高是 1。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "按大小合并为什么能把树高压在对数级？",
+    "opts": [
+      "每次挂的是较小的树，往上走一层集合就翻倍",
+      "每次挂完之后都把较小的那棵树重新排序",
+      "每一层只留一个结点，多余的挂到相邻层上",
+      "合并前先比较两个元素的编号大小再决定"
+    ],
+    "ans": 0,
+    "why": "把一个 s 个结点的树挂到另一棵下面，那 s 个结点的深度各加一。被挂的总是较小的那棵，所以一条路每往上走一层，它所在集合的大小至少翻一倍；翻倍最多翻 log2(n) 次。同样的链状输入，按大小合并后树高是 1，随机边上 20 万次合并后树高是 7。"
+  }
+]'></div>
+
+  <h2>两个优化各管什么</h2>
+
+  <p>两个优化都试一遍，做成一张 2×2 的表。先看形状（链状递增边，<span class="math-inline">n = 4000</span>）：</p>
+
+  <table>
+    <thead>
+      <tr><th>做法</th><th>树高</th><th><code>find(0)</code> 第 1 次</th><th>第 2 次</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>谁都不上</td><td>3999</td><td>3999 步</td><td>3999 步</td></tr>
+      <tr><td>只路径压缩</td><td>3999</td><td>3999 步</td><td>1 步</td></tr>
+      <tr><td>只按大小</td><td>1</td><td>0 步</td><td>0 步</td></tr>
+      <tr><td>两个都上</td><td>1</td><td>0 步</td><td>0 步</td></tr>
+    </tbody>
+  </table>
+
+  <p>再看代价。链状输入上做 20 万次查询（<span class="math-inline">n = 20000</span>）：</p>
+
+  <table>
+    <thead>
+      <tr><th>做法</th><th>建树</th><th>20 万次查询</th><th>平均每次查询</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>谁都不上</td><td>0.0044 秒</td><td><b>101.4313 秒</b></td><td>10024.0 步</td></tr>
+      <tr><td>只路径压缩</td><td>0.0055 秒</td><td>0.0355 秒</td><td>1.1 步</td></tr>
+      <tr><td>只按大小</td><td>0.0058 秒</td><td>0.0302 秒</td><td>1.0 步</td></tr>
+      <tr><td>两个都上</td><td>0.0068 秒</td><td>0.0322 秒</td><td>1.0 步</td></tr>
+    </tbody>
+  </table>
+
+  <p>最后换成 20 万条随机边：</p>
+
+  <table>
+    <thead>
+      <tr><th>做法</th><th>20 万次 union</th><th>树高</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>谁都不上</td><td><b>61.5020 秒</b></td><td>20372</td></tr>
+      <tr><td>只路径压缩</td><td>0.2412 秒</td><td>12</td></tr>
+      <tr><td>只按大小</td><td>0.2112 秒</td><td>7</td></tr>
+      <tr><td>两个都上</td><td>0.2004 秒</td><td>4</td></tr>
+    </tbody>
+  </table>
+
+  <p>（本机实测。表里的秒数每次运行会浮动，看的是数量级。）</p>
+
+  <p>两处值得停一下：</p>
+
+  <p><b>第一，两个优化各自都能独立解决问题。</b> 只上路径压缩，20 万次查询从 101 秒降到 0.036 秒；只按大小合并，降到 0.030 秒。<b>没有「必须两个一起上」这回事</b>——单独任一个都把链状退化消掉了。</p>
+
+  <p><b>第二，两个一起上并不总是更快。</b> 链状那一组里「只按大小」0.0302 秒还比「两个都上」0.0322 秒略快一点；随机边那一组反过来，「两个都上」最快且树高最低（4 层）。原因是路径压缩本身也要花时间改指针，当按大小合并已经把树压到 7 层时，省下的那几步还不够抵掉改指针的开销。</p>
+
+  <p>那实践中该怎么办？<b>两个都写上去。</b> 代价是常数级的，而且它把「输入数据恰好对我不利」这件事一起解决了——随机边那组里树高从 7 层降到 4 层就是证据。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "路径压缩与按大小合并，只用其中一个行不行？",
+    "opts": [
+      "行，实测任一个都把退化的一百秒压到零点零几秒",
+      "不行，两个必须同时写，少一个就会退化成链",
+      "不行，只有两个都写才能把树高压到一层",
+      "行，但只用压缩时树高会一直保持在四千层"
+    ],
+    "ans": 0,
+    "why": "两个优化各自都能独立消掉链状退化：只上路径压缩，20 万次查询从 101 秒降到 0.0355 秒；只按大小合并降到 0.0302 秒。没有「必须两个一起上」这回事。两个都写的代价是常数级的，还能顺带处理输入恰好对你不利的情形——随机边那组里树高从 7 层降到 4 层。"
+  }
+]'></div>
+
+  <h2>它不支持删除</h2>
+
+  <p>并查集只能合并，<b>不能把已经连起来的拆开</b>。这一条值得单独说，因为需求里「断开」的字样很常见，而并查集接不住。</p>
+
+  <p>手搭一棵 <code>p = [0, 0, 1]</code>：<code>0</code> 是根，<code>1</code> 指向 <code>0</code>，<code>2</code> 指向 <code>1</code>，集合是 <span class="math-inline">\{0, 1, 2\}</span>。现在想把 <code>1</code> 摘出去：</p>
+
+  <pre data-lang="python"><code>p = [0, 0, 1]
+
+def fa(p, x):
+    while p[x] != x:
+        x = p[x]
+    return x
+
+q = list(p)
+q[1] = 1                      # 让 1 变成自己的根，看起来是「摘出去」了
+print('改动后 p =', q)
+print('find(0) =', fa(q, 0), ' find(1) =', fa(q, 1), ' find(2) =', fa(q, 2))</code></pre>
+
+  <pre data-lang="text"><code>改动后 p = [0, 1, 1]
+find(0) = 0  find(1) = 1  find(2) = 1</code></pre>
+
+  <p><code>1</code> 确实单独出来了，但 <code>2</code> <b>跟着 <code>1</code> 一起被切走了</b>——而 <code>2</code> 原本是穿过 <code>1</code> 才连到 <code>0</code> 的，它和 <code>0</code> 的亲戚关系不该受这次删除影响。</p>
+
+  <p>麻烦在于并查集<b>只记录了「上级是谁」，没有记录「谁指着自己」</b>。删掉一个中间结点时，没法知道有多少人靠它连着，也就没法把它们重新接到根上。要支持删除得换一套结构（可持久化并查集、或者干脆别用并查集）。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "并查集能不能把已经连起来的两个点拆开？",
+    "opts": [
+      "不能，它只记上级不记下级，删中间点会切走一片",
+      "能，把其中一个的上级改回自己就可以了",
+      "能，只要把涉及这块的边都删掉再重建一次",
+      "不能，除非先把整片森林重新初始化一遍"
+    ],
+    "ans": 0,
+    "why": "手搭 p = [0, 0, 1]（集合 {0,1,2}，2 穿过 1 连到 0），令 p[1] = 1 想把 1 摘出去，结果 2 跟着 1 一起被切走了。麻烦在于并查集只记录「上级是谁」，没记录「谁指着我」，所以删掉中间结点时没法知道有多少人靠它连着。要支持删除得换一套结构。"
+  }
+]'></div>
+
+  <h2>这一课用到的判断</h2>
+
+  <ul>
+    <li><b>并查集只记录「谁属于哪个集合」</b>，用代表元（根）来区分；判断连通就是比两个根是否相同。</li>
+    <li><b><code>parent[i]</code> 表示 <code>i</code> 的上级</b>，代表元的上级是自己；这片结构是一片森林，根就是代表元。</li>
+    <li><b><code>union</code> 里必须先判两个根是否相同</b>，否则 <code>parent[ra] = rb</code> 会造出环，<code>find</code> 再也走不到头。</li>
+    <li><b>合并方向固定会让树退化成链</b>：递增的边输入下，<span class="math-inline">n = 4000</span> 的树高就是 3999，<code>find</code> 要走 3999 步。</li>
+    <li><b>路径压缩在查询时压</b>：第一次仍走满全长，第二次就只要 1 步。它改的是树形，所以树高会被查询改变。</li>
+    <li><b>按大小合并把树高压在 <span class="math-inline">\log_2 n</span></b>：被挂的是较小的树，一条路每往上一层，集合大小至少翻倍。</li>
+    <li><b>两个优化各自都能独立解决问题</b>，两个都写上去的代价是常数级的，还能顺带处理不利输入。</li>
+    <li><b>并查集不支持删除</b>：只记上级、不记下级，删掉中间结点会把挂在它下面的部分一起切走。</li>
+    <li><b>连通块个数 = 代表元个数</b>，与第 21 课用搜索数出来的结果必然一致。</li>
+  </ul>
+
+  <div class="lesson-practice">
+    <div class="lesson-practice__head">
+      <span class="lesson-practice__level">上手做</span>
+      <span class="lesson-practice__title">一个类加两道题</span>
+    </div>
+
+      <p>这一课的动手部分落在 lab 里（任务与断言见 <a href="../lab/0019-union-find/">lab/0019-union-find/</a>，做完对照 <a href="../lab/solutions/">lab/solutions/</a>）。要做的是四件事。</p>
+
+      <ol>
+        <li>写出 <code>DSU</code> 类：<code>__init__</code>、<code>find</code>、<code>union</code> 三个基本操作先跑通，用课件那组 <code>(0,1), (1,2), (3,4), (5,6)</code> 确认四个输出与课件一致。</li>
+        <li>补上<b>路径压缩</b>与<b>按大小合并</b>，写出 <code>union</code> 里那句判同根的守卫。用递增边造一条链，量出树高与「<code>find</code> 连做两次的步数」，与课件的表对照。</li>
+        <li>用同一组数据做一次 <b>2×2 对照</b>：谁都不上、只压缩、只按大小、两个都上，各量一次树高与 20 万次查询的耗时，做成一张表。指出哪一格是退化的那一格。</li>
+        <li>做<b>亲戚判定</b>与<b>连通块计数</b>两题：给若干对关系与若干组询问，交回每组询问的答案与连通块个数；再用邻接表遍历数一遍连通块，确认两个数相同。</li>
+      </ol>
+  </div>
+
+  <ul class="lesson-resources">
+    <li><a href="https://oi-wiki.org/ds/dsu/">OI Wiki · 并查集</a><span class="lesson-resources__meta">初始化、查询、路径压缩、启发式合并、复杂度与带权并查集（本课口径出自这里）</span></li>
+    <li>《算法导论（第 3 版）》第 21 章 用于不相交集合的数据结构<span class="lesson-resources__meta">书 · 按秩合并与路径压缩的均摊复杂度分析</span></li>
+    <li><a href="0017-binary-tree-traversal.html">第 17 课：树：会递归的结构</a><span class="lesson-resources__meta"><code>parent</code> 数组画的是一片森林，这一课只关心「往上的路通向谁」</span></li>
+  </ul>
+
+  <!-- ── 提问提示：固定写法，别删 ── -->
+
+  <div class="lesson-ask">
+    <b>没看懂？随时问</b>
+    把看不懂的段落（或报错）原样复制回会话，说一句哪里不懂就行，我只解释这一段，不打断你的进度。
+  </div>
+
+  <!-- ── 上/下节课指针由渲染器按 curriculum.yaml 的 nodes 顺序算（第一课无 --prev、最后一课无 --next） ── -->
+
+  <nav class="lesson-nav" aria-label="上一课 / 下一课">
+    <a class="lesson-nav__link lesson-nav__link--prev" href="0018-heap-and-priority-queue.html">
+      <span class="lesson-nav__dir">上节课</span>
+      <span class="lesson-nav__title">每次都要最小的那个</span>
+    </a>
+    <a class="lesson-nav__link lesson-nav__link--next" href="0020-graph-representation.html">
+      <span class="lesson-nav__dir">下节课</span>
+      <span class="lesson-nav__title">把问题画成一张图</span>
+    </a>
+  </nav>
+
+  <footer class="lesson-footer">
+    StudyMate · 0019 并查集：谁和谁是一伙的 · 本地学习工作区
+  </footer>
+
+</article>
+
+<script src="../../../assets/sayo/sayo.js"></script>
+<link rel="stylesheet" href="../../../assets/katex/katex.min.css">
+<script src="../../../assets/katex/katex.min.js" defer></script>
+<script src="../../../assets/lesson-math.js" defer></script>
+<script src="../assets/quiz.js" defer></script>
+<script src="../assets/lesson-toc.js" defer></script>
+<script>LearnTheme.wire(document.getElementById('lesson-theme-checkbox'));</script>
+</body>
+</html>

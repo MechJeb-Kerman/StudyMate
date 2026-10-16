@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>会话摘要 · 2026-10-05 · Python 算法与蓝桥杯</title>
+<link rel="stylesheet" href="../../../assets/sayo/sayo.css">
+<link rel="stylesheet" href="../../../assets/learn-theme.css">
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../../../assets/learn-theme.js"></script>
+<script>LearnTheme.apply();</script>
+<style>
+.lesson h1 {
+  margin: var(--syo-space-2, 8px) 0 var(--syo-space-4, 16px);
+  font-size: clamp(1.6rem, 3.2vw, 2.25rem);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  color: var(--syo-fg-default);
+}
+</style>
+</head>
+<body class="lesson-body">
+<nav class="lesson-bar">
+  <a href="../index.html">← 返回科目</a>
+  <span>Python 算法与蓝桥杯</span>
+  <span class="lesson-bar__no">会话摘要</span>
+  <label class="syo-toggle syo-toggle--theme lesson-bar__toggle" title="切换深浅主题" aria-label="切换深浅主题">
+    <input type="checkbox" id="attachment-theme-checkbox" checked>
+    <span class="syo-toggle-track"></span>
+    <span class="syo-toggle-knob">
+      <svg class="syo-toggle-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.5" stroke="#f57c00" stroke-width="1.5"/><path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.34 4.34l1.77 1.77M13.89 13.89l1.77 1.77M4.34 15.66l1.77-1.77M13.89 6.11l1.77-1.77" stroke="#f57c00" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <svg class="syo-toggle-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.5 12.5A6 6 0 019 4.5a6 6 0 007.5 8z" stroke="#5c6bc0" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </span>
+  </label>
+</nav>
+
+<article class="lesson">
+<h1>会话摘要 · 2026-10-05</h1>
+<h2>这次做了什么</h2>
+<p>学生要求"先继续生成后面的课时"（优先产课、暂不讲课），于是本会话转为<strong>批量建课产线</strong>：主教练调度 <code>learning-coach</code>（写课件正文）与 <code>practice-evaluator</code>（出题库、建 lab、写实验说明页）两个角色子 agent，逐节点产出并验收。</p>
+<h2>产出清单</h2>
+<div class="syo-table-wrap"><table class="syo-table"><thead><tr><th>类别</th><th>数量</th><th>明细</th></tr></thead><tbody><tr><td>课件正文</td><td>11 课</td><td>0001–0007、0009–0011、0016</td></tr><tr><td>练习题库</td><td>5 课</td><td>0001–0005（第 2 课题库由主教练兜底自产）</td></tr><tr><td>lab（含实验一）</td><td>4 套</td><td>0003、0004、0005、0007（实验一：两道题 + 五层判分 + 975 KB 大数据用例）</td></tr><tr><td>已上线页面</td><td>6 个</td><td>0001–0005 + 0007</td></tr><tr><td>官方资料落盘</td><td>24 份</td><td>本会话新增「Python 官方教程：更多控制流工具」（前一位取资料角色阵亡后由主教练抢救落盘并校验 sha256）</td></tr></tbody></table></div>
+<h2>三条系统性问题（重要，下次别再踩）</h2>
+<ol>
+<li><strong>子 agent 并发上限是 3</strong>。本会话共派 18 个子 agent，7 个中途阵亡且不留遗言；阵亡<strong>全部集中在并发 4–5</strong> 的时候，锁到 3 之后未再发生。阵亡不丢产物——stage 里"边做边落盘"的设计救回了第 5 课题库（13.5 KB、11 锚点全对上）与第 9 课正文（413 行）。</li>
+<li><strong>课件里指向 lab 的路径必须写成 Markdown 链接</strong>，不能写成行内代码。写成行内代码会让整页 <code>check_lesson</code> FAIL（"实操课缺少实操引用"），而讲解角色唯一的自检工具 <code>render_lesson --check</code> <strong>查不出</strong>这个问题——11 课里有 3 课中招（0004、0005、0016，三个不同 agent 各犯一次）。建议给 <code>lesson-design</code> 规范补一句硬约束。</li>
+<li><strong>页面编号必须连续</strong>。第 6 课页面未产出时，第 7 课页面渲染成功但 <code>check_lesson</code> FAIL（"编号 0007 与现有最大编号 0005 不连续，新课件应为 0006"）。所以页面必须按课程顺序产出；第 7 课页面现已产出，等第 6 课页面落地后该 FAIL 自动消失。</li>
+</ol>
+<h2>待办（下次从这里接）</h2>
+<ul>
+<li>第 6、9、10、11、16 课：正文已好，<strong>题库与 lab 待出</strong>。其中第 6 课的 lab 是第 7 课实验一的直接前置（实验一已按"输入解析"验收第 6 课的 objective）。</li>
+<li>学生尚未作答任何题目：第 2 课的 4 道题与「先估后测」练习仍未提交，<code>complexity-basics</code> 掌握度停在「学习中 / 0.1」。</li>
+<li><code>maxGoalRounds</code> 仍为 300（已用 165）。继续批量产课前需在<strong>人类回合</strong>上调高，否则目标会在产完前耗尽轮次。</li>
+</ul>
+  <footer class="lesson-footer">
+    StudyMate · 会话摘要 · 2026-10-05 · 本地学习工作区
+  </footer>
+</article>
+
+<script src="../../../assets/sayo/sayo.js"></script>
+<script>LearnTheme.wire(document.getElementById('attachment-theme-checkbox'));</script>
+</body>
+</html>

@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>列表与字典的隐藏价格 · Python 算法与蓝桥杯</title>
+
+<!-- 共享层在 .learning/assets/，课件在 .learning/subjects/<slug>/lessons/ 下，所以是 ../../../assets/ -->
+<link rel="stylesheet" href="../../../assets/sayo/sayo.css">
+<link rel="stylesheet" href="../../../assets/learn-theme.css">
+<link rel="stylesheet" href="../assets/style.css">
+
+<!-- 主题要在首帧前应用，避免闪白/闪黑 -->
+<script src="../../../assets/learn-theme.js"></script>
+<script>LearnTheme.apply();</script>
+</head>
+
+<body class="lesson-body">
+
+<nav class="lesson-bar">
+  <a href="../index.html">← 返回课程</a>
+  <span>Python 算法与蓝桥杯</span>
+  <span class="lesson-bar__no">0003</span>
+  <!-- 课件页自带主题开关：学生从文件管理器直接打开课件时也能切暗色 -->
+  <label class="syo-toggle syo-toggle--theme lesson-bar__toggle" title="切换深浅主题" aria-label="切换深浅主题">
+    <input type="checkbox" id="lesson-theme-checkbox" checked>
+    <span class="syo-toggle-track"></span>
+    <span class="syo-toggle-knob">
+      <svg class="syo-toggle-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.5" stroke="#f57c00" stroke-width="1.5"/><path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.34 4.34l1.77 1.77M13.89 13.89l1.77 1.77M4.34 15.66l1.77-1.77M13.89 6.11l1.77-1.77" stroke="#f57c00" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <svg class="syo-toggle-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.5 12.5A6 6 0 019 4.5a6 6 0 007.5 8z" stroke="#5c6bc0" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </span>
+  </label>
+</nav>
+
+<article class="lesson">
+
+  <header class="lesson-header">
+    <span class="lesson-header__eyebrow">0003 · 列表与字典的隐藏价格</span>
+    <h1>列表与字典的隐藏价格</h1>
+    <p class="lesson-goal"><b>本节目标：</b>能说出列表、集合与字典各操作的复杂度，并在写代码时据此选对容器。</p>
+  </header>
+
+  <!-- ── 正文：渲染器按内容文件（lessons/<序号>-<节点id>.md）产出，块词汇见 docs/规范/课件内容格式.md ── -->
+
+  <p>上一课把「这种写法会不会超时」归结成一个大 O 记号：数基本操作、只保留增长最快的一项。这一课把这把尺子移到 Python 里用得最多的几种容器——列表、集合、字典——上。同一道题，写法上一课已经会了（循环加几个操作），但装数据的容器选错，复杂度会从 <span class="math-inline">O(n)</span> 悄悄变成 <span class="math-inline">O(n^2)</span>。</p>
+
+  <p>写题时最顺手的两个动作，一是往列表末尾 <code>append</code>，二是在列表里用 <code>in</code> 查某个元素在不在。样例只有三五个数，这两个动作怎么看都够快；数据放大十倍，一个仍然便宜、另一个变得昂贵。很多「代码没错但超时」的题，问题就出在一行 <code>in</code> 或一次 <code>pop(0)</code> 上。这一课要练熟一个动作：写每一行代码之前，心里清楚它要付多少代价。</p>
+
+  <h2>列表的便宜操作</h2>
+
+  <p>列表把元素一个挨一个放进一段连续的内存里，内部记的是这段连续空间的起始位置与当前长度。这带来两个便宜操作。</p>
+
+  <p><b>按下标取元素是 <span class="math-inline">O(1)</span>。</b> <code>lst[i]</code> 不需要从头数到第 i 个：起始位置加上 i 个元素的偏移，一步就能算出第 i 个元素的位置。改一个元素（<code>lst[i] = v</code>）、读长度（<code>len(lst)</code>）也一样，都不随列表变长而变慢，是 <span class="math-inline">O(1)</span>。</p>
+
+  <p><b>往末尾追加是 <span class="math-inline">O(1)</span> 均摊。</b> 多数时候 <code>append(x)</code> 直接写进末尾的空位，是 <span class="math-inline">O(1)</span>。当列表长度增长到超出已分配的空间，就要另找一块更大的连续空间，把整个列表搬过去，这一次是 <span class="math-inline">O(n)</span>。「均摊」（amortized）一词借自会计里的摊销：把这一次搬家的开销，平摊到很多次 <code>append</code> 上，平均下来每次仍是 <span class="math-inline">O(1)</span>。所以准确的说法是「<span class="math-inline">O(1)</span> 均摊」——多数时候是 <span class="math-inline">O(1)</span>，偶尔一次扩容是 <span class="math-inline">O(n)</span>，把后者摊到前者上仍是 <span class="math-inline">O(1)</span>。</p>
+
+  <p>用列表做一件事是最自然的写法：</p>
+
+  <pre data-lang="python"><code>nums = []
+nums.append(3)
+nums.append(1)
+nums.append(4)
+print(nums[1])    # 1
+print(len(nums))  # 3</code></pre>
+
+  <p><code>nums[1]</code> 一步到位，<code>append</code> 往末尾写，两者都不随列表变长而变慢。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "lst[i] 取元素是 $O(1)$，而 lst.append(x) 说的是「$O(1)$ 均摊」。为什么 append 要多加「均摊」两个字？",
+    "opts": [
+      "多数 append 只写末尾空位，偶尔扩容才搬一次整块",
+      "每次 append 都要挪动已有元素，开销被平均下来",
+      "append 会在列表里留出固定的空位，与长度无关",
+      "append 按哈希值落位，所以和列表有多长无关"
+    ],
+    "ans": 0,
+    "why": "列表元素挨着放，多数 append 直接写进末尾空位，是 O(1)；长度超出已分配空间时要另找一块更大的连续空间、把整块搬过去，这一次是 O(n)。把偶尔一次的搬家摊到很多次 append 上，平均仍是 O(1)，所以说「O(1) 均摊」。而 lst[i] 靠起始位置加偏移一步算出，是货真价实的 O(1)，不用加「均摊」。"
+  }
+]'></div>
+
+  <h2>插入与删除的代价</h2>
+
+  <p>靠近开头插入或删除，代价高得多。原因还是连续存储：<code>lst.pop(0)</code> 把第 0 号元素拿走之后，它后面的 n-1 个元素每一个都要往左挪一格，才能保持「元素挨着放」——这是一次 <span class="math-inline">O(n)</span> 的搬动。<code>lst.insert(0, x)</code> 同理，先把所有元素往右挪一格，再写进开头。越靠前，要挪的元素越多：删最后一个（<code>pop()</code> 不带参数）是 <span class="math-inline">O(1)</span>，删第一个是 <span class="math-inline">O(n)</span>。</p>
+
+  <figure class="lesson-figure lesson-figure--inline" role="img" aria-label="pop(0) 前后对比">
+<svg viewBox="0 0 440 150" role="img" aria-label="pop(0) 前后对比：头元素被删，其余元素各左移一格">
+  <g font-family="sans-serif" font-size="13" fill="currentColor">
+    <text x="8" y="14" text-anchor="start">pop(0) 前</text>
+    <text x="8" y="98" text-anchor="start">pop(0) 后</text>
+  </g>
+  <g stroke="currentColor" fill="none">
+    <rect x="16" y="26" width="52" height="44"/>
+    <rect x="76" y="26" width="52" height="44"/>
+    <rect x="136" y="26" width="52" height="44"/>
+    <rect x="196" y="26" width="52" height="44"/>
+    <rect x="256" y="26" width="52" height="44"/>
+    <rect x="16" y="110" width="52" height="44"/>
+    <rect x="76" y="110" width="52" height="44"/>
+    <rect x="136" y="110" width="52" height="44"/>
+    <rect x="196" y="110" width="52" height="44"/>
+    <rect x="256" y="110" width="52" height="44" stroke-dasharray="4 3"/>
+  </g>
+  <g font-family="sans-serif" font-size="14" text-anchor="middle" fill="currentColor">
+    <text x="42" y="54">a</text>
+    <text x="102" y="54">b</text>
+    <text x="162" y="54">c</text>
+    <text x="222" y="54">d</text>
+    <text x="282" y="54">e</text>
+    <text x="42" y="138">b</text>
+    <text x="102" y="138">c</text>
+    <text x="162" y="138">d</text>
+    <text x="222" y="138">e</text>
+  </g>
+</svg>
+    <figcaption>图 1 · 删掉头元素后，b、c、d、e 各左移一格，末尾空出一格</figcaption>
+  </figure>
+
+  <p>这里有一个容易踩的坑：把 <code>pop(0)</code> 当队列用。队列是先进先出，一头进、另一头出。用列表实现队列，出队写成 <code>lst.pop(0)</code>，每出一个就要把剩下的元素全挪一遍，出 n 个总共是 <span class="math-inline">O(n^2)</span>。官方文档对此给了一句明确建议：在列表开头插入或弹出很慢，实现队列应该用 <code>collections.deque</code>。</p>
+
+  <p><code>deque</code> 是双端队列（double-ended queue，读作 deck），专门为两端都快设计：<code>append</code>、<code>appendleft</code>、<code>pop</code>、<code>popleft</code> 都是 <span class="math-inline">O(1)</span>。用 <code>deque</code> 实现队列：</p>
+
+  <pre data-lang="python"><code>import collections
+
+q = collections.deque()
+q.append('a')        # 队尾进
+q.append('b')
+first = q.popleft()  # 队头出，O(1)
+print(first)         # a</code></pre>
+
+  <p>需要按位置随机访问时用列表——<code>deque</code> 按下标访问两端是 <span class="math-inline">O(1)</span>、访问中间是 <span class="math-inline">O(n)</span>，它只赢在两端。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "为什么在列表开头插入或删除（lst.insert(0, x)、lst.pop(0)）是 $O(n)$？",
+    "opts": [
+      "开头腾位或补位时，后面的元素都要整体挪动",
+      "开头的位置要重新算哈希，找到空槽才放得进",
+      "每次开头插入都要另找一块更大的连续内存",
+      "插入删除要重新排序，保持元素由小到大排列"
+    ],
+    "ans": 0,
+    "why": "列表元素在内存里挨着放。删掉第 0 个之后，后面 n-1 个元素每个都要往左挪一格，才能重新挨紧；开头插入同理，先把所有元素往右挪一格再写进去。越靠前要挪的元素越多，所以删末尾（pop() 不带参数）是 O(1)、删开头是 O(n)。「另找一块更大的连续内存」是 append 扩容时的事，与开头插入的代价不是一回事。"
+  }
+]'></div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "一位同学用列表当队列，在 n = 200000 的数据上跑超时了：\n\n```python\nq = []\nfor x in data:\n    q.append(x)\n\ncnt = 0\nwhile cnt &lt; 200000:\n    head = q.pop(0)\n    cnt += 1\n```\n\n① 超时的根因是哪一行？为什么它慢？\n② 换成什么容器、用哪几个方法？\n③ 下次写代码时怎么避免再踩这个坑？",
+    "answer": "① 根因是 q.pop(0) 这一行。列表元素挨着放，弹掉头元素后剩下的 n-1 个元素都要往左挪一格，一次 pop(0) 是 $O(n)$；出 n 个就是 $O(n^2)$。本机口径：20 万次 pop(0) 约 2.74 秒，同样次数的 popleft 约 0.013 秒。\n\n② 换成 collections.deque：q = collections.deque()，进队写 q.append(x)，出队写 q.popleft()，两端都是 $O(1)$。\n\n③ 认住「一头进、另一头出」就是队列，看到 pop(0) 或 insert(0, x) 就换成 deque；动手写之前先按数据规模估一遍复杂度，别等超时才发现。",
+    "criteria": "① 必须点到 pop(0)（而不是 append），并说出原因「后面的元素要挪」与量级：一次 $O(n)$、出 n 个 $O(n^2)$。只说「列表慢」不算过。\n② 必须给出 deque + popleft（进队仍用 append），并说明两端 $O(1)$；只说「用 deque」不说方法不算过。\n③ 给出一个可执行的预防动作即可：见 pop(0) 就换 deque／写之前先按规模估复杂度／用实测量一次。"
+  }
+]'></div>
+
+  <h2>哈希查找直接到位</h2>
+
+  <p>列表里查一个元素在不在，<code>x in lst</code> 从头开始逐个比较，最坏要把整个列表扫完，<span class="math-inline">O(n)</span>。集合与字典的查法不同。</p>
+
+  <p><code>set</code> 与 <code>dict</code> 是哈希表。拿到一个键，先算一个哈希值——hash 这个词的本义是把东西切碎、拌匀，哈希函数做的正是把任意一个键「拌」成一个整数——再用这个整数直接算出该去哪个槽位找。所以 <code>x in s</code>、<code>x in d</code>、<code>d[key]</code> 平均是 <span class="math-inline">O(1)</span>，和容器里装了多少个元素无关。</p>
+
+  <p>「平均」这两个字要留意。两个不同的键可能算出同一个槽位，这叫冲突；冲突的键挂到同一个槽位后面，查的时候要顺着逐个比。正常数据下冲突很少，平均 <span class="math-inline">O(1)</span>；若构造一批都撞到同一个槽的键，查找会退化成 <span class="math-inline">O(n)</span>——这是最坏情况，实际题目里极罕见，但它存在。因此说「哈希查找平均 <span class="math-inline">O(1)</span>」，不说「永远 <span class="math-inline">O(1)</span>」。</p>
+
+  <figure class="lesson-figure">
+    <img src="../assets/img/pool/数据结构-哈希表-拉链法冲突-commons-01.png" alt="哈希表用链表把冲突元素挂在同一槽后">
+    <figcaption>图 2 · 两个不同的键哈希到同一槽位时，冲突元素顺着链表挂在一起（来源：https://commons.wikimedia.org/wiki/File:Hashtable_linkedlist_collision.png，许可：CC BY-SA 2.5）</figcaption>
+  </figure>
+
+  <p>由此得到一个判断：需要反复查「某个元素在不在」，用集合或字典。最常见的场景是查重——判断一个元素是不是第一次出现。写成列表，每来一个元素都在已见过的列表里 <code>in</code> 一遍，<span class="math-inline">O(n^2)</span>；换成集合，每查一次 <span class="math-inline">O(1)</span>，总共 <span class="math-inline">O(n)</span>。</p>
+
+  <pre data-lang="python"><code># 列表查重：每来一个元素都要扫一遍 seen
+seen = []
+for x in data:
+    if x in seen:
+        print('重复', x)
+    else:
+        seen.append(x)
+
+# 集合查重：每次 O(1)
+seen = set()
+for x in data:
+    if x in seen:
+        print('重复', x)
+    else:
+        seen.add(x)</code></pre>
+
+  <p>集合字面量用花括号 <code>{1, 2, 3}</code>；空集合只能用 <code>set()</code>，因为 <code>{}</code> 建的是空字典。字典字面量写 <code>{'a': 1, 'b': 2}</code>，查键是否存在用 <code>key in d</code>，取值用 <code>d[key]</code>。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "关于集合与字典的查找（x in s、x in d、d[key]），下面哪个说法对？",
+    "opts": [
+      "平均 $O(1)$，最坏会退化成 $O(n)$",
+      "平均 $O(1)$，而且最坏也不会超过 $O(1)$",
+      "平均 $O(n)$，只有元素很少时才接近 $O(1)$",
+      "平均 $O(n)$，最坏反而能降到 $O(1)$"
+    ],
+    "ans": 0,
+    "why": "集合与字典是哈希表：拿到键先算哈希值，直接算出该去哪个槽位找，所以平均是 $O(1)$。但两个不同的键可能算到同一个槽位（冲突），冲突的键要顺着逐个比；正常数据下冲突很少，若构造一批都撞同一个槽的键，查找会退化成 $O(n)$——最坏情况极罕见，但它存在。所以只说「平均 $O(1)$」，不说「永远 $O(1)$」。"
+  }
+]'></div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "下面是用列表查重的写法：\n\n```python\nseen = []\nfor x in data:\n    if x in seen:\n        print(&#39;重复&#39;, x)\n    else:\n        seen.append(x)\n```\n\n① 把 seen 改成集合，要动哪几行？\n② 改完之后总复杂度从什么变成什么？为什么？\n③ 数据只有三五个元素时，两种写法有区别吗？",
+    "answer": "① 要动两行：seen = [] 改成 seen = set()；seen.append(x) 改成 seen.add(x)。x in seen 那一行不用改，集合同样支持 in。\n\n② 列表版每来一个元素都要把 seen 从头扫一遍，最坏 n 次比较，总共 $O(n^2)$；集合版每次 in 平均 $O(1)$，总共 $O(n)$。原因就是列表的 in 是逐个比、集合的 in 走哈希直接落位。\n\n③ 几乎没有区别：n 小的时候 $O(n^2)$ 也就是几十次比较，选哪个都能过。区别只在数据大时才暴露——所以选容器要按数据规模定。",
+    "criteria": "① 必须写出 set() 与 add(x) 这两处改动。in 那一行不用改可以不说，但说成「in 也要改成别的」要算错。\n② 必须写出 $O(n^2)$ → $O(n)$，并给出原因「列表的 in 每次都要扫一遍 seen／集合的 in 平均 $O(1)$」。只写结论不给原因不算过。\n③ 答「小数据没区别、都能过」即可；答「小数据下集合也更快一截」不算错但不加分。"
+  }
+]'></div>
+
+  <h2>切片会复制一份</h2>
+
+  <p><code>lst[a:b]</code> 取一段切片，返回一份新列表，把 a 到 b-1 这 k 个元素挨个复制过去，代价 <span class="math-inline">O(k)</span>（k 是切出来的长度）。<code>lst[:]</code> 与 <code>lst.copy()</code> 复制整个列表，<span class="math-inline">O(n)</span>。</p>
+
+  <p>要记住的是「复制」：切片之后是一个新列表，改它不影响原列表。若以为 <code>lst[:]</code> 只是「看一眼」，就忽略了它复制一份的代价。当循环里反复对一个长列表做切片，复制本身的 <span class="math-inline">O(n)</span> 叠加到外层循环上，会悄悄变成 <span class="math-inline">O(n^2)</span>。</p>
+
+  <pre data-lang="python"><code>a = [1, 2, 3, 4]
+b = a[1:3]   # 复制出 [2, 3]，O(2)
+b[0] = 99    # 改的是 b，a 不变
+print(a)     # [1, 2, 3, 4]
+print(b)     # [99, 3]</code></pre>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "下面这段打印什么？\n\n```python\na = [1, 2, 3, 4]\nb = a[1:3]\nb[0] = 99\nprint(a)\nprint(b)\n```",
+    "opts": [
+      "[1, 2, 3, 4] 和 [99, 3]",
+      "[1, 99, 3, 4] 和 [99, 3]",
+      "[1, 2, 3, 4] 和 [1, 99, 3]",
+      "[1, 99, 3, 4] 和 [1, 99, 3]"
+    ],
+    "ans": 0,
+    "why": "a[1:3] 取的是下标 1 到 2（不含 3）这两个元素，并且复制出一份新列表 [2, 3]，代价 $O(k)$（这里 k = 2）。b 与 a 是两份不同的列表，所以 b[0] = 99 改的是副本，a 一直是 [1, 2, 3, 4]，b 变成 [99, 3]。要记住的是「切片会复制」：它不是「看一眼」，在循环里反复对长列表切片时，这份复制会悄悄把外层循环推到 $O(n^2)$。"
+  }
+]'></div>
+
+  <h2>用实测对照估算</h2>
+
+  <p>复杂度的「平均／最坏」说得再清楚，也不如亲手量一次踏实。计时用标准库的 <code>time</code> 模块：<code>time.perf_counter()</code> 返回一个单调递增的浮点秒数，前后各取一次、相减，就是中间这段代码的耗时。它只认「时钟走了多久」，不依赖任何固定常数。</p>
+
+  <p>同一份数据，三种查法各跑一遍：</p>
+
+  <pre data-lang="python"><code>import time
+
+n = 1000000
+lookup = 200
+
+lst = []
+for i in range(n):
+    lst.append(i)
+s = set()
+for i in range(n):
+    s.add(i)
+d = {}
+for i in range(n):
+    d[i] = i
+
+targets = []
+for i in range(n - lookup, n):
+    targets.append(i)
+
+t0 = time.perf_counter()
+for x in targets:
+    y = x in lst
+t1 = time.perf_counter()
+for x in targets:
+    y = x in s
+t2 = time.perf_counter()
+for x in targets:
+    y = x in d
+t3 = time.perf_counter()
+
+print('列表 in', f'{t1 - t0:.6f}', '秒')
+print('集合 in', f'{t2 - t1:.6f}', '秒')
+print('字典查', f'{t3 - t2:.6f}', '秒')</code></pre>
+
+  <p>目标都取在接近末尾的位置，列表 <code>in</code> 每次都要从头扫到接近末尾，正好把 <span class="math-inline">O(n)</span> 摊开看。</p>
+
+  <p>本机（Python 3.14 的 free-threading 构建）实测：</p>
+
+  <table>
+    <thead>
+      <tr><th>操作</th><th>本机实测</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>列表 <code>in</code>（<span class="math-inline">n = 10^6</span>，查 200 次）</td><td>约 1.50 秒</td></tr>
+      <tr><td>集合 <code>in</code>（同上）</td><td>约 0.000018 秒</td></tr>
+      <tr><td>字典查（同上）</td><td>约 0.000016 秒</td></tr>
+      <tr><td><code>pop(0)</code>（20 万次）</td><td>约 2.74 秒</td></tr>
+      <tr><td><code>deque.popleft()</code>（20 万次）</td><td>约 0.013 秒</td></tr>
+    </tbody>
+  </table>
+
+  <p>列表 <code>in</code> 比集合慢约 8 万倍（差约 5 个数量级），<code>pop(0)</code> 比 <code>popleft()</code> 慢约 200 倍（差约 2 个数量级）。放大十倍规模，列表那两行的耗时还会再涨（<code>in</code> 按线性涨、<code>pop(0)</code> 按平方涨），集合、字典与 <code>deque</code> 几乎不动。</p>
+
+  <div class="lesson-warn">
+    <b>别背这些秒数</b>
+    <p>表里的秒数是本机实测、非通用值，换一台机器、换一个 Python 版本，绝对值会变。要记的是趋势——列表 <code>in</code> 随 n 线性变慢，集合与字典的查法几乎不随 n 变——以及「动手量」这个动作。</p>
+  </div>
+
+  <div class="lesson-practice">
+    <div class="lesson-practice__head">
+      <span class="lesson-practice__level">练习</span>
+      <span class="lesson-practice__title">三种查法与两种队列，各跑一次</span>
+    </div>
+
+      <p>这一课的动手部分落在 lab 里（任务与断言见 <a href="../lab/0003-python-list-dict-cost/">lab/0003-python-list-dict-cost/</a>，做完对照 <a href="../lab/solutions/">lab/solutions/</a>）。要做的是同一件事：同一份数据，用「列表 <code>in</code>」「集合 <code>in</code>」「字典查」各跑一遍，把耗时打印成一张对照表；再用 <code>pop(0)</code> 与 <code>deque.popleft()</code> 对照一次。计时用 <code>time.perf_counter()</code> 前后相减。改一改数据规模 n，看「放大十倍」之后哪几行数字跟着翻倍、哪几行几乎不动。</p>
+  </div>
+
+  <h2>一张复杂度速查表</h2>
+
+  <p>把这一课的口径收进一张表，以后写代码随手查。</p>
+
+  <table>
+    <thead>
+      <tr><th>操作</th><th>复杂度</th><th>边界</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>lst[i]</code> 取元素</td><td><span class="math-inline">O(1)</span></td><td>下标直达，与 n 无关</td></tr>
+      <tr><td><code>lst[i] = v</code> 改元素</td><td><span class="math-inline">O(1)</span></td><td>同上</td></tr>
+      <tr><td><code>lst.append(x)</code></td><td><span class="math-inline">O(1)</span> 均摊</td><td>偶尔扩容要搬整块</td></tr>
+      <tr><td><code>lst.pop()</code> 删末尾</td><td><span class="math-inline">O(1)</span></td><td>不用搬动别的元素</td></tr>
+      <tr><td><code>lst.pop(i)</code> / <code>lst.insert(i, x)</code></td><td><span class="math-inline">O(n)</span></td><td>后面的元素要挪，越靠前越贵</td></tr>
+      <tr><td><code>len(lst)</code></td><td><span class="math-inline">O(1)</span></td><td>长度存着，不现数</td></tr>
+      <tr><td><code>x in lst</code></td><td><span class="math-inline">O(n)</span></td><td>从头逐个比，最坏扫完</td></tr>
+      <tr><td><code>lst[a:b]</code> 切片</td><td><span class="math-inline">O(k)</span></td><td>复制出 k 个元素的新列表</td></tr>
+      <tr><td><code>x in s</code> / <code>x in d</code></td><td><span class="math-inline">O(1)</span> 平均，<span class="math-inline">O(n)</span> 最坏</td><td>哈希查找，冲突堆一起才退化</td></tr>
+      <tr><td><code>d[key]</code></td><td><span class="math-inline">O(1)</span> 平均，<span class="math-inline">O(n)</span> 最坏</td><td>同上</td></tr>
+      <tr><td><code>deque</code> 的 <code>append</code>/<code>pop</code>/<code>appendleft</code>/<code>popleft</code></td><td><span class="math-inline">O(1)</span></td><td>两端都快</td></tr>
+      <tr><td><code>deque[i]</code></td><td>两端 <span class="math-inline">O(1)</span>，中间 <span class="math-inline">O(n)</span></td><td>频繁随机访问改用列表</td></tr>
+    </tbody>
+  </table>
+
+  <p>选容器时按这三条走：只往末尾加、按位置取，用列表；反复查「在不在」，用集合，查完还要对应的值，用字典；一头进、另一头出，用 <code>deque</code>，别写 <code>pop(0)</code>。配套项目「AI 刷题助手」在推荐候选算法、给出可执行写法时，同样要把「这题的数据规模下该用列表还是集合／字典」作为一条判断——数据小的题用什么都不慢，数据大的题这一步就决定过不过。</p>
+
+  <ul class="lesson-resources">
+    <li><a href="https://docs.python.org/zh-cn/3/tutorial/datastructures.html">Python 官方文档 · 数据结构</a><span class="lesson-resources__meta">列表方法、用列表实现栈与队列、集合与字典，本课各操作口径出自这里</span></li>
+    <li><a href="https://docs.python.org/zh-cn/3/library/collections.html#collections.deque">Python 官方文档 · collections.deque</a><span class="lesson-resources__meta">deque 两端 <span class="math-inline">O(1)</span>、<code>pop(0)</code> 为 <span class="math-inline">O(n)</span> 的官方说法</span></li>
+    <li><a href="https://docs.python.org/zh-cn/3/library/timeit.html">Python 官方文档 · timeit</a><span class="lesson-resources__meta">性能测量的官方用法与「取多次的最小值」这一条</span></li>
+    <li><a href="https://pythoncomplexity.com/">pythoncomplexity.com</a><span class="lesson-resources__meta">各容器操作时间/空间复杂度的现成对照；官方 wiki 已归档冻结，当前口径以本页与官方文档为准</span></li>
+  </ul>
+
+  <!-- ── 提问提示：固定写法，别删 ── -->
+
+  <div class="lesson-ask">
+    <b>没看懂？随时问</b>
+    把看不懂的段落（或报错）原样复制回会话，说一句哪里不懂就行，我只解释这一段，不打断你的进度。
+  </div>
+
+  <!-- ── 上/下节课指针由渲染器按 curriculum.yaml 的 nodes 顺序算（第一课无 --prev、最后一课无 --next） ── -->
+
+  <nav class="lesson-nav" aria-label="上一课 / 下一课">
+    <a class="lesson-nav__link lesson-nav__link--prev" href="0002-complexity-basics.html">
+      <span class="lesson-nav__dir">上节课</span>
+      <span class="lesson-nav__title">同一道题，两种写法</span>
+    </a>
+    <a class="lesson-nav__link lesson-nav__link--next" href="0004-python-function-basics.html">
+      <span class="lesson-nav__dir">下节课</span>
+      <span class="lesson-nav__title">把一段代码变成函数</span>
+    </a>
+  </nav>
+
+  <footer class="lesson-footer">
+    StudyMate · 0003 列表与字典的隐藏价格 · 本地学习工作区
+  </footer>
+
+</article>
+
+<script src="../../../assets/sayo/sayo.js"></script>
+<link rel="stylesheet" href="../../../assets/katex/katex.min.css">
+<script src="../../../assets/katex/katex.min.js" defer></script>
+<script src="../../../assets/lesson-math.js" defer></script>
+<script src="../assets/quiz.js" defer></script>
+<script src="../assets/lesson-toc.js" defer></script>
+<script>LearnTheme.wire(document.getElementById('lesson-theme-checkbox'));</script>
+</body>
+</html>

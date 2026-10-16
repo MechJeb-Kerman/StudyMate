@@ -1,0 +1,23 @@
+updated_at: "2026-10-05T18:20:00+08:00"
+nodes:
+  intro-what-is-algorithm:
+    status: 初步理解
+    mastery: 0.6
+    notes: 「耗时由基本操作次数决定」这一核心已自主说出（满分），但「问题到程序四步」答成了「估值循环」、没记全（尤其漏输入输出边界）；且 own first.py 的 input("请输入…") 提示文字会写进 stdout、逐字比对判零分，尚未内化成习惯。下了 off-by-one（m//2→(m+1)//2）与 float/int 开方两个坑已修。
+  complexity-basics:
+    status: 学习中
+    mastery: 0.1
+    notes: 课件（正文+4 题+页面）已产出并过检查，已开始互动教学（引入 O(n)/O(1)/O(n²)，抛出「两层循环读复杂度」一问），待学生作答后据证据评估。
+misconceptions:
+  - topic: 奇数计数与整数开方（第1课·从一道蓝桥杯题说起）
+    question: 1 到 ⌊√N⌋ 范围内有多少个奇数？
+    misunderstanding: 用 `m // 2` 数奇数（上界为奇数时漏一个），且用 `n ** 0.5` / `math.sqrt` 浮点开方（大整数丢精度）。
+    answer_summary: 奇数个数是 `(m + 1) // 2`；整数开方用 `math.isqrt`（整数问题别用浮点 sqrt）。
+    importance: medium
+  - topic: 标准输入输出的交互提示（第1课·从一道蓝桥杯题说起）
+    question: input() 里的提示文字在评测机上会不会影响判分？
+    misunderstanding: 以为 input("请输入…") 的提示只显示在人机交互时、不影响程序输出。
+    answer_summary: input() 的 prompt 会原样写进 stdout，逐字比对时多答任何文字都判零分。竞赛里永远用不带提示参数的 input()。
+    importance: high
+project:
+  current: AI 刷题助手（题目文本 → 大模型 API 分析题意 → 推荐候选算法 → 对拍器与样例自动验证候选解）

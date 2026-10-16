@@ -1,0 +1,222 @@
+{
+  "total": 0,
+  "max_total": 360,
+  "problems": {
+    "p1": {
+      "title": "舞台高度",
+      "points": 30,
+      "score": 0,
+      "cases": [
+        {
+          "case": "case01.in",
+          "ok": false,
+          "seconds": 0.026,
+          "note": "第 1 行：交回 ''，期望 '4'"
+        },
+        {
+          "case": "case02.in",
+          "ok": false,
+          "seconds": 0.023,
+          "note": "第 1 行：交回 ''，期望 '1'"
+        },
+        {
+          "case": "case03.in",
+          "ok": false,
+          "seconds": 0.02,
+          "note": "第 1 行：交回 ''，期望 '1000000000'"
+        },
+        {
+          "case": "case04.in",
+          "ok": false,
+          "seconds": 0.019,
+          "note": "第 1 行：交回 ''，期望 '1000000000'"
+        },
+        {
+          "case": "case05.in",
+          "ok": false,
+          "seconds": 0.018,
+          "note": "第 1 行：交回 ''，期望 '4653'"
+        },
+        {
+          "case": "case06.in",
+          "ok": false,
+          "seconds": 0.027,
+          "note": "第 1 行：交回 ''，期望 '4'"
+        }
+      ]
+    },
+    "p2": {
+      "title": "四边形合并",
+      "points": 60,
+      "score": 0,
+      "cases": [
+        {
+          "case": "case01.in",
+          "ok": false,
+          "seconds": 0.02,
+          "note": "第 1 行：交回 ''，期望 '21'"
+        },
+        {
+          "case": "case02.in",
+          "ok": false,
+          "seconds": 0.018,
+          "note": "第 1 行：交回 ''，期望 '14'"
+        },
+        {
+          "case": "case03.in",
+          "ok": false,
+          "seconds": 0.018,
+          "note": "第 1 行：交回 ''，期望 '0'"
+        },
+        {
+          "case": "case04.in",
+          "ok": false,
+          "seconds": 0.018,
+          "note": "第 1 行：交回 ''，期望 '-1'"
+        },
+        {
+          "case": "case05.in",
+          "ok": false,
+          "seconds": 0.018,
+          "note": "第 1 行：交回 ''，期望 '66330997776'"
+        },
+        {
+          "case": "case06.in",
+          "ok": false,
+          "seconds": 0.018,
+          "note": "第 1 行：交回 ''，期望 '783317116223'"
+        }
+      ]
+    },
+    "p3": {
+      "title": "数颜色",
+      "points": 90,
+      "score": 0,
+      "cases": [
+        {
+          "case": "case01.in",
+          "ok": false,
+          "seconds": 0.02,
+          "note": "第 1 行：交回 ''，期望 '3'"
+        },
+        {
+          "case": "case02.in",
+          "ok": false,
+          "seconds": 0.019,
+          "note": "第 1 行：交回 ''，期望 '1'"
+        },
+        {
+          "case": "case03.in",
+          "ok": false,
+          "seconds": 0.018,
+          "note": "第 1 行：交回 ''，期望 '3'"
+        },
+        {
+          "case": "case04.in",
+          "ok": false,
+          "seconds": 0.019,
+          "note": "第 1 行：交回 ''，期望 '1086'"
+        },
+        {
+          "case": "case05.in",
+          "ok": false,
+          "seconds": 0.042,
+          "note": "第 1 行：交回 ''，期望 '300'"
+        },
+        {
+          "case": "case06.in",
+          "ok": false,
+          "seconds": 0.042,
+          "note": "第 1 行：交回 ''，期望 '199976'"
+        }
+      ]
+    },
+    "p4": {
+      "title": "最长公共子串",
+      "points": 100,
+      "score": 0,
+      "cases": [
+        {
+          "case": "case01.in",
+          "ok": false,
+          "seconds": 0.02,
+          "note": "第 1 行：交回 ''，期望 '4'"
+        },
+        {
+          "case": "case02.in",
+          "ok": false,
+          "seconds": 0.018,
+          "note": "第 1 行：交回 ''，期望 '0'"
+        },
+        {
+          "case": "case03.in",
+          "ok": false,
+          "seconds": 0.017,
+          "note": "第 1 行：交回 ''，期望 '3'"
+        },
+        {
+          "case": "case04.in",
+          "ok": false,
+          "seconds": 0.017,
+          "note": "第 1 行：交回 ''，期望 '601'"
+        },
+        {
+          "case": "case05.in",
+          "ok": false,
+          "seconds": 0.017,
+          "note": "第 1 行：交回 ''，期望 '601'"
+        },
+        {
+          "case": "case06.in",
+          "ok": false,
+          "seconds": 0.018,
+          "note": "第 1 行：交回 ''，期望 '4000'"
+        }
+      ]
+    },
+    "p5": {
+      "title": "雨天迷宫",
+      "points": 80,
+      "score": 0,
+      "cases": [
+        {
+          "case": "case01.in",
+          "ok": false,
+          "seconds": 0.018,
+          "note": "第 1 行：交回 ''，期望 '0'"
+        },
+        {
+          "case": "case02.in",
+          "ok": false,
+          "seconds": 0.017,
+          "note": "第 1 行：交回 ''，期望 '4'"
+        },
+        {
+          "case": "case03.in",
+          "ok": false,
+          "seconds": 0.018,
+          "note": "第 1 行：交回 ''，期望 '-1'"
+        },
+        {
+          "case": "case04.in",
+          "ok": false,
+          "seconds": 0.018,
+          "note": "第 1 行：交回 ''，期望 '2'"
+        },
+        {
+          "case": "case05.in",
+          "ok": false,
+          "seconds": 0.018,
+          "note": "第 1 行：交回 ''，期望 '118'"
+        },
+        {
+          "case": "case06.in",
+          "ok": false,
+          "seconds": 0.018,
+          "note": "第 1 行：交回 ''，期望 '300'"
+        }
+      ]
+    }
+  },
+  "note": "这一课真正要判的是 timeline.md 与 explain.md：跑 py check_timeline.py"
+}

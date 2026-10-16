@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>序列与区间的状态设计 · Python 算法与蓝桥杯</title>
+
+<!-- 共享层在 .learning/assets/，课件在 .learning/subjects/<slug>/lessons/ 下，所以是 ../../../assets/ -->
+<link rel="stylesheet" href="../../../assets/sayo/sayo.css">
+<link rel="stylesheet" href="../../../assets/learn-theme.css">
+<link rel="stylesheet" href="../assets/style.css">
+
+<!-- 主题要在首帧前应用，避免闪白/闪黑 -->
+<script src="../../../assets/learn-theme.js"></script>
+<script>LearnTheme.apply();</script>
+</head>
+
+<body class="lesson-body">
+
+<nav class="lesson-bar">
+  <a href="../index.html">← 返回课程</a>
+  <span>Python 算法与蓝桥杯</span>
+  <span class="lesson-bar__no">0026</span>
+  <!-- 课件页自带主题开关：学生从文件管理器直接打开课件时也能切暗色 -->
+  <label class="syo-toggle syo-toggle--theme lesson-bar__toggle" title="切换深浅主题" aria-label="切换深浅主题">
+    <input type="checkbox" id="lesson-theme-checkbox" checked>
+    <span class="syo-toggle-track"></span>
+    <span class="syo-toggle-knob">
+      <svg class="syo-toggle-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.5" stroke="#f57c00" stroke-width="1.5"/><path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.34 4.34l1.77 1.77M13.89 13.89l1.77 1.77M4.34 15.66l1.77-1.77M13.89 6.11l1.77-1.77" stroke="#f57c00" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <svg class="syo-toggle-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.5 12.5A6 6 0 019 4.5a6 6 0 007.5 8z" stroke="#5c6bc0" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </span>
+  </label>
+</nav>
+
+<article class="lesson">
+
+  <header class="lesson-header">
+    <span class="lesson-header__eyebrow">0026 · 序列与区间的状态设计</span>
+    <h1>序列与区间的状态设计</h1>
+    <p class="lesson-goal"><b>本节目标：</b>能为序列题与区间题各设计出状态定义，写清转移方程与枚举顺序，并用暴力版对拍。</p>
+  </header>
+
+  <!-- ── 正文：渲染器按内容文件（lessons/<序号>-<节点id>.md）产出，块词汇见 docs/规范/课件内容格式.md ── -->
+
+  <h2>背包的状态是给的</h2>
+
+  <p>上一课的背包，状态几乎是递到手上的：<b>「容量」这个维度题目直接给了你</b>，你只要把物品一件件盖上去。</p>
+
+  <p>序列题不一样。题目只给你一个数组或一个字符串，<b>状态得自己设计</b>：</p>
+
+  <ul>
+    <li>「前 <span class="math-inline">i</span> 个元素的最大 XXX」？</li>
+    <li>「<b>以第 <span class="math-inline">i</span> 个元素结尾</b>的最大 XXX」？</li>
+    <li>「两个序列的<b>前 <span class="math-inline">i</span> 个配前 <span class="math-inline">j</span> 个</b>」？</li>
+  </ul>
+
+  <p>这三句话看着差不多，选错一句就写不出转移方程——<b>卡住的地方几乎都在这里，不在代码</b>。</p>
+
+  <p>这一课练四条套路，每条都先写状态定义再动手。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "学生第一次做序列动态规划，卡住的地方通常在哪儿？",
+    "opts": [
+      "状态怎么定义，代码本身反而不难写",
+      "代码怎么写，状态一眼就能看出来",
+      "边界条件怎么取，状态和代码都不难",
+      "复杂度怎么估，状态和代码都不难"
+    ],
+    "ans": 0,
+    "why": "背包的状态是题目递到手上的——「容量」这个维度直接给你。序列题只给一个数组或一个字符串，状态得自己设计：「前 i 个元素」还是「以第 i 个结尾」还是「两个前缀」。状态选错，转移方程根本写不出来；状态选对了，代码只是几层循环。"
+  }
+]'></div>
+
+  <h2>以 i 结尾：最长递增子序列</h2>
+
+  <p><b>最长递增子序列</b>（LIS）：从数组里挑出一些元素，保持原来的先后顺序，让它严格递增，问最多能挑几个。挑出来的<b>不必连续</b>。</p>
+
+  <p>先试一个想当然的状态：「前 <span class="math-inline">i</span> 个元素里的最长递增子序列长度」。它坏在<b>接不上</b>——算前 <span class="math-inline">i</span> 个的时候，你不知道那条子序列的结尾是几，就没办法判断 <span class="math-inline">a_i</span> 能不能接在后面。</p>
+
+  <p>所以状态要<b>带上结尾</b>：</p>
+
+  <div class="math-block">dp[i] = \text{以 } a_i \text{ 结尾的最长递增子序列长度}</div>
+
+  <p>这一下就能转移了：往前找一个比 <span class="math-inline">a_i</span> 小的 <span class="math-inline">a_j</span>，接在它后面。</p>
+
+  <div class="math-block">dp[i] = 1 + \max\{\,dp[j] \mid j &lt; i,\ a_j &lt; a_i\,\}</div>
+
+  <p>没有这样的 <span class="math-inline">j</span> 时就是 1（自己单独成一条）。</p>
+
+  <pre data-lang="python"><code>def lis_dp(a):
+    """dp[i] = 以 a[i] 结尾的最长递增子序列长度。"""
+    n = len(a)
+    if n == 0:
+        return 0, []
+    dp = [1] * n
+    for i in range(1, n):
+        for j in range(i):
+            if a[j] &lt; a[i] and dp[j] + 1 &gt; dp[i]:
+                dp[i] = dp[j] + 1
+    return max(dp), dp
+
+
+A = [10, 9, 2, 5, 3, 7, 101, 18]
+L, dp = lis_dp(A)
+print(f'   序列 {A}')
+print(f'   dp（以每个位置结尾的长度）: {dp}')
+print(f'   最长递增子序列的长度: {L}')</code></pre>
+
+  <pre data-lang="text"><code>   序列 [10, 9, 2, 5, 3, 7, 101, 18]
+   dp（以每个位置结尾的长度）: [1, 1, 1, 2, 2, 3, 4, 4]
+   最长递增子序列的长度: 4</code></pre>
+
+  <p>答案不是 <code>dp</code> 的最后一个值，是 <b><code>max(dp)</code></b>——最长的那条不一定结尾在最后一个位置。这里 <code>dp[7] = 4</code>、<code>dp[6] = 4</code>，恰好并列。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "最长递增子序列的状态为什么不定义成「前 i 个元素里的最长长度」？",
+    "opts": [
+      "接不上：不知道那条子序列的结尾是几",
+      "太慢了：那样写复杂度会多一个数量级",
+      "存不下：前 i 个元素的状态太多了",
+      "重复了：同一个长度会被算很多次"
+    ],
+    "ans": 0,
+    "why": "要判断 a[i] 能不能接在后面，必须知道已有那条子序列的结尾。而「前 i 个里的最长长度」把这个信息丢掉了——长度是 3 的那条可能结尾是 101，也可能是 7，接不接得上完全不一样。所以状态要带上结尾：dp[i] 是「以 a[i] 结尾的最长长度」。"
+  }
+]'></div>
+
+  <h2>二分版与它的 tails</h2>
+
+  <p>LIS 还有一版 <span class="math-inline">O(n \log n)</span> 的写法，用 <code>bisect</code>：</p>
+
+  <pre data-lang="python"><code>import bisect
+
+
+def lis_bisect(a):
+    """tails[k] = 所有长度为 k+1 的递增子序列里，结尾最小的那个值。"""
+    tails = []
+    for x in a:
+        k = bisect.bisect_left(tails, x)
+        if k == len(tails):
+            tails.append(x)
+        else:
+            tails[k] = x
+    return len(tails), tails
+
+
+L2, tails = lis_bisect(A)
+print(f'   序列 {A}')
+print(f'   长度: {L2}')
+print(f'   tails 数组: {tails}')
+print(f'   两版长度一致? {L == L2}')</code></pre>
+
+  <pre data-lang="text"><code>   序列 [10, 9, 2, 5, 3, 7, 101, 18]
+   长度: 4
+   tails 数组: [2, 3, 7, 18]
+   两版长度一致? True</code></pre>
+
+  <p><code>tails[k]</code> 的含义是「<b>所有长度为 <span class="math-inline">k+1</span> 的递增子序列里，结尾最小的那个值</b>」。维护它的理由是：结尾越小，后面越容易接得上，所以每个长度只要留最小的那个结尾就够了。</p>
+
+  <p><b>但 <code>tails</code> 不保证是一条子序列。</b> 这一课最值得记住的一件事故在这里：</p>
+
+  <pre data-lang="python"><code>def is_subsequence(sub, a):
+    """sub 是不是 a 的子序列（保持先后顺序，不必连续）。"""
+    it = iter(a)
+    return all(x in it for x in sub)
+
+
+def lis_sequence(a):
+    """老老实实从 dp 把一条真正的最长递增子序列恢复出来。"""
+    n = len(a)
+    dp = [1] * n
+    prev = [-1] * n
+    for i in range(1, n):
+        for j in range(i):
+            if a[j] &lt; a[i] and dp[j] + 1 &gt; dp[i]:
+                dp[i] = dp[j] + 1
+                prev[i] = j
+    best = max(range(n), key=lambda i: dp[i])
+    out = []
+    while best != -1:
+        out.append(a[best])
+        best = prev[best]
+    return out[::-1]
+
+
+real = lis_sequence(A)
+print(f'   序列 {A}')
+print(f'   dp 版回溯出的一条最长递增子序列: {real}')
+print(f'   二分版的 tails               : {tails}')
+print(f'   两者相同吗: {real == tails}')
+print(f'   tails 是原序列的子序列吗: {is_subsequence(tails, A)}')</code></pre>
+
+  <pre data-lang="text"><code>   序列 [10, 9, 2, 5, 3, 7, 101, 18]
+   dp 版回溯出的一条最长递增子序列: [2, 5, 7, 101]
+   二分版的 tails               : [2, 3, 7, 18]
+   两者相同吗: False
+   tails 是原序列的子序列吗: True</code></pre>
+
+  <p><b>长度一样，元素完全对不上。</b> 但这里有一句很容易脱口而出的话要拦住：<code>[2, 3, 7, 18]</code> <b>在这一组数据上恰好是原序列的一条合法子序列</b>（下标 2、4、5、7），而且严格递增——它自己就是一条最长递增子序列，只是跟 <code>dp</code> 回溯出来的那条<b>不是同一条</b>。</p>
+
+  <p>所以「<code>tails</code> 不能直接当答案」的理由<b>不是</b>「它不是子序列」，而是这两条：</p>
+
+  <ul>
+    <li>它<b>不保证</b>是子序列；</li>
+    <li>就算是，也<b>不保证</b>是你要的那一条（题目可能要求字典序最小的那条）。</li>
+  </ul>
+
+  <p>换一组数据就看得见第一条。<code>[2, 3, 1]</code> 里的 <code>1</code> 最后才出现，却把 <code>tails</code> 的第一格从 <code>2</code> 换成了 <code>1</code>：</p>
+
+  <pre data-lang="python"><code>CASE = [2, 3, 1]
+_, t = lis_bisect(CASE)
+print(f'   序列 {CASE}')
+print(f'   tails = {t}')
+print(f'   tails 是原序列的子序列吗: {is_subsequence(t, CASE)}')</code></pre>
+
+  <pre data-lang="text"><code>   序列 [2, 3, 1]
+   tails = [1, 3]
+   tails 是原序列的子序列吗: False</code></pre>
+
+  <p><code>[1, 3]</code> 里 <code>1</code> 排在 <code>3</code> 前面，可原序列里 <code>1</code> 在 <code>3</code> <b>后面</b>。这不是精心构造的特例：</p>
+
+  <pre data-lang="python"><code>import random
+
+random.seed(4)
+bad = 0
+trials = 2000
+first = None
+for _ in range(trials):
+    n = random.randint(3, 12)
+    a = [random.randint(1, 15) for _ in range(n)]
+    _, t = lis_bisect(a)
+    if not is_subsequence(t, a):
+        bad += 1
+        if first is None:
+            first = (a, t)
+print(f'   {trials} 组随机数据里，tails 不是原序列子序列的有 {bad} 组')
+print(f'   第一组: 序列 {first[0]}，tails = {first[1]}')</code></pre>
+
+  <pre data-lang="text"><code>   2000 组随机数据里，tails 不是原序列子序列的有 902 组
+   第一组: 序列 [5, 2, 12, 7, 8, 3]，tails = [2, 3, 8]</code></pre>
+
+  <p><b>接近一半。</b> 所以这件事不能指望「碰巧对」——拿 <code>tails</code> 当答案，是拿一个约一半概率出错的东西当答案。</p>
+
+  <p>所以：<b>要长度就用二分版；要那条子序列本身，就得用 <span class="math-inline">O(n^2)</span> 的 <code>dp</code> 加一个 <code>prev</code> 数组回溯。</b> 两版的长度是一样的：</p>
+
+  <pre data-lang="python"><code>import random
+random.seed(3)
+bad = 0
+trials = 500
+for _ in range(trials):
+    n = random.randint(0, 40)
+    a = [random.randint(1, 30) for _ in range(n)]
+    if lis_dp(a)[0] != lis_bisect(a)[0]:
+        bad += 1
+print(f'   {trials} 组随机数据（长度 0~40、元素 1~30）：两版长度不一致的有 {bad} 组')
+dup = [5, 5, 5, 5]
+print(f'   全相同元素的例子 {dup}: DP 版给 {lis_dp(dup)[0]}，二分版给 {lis_bisect(dup)[0]}')</code></pre>
+
+  <pre data-lang="text"><code>   500 组随机数据（长度 0~40、元素 1~30）：两版长度不一致的有 0 组
+   全相同元素的例子 [5, 5, 5, 5]: DP 版给 1，二分版给 1</code></pre>
+
+  <p>「长度」这件事上两版<b>从不出错</b>，所以混用导致答案错，错的一定是<b>「你问的是长度还是序列」</b>这一层——不是长度算错了，是拿一个记账数组当答案交上去了。</p>
+
+  <div class="lesson-warn">
+    <p>「严格递增」和「不下降」是两个不同的题。<code>bisect_left</code> 遇到相等的值会<b>替换</b>，得到的是严格递增；换成 <code>bisect_right</code> 就变成不下降。题目说「严格」还是「不下降」，先看清再写。</p>
+  </div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "要输出那条最长递增子序列本身，该用哪一版？",
+    "opts": [
+      "用 dp 版加一个 prev 数组回溯",
+      "用二分的 tails 版，它本身就是那条",
+      "两版都行，因为输出来的序列完全一样",
+      "两版都不行，得另外用搜索把序列搜出来"
+    ],
+    "ans": 0,
+    "why": "tails 是「每个长度对应的最小结尾」的记账数组，新元素小就把某一格换掉，所以它跟原序列的先后顺序没有必然联系。实测序列 [10,9,2,5,3,7,101,18] 的 tails 是 [2,3,7,18]，dp 加 prev 回溯出的是 [2,5,7,101]——长度都是 4，元素完全对不上。这里有个容易踩的坑：在这一组数据上 tails 恰好也是原序列的一条合法子序列（下标 2、4、5、7），所以「不能用 tails 当答案」的理由不是「它不是子序列」，而是它不保证是、而且就算是也不保证是你要的那一条。换到 [2,3,1] 上，tails 是 [1,3]，而 1 在原序列里排在 3 后面，就不是子序列了；2000 组随机数据里这样的大约占一半（902 组）。要输出那条序列本身，只能用 dp 加 prev 从后往前回溯。"
+  }
+]'></div>
+
+  <h2>两维状态：最长公共子序列</h2>
+
+  <p><b>最长公共子序列</b>（LCS）：两个字符串，找出同时是二者子序列的最长那个，问长度。</p>
+
+  <p>这次要<b>同时盯住两个字符串</b>，所以状态是两维的：</p>
+
+  <div class="math-block">dp[i][j] = s \text{ 的前 } i \text{ 个字符与 } t \text{ 的前 } j \text{ 个字符的 LCS 长度}</div>
+
+  <p>转移分两种：</p>
+
+  <ul>
+    <li>末尾字符相同（<span class="math-inline">s_{i-1} = t_{j-1}</span>）：<b>这一对可以配起来</b>，答案就是 <span class="math-inline">dp[i-1][j-1] + 1</span>；</li>
+    <li>不同：至少有一个字符用不上，取 <span class="math-inline">\max(dp[i-1][j],\ dp[i][j-1])</span>。</li>
+  </ul>
+
+  <pre data-lang="python"><code>def lcs(s, t):
+    """dp[i][j] = s 的前 i 个字符与 t 的前 j 个字符的最长公共子序列长度。"""
+    n, m = len(s), len(t)
+    dp = [[0] * (m + 1) for _ in range(n + 1)]
+    for i in range(1, n + 1):
+        for j in range(1, m + 1):
+            if s[i - 1] == t[j - 1]:
+                dp[i][j] = dp[i - 1][j - 1] + 1
+            else:
+                dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
+    return dp[n][m], dp
+
+
+S1, S2 = 'ABCBDAB', 'BDCABA'
+L3, table = lcs(S1, S2)
+print(f'   s = {S1}    t = {S2}')
+print(f'   最长公共子序列长度: {L3}')
+print(f'   dp 表（s 往下、t 往右，都是前 i / 前 j 个字符）：')
+print('        ""  ' + '  '.join(S2))
+for i, row in enumerate(table):
+    tag = '"' if i == 0 else S1[i - 1]
+    print(f'   {tag:&gt;3}  ' + '  '.join('%2d' % v for v in row))</code></pre>
+
+  <pre data-lang="text"><code>   s = ABCBDAB    t = BDCABA
+   最长公共子序列长度: 4
+   dp 表（s 往下、t 往右，都是前 i / 前 j 个字符）：
+        ""  B  D  C  A  B  A
+     "   0   0   0   0   0   0   0
+     A   0   0   0   0   1   1   1
+     B   0   1   1   1   1   2   2
+     C   0   1   1   2   2   2   2
+     B   0   1   1   2   2   3   3
+     D   0   1   2   2   2   3   3
+     A   0   1   2   2   3   3   4
+     B   0   1   2   2   3   4   4</code></pre>
+
+  <p><b>把这张表打印出来，是这一课最省事的自查手段。</b> 三个规矩一眼可查：</p>
+
+  <ul>
+    <li>第一行和第一列全是 0（空串配任何串，公共子序列长度都是 0）；</li>
+    <li>每一格只依赖<b>左边、上边、左上</b>三个方向；</li>
+    <li>表是<b>逐行逐列</b>填的，所以「前 <span class="math-inline">i</span> 前 <span class="math-inline">j</span>」这种定义天然符合递推顺序——不需要像区间 DP 那样操心枚举顺序。</li>
+  </ul>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "最长公共子序列的状态表里，每一格依赖哪几个方向？",
+    "opts": [
+      "它自己的左边、上边和左上三个方向",
+      "它自己的右边、下边和右下三个方向",
+      "整张表的所有格子，所以要全部算完",
+      "只需要它上面的那一行，别的都不用"
+    ],
+    "ans": 0,
+    "why": "dp[i][j] 由 dp[i-1][j-1]（末尾配上了）、dp[i-1][j]、dp[i][j-1]（至少丢一个字符）三处推出，正好是左、上、左上。这意味着逐行逐列填表天然满足递推顺序，不需要像区间 DP 那样操心枚举顺序。表的第一行和第一列全是 0，因为空串配任何串的公共子序列长度都是 0。"
+  }
+]'></div>
+
+  <h2>区间 DP：最长回文子序列</h2>
+
+  <p><b>最长回文子序列</b>（LPS）：从一个字符串里挑出一些字符（保持顺序），让它是个回文，问最多挑几个。</p>
+
+  <p>这次的状态是<b>一个区间</b>：</p>
+
+  <div class="math-block">dp[i][j] = s[i..j] \text{ 这段里的最长回文子序列长度}</div>
+
+  <p>转移看两头：</p>
+
+  <ul>
+    <li><span class="math-inline">s_i = s_j</span>：两头能配上，<span class="math-inline">dp[i][j] = dp[i+1][j-1] + 2</span>；</li>
+    <li>不同：至少丢一头，<span class="math-inline">dp[i][j] = \max(dp[i+1][j],\ dp[i][j-1])</span>。</li>
+  </ul>
+
+  <pre data-lang="python"><code>def lps(s):
+    """dp[i][j] = s[i..j] 里最长回文子序列的长度。"""
+    n = len(s)
+    if n == 0:
+        return 0
+    dp = [[0] * n for _ in range(n)]
+    for i in range(n):
+        dp[i][i] = 1
+    for length in range(2, n + 1):                 # 小区间先算
+        for i in range(0, n - length + 1):
+            j = i + length - 1
+            if s[i] == s[j]:
+                dp[i][j] = dp[i + 1][j - 1] + 2
+            else:
+                dp[i][j] = max(dp[i + 1][j], dp[i][j - 1])
+    return dp[0][n - 1]
+
+
+for s in ('character', 'abba', 'abcda', 'aaaa'):
+    print(f'   "{s}" 的最长回文子序列长度: {lps(s)}')</code></pre>
+
+  <pre data-lang="text"><code>   "character" 的最长回文子序列长度: 5
+   "abba" 的最长回文子序列长度: 4
+   "abcda" 的最长回文子序列长度: 3
+   "aaaa" 的最长回文子序列长度: 4</code></pre>
+
+  <p>注意 <code>dp[i][j]</code> 依赖的是 <b><span class="math-inline">dp[i+1][\cdot]</span> 和 <span class="math-inline">dp[\cdot][j-1]</span></b>——<b>比它更小的区间</b>。所以填表顺序不能随便：<b>必须先算短的区间，再算长的。</b></p>
+
+  <p>这就是区间 DP 跟 LCS 最大的不同：LCS 的依赖方向（左、上、左上）天然对应逐行逐列，而区间 DP 的依赖是「更短的区间」，<b>必须显式按区间长度从小到大枚举</b>。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "区间动态规划为什么必须先算短的区间？",
+    "opts": [
+      "长区间要用到比它更短的那些区间",
+      "短区间的答案更小，不会顶掉最大值",
+      "短区间的数量少，先算能省下内存",
+      "短区间的边界简单，不容易写错"
+    ],
+    "ans": 0,
+    "why": "dp[i][j] 依赖的是 dp[i+1][j-1]、dp[i+1][j]、dp[i][j-1]——全都是比 [i,j] 更窄的区间。这跟最长公共子序列那种「左边、上边、左上」不一样，不能靠逐行逐列自然满足，必须显式按区间长度从小到大枚举。顺序写反，用到的短区间还是初始值。"
+  }
+]'></div>
+
+  <h2>断点枚举：石子合并</h2>
+
+  <p><b>石子合并</b>：一排石子堆，每次只能把<b>相邻</b>两堆合成一堆，代价是合并后那一堆的重量（也就是这两堆重量之和），问把所有石子合成一堆的<b>最小总代价</b>。</p>
+
+  <p>状态还是区间：</p>
+
+  <div class="math-block">dp[i][j] = \text{把第 } i \text{ 堆到第 } j \text{ 堆合成一堆的最小代价}</div>
+
+  <p>转移要<b>枚举最后那一次合并是在哪里断开的</b>：</p>
+
+  <div class="math-block">dp[i][j] = \min_{i \le k &lt; j}\bigl(dp[i][k] + dp[k+1][j]\bigr) + \text{sum}(i..j)</div>
+
+  <p>最后加的那一项 <span class="math-inline">\text{sum}(i..j)</span> 是<b>这次合并本身的代价</b>：不管前面怎么合，第 <span class="math-inline">i</span> 到第 <span class="math-inline">j</span> 堆合成一堆，这一下必然要把区间内所有石子清点一遍。用前缀和可以 <span class="math-inline">O(1)</span> 拿到。</p>
+
+  <pre data-lang="python"><code>from functools import lru_cache
+
+
+def stone_dp(a, order='asc'):
+    """dp[i][j] = 把第 i 堆到第 j 堆合成一堆的最小代价。"""
+    n = len(a)
+    pre = [0] * (n + 1)
+    for i in range(n):
+        pre[i + 1] = pre[i] + a[i]
+    dp = [[0] * n for _ in range(n)]
+    big = float('inf')
+    lengths = range(2, n + 1) if order == 'asc' else range(n, 1, -1)
+    for length in lengths:
+        for i in range(0, n - length + 1):
+            j = i + length - 1
+            best = big
+            for k in range(i, j):
+                cand = dp[i][k] + dp[k + 1][j]
+                if cand &lt; best:
+                    best = cand
+            dp[i][j] = best + pre[j + 1] - pre[i]
+    return dp[0][n - 1], dp
+
+
+def stone_brute(a):
+    """枚举每一次合并的是相邻哪两堆。"""
+
+    @lru_cache(maxsize=None)
+    def go(t):
+        if len(t) == 1:
+            return 0
+        best = float('inf')
+        for k in range(len(t) - 1):
+            cost = t[k] + t[k + 1]
+            nxt = t[:k] + (cost,) + t[k + 2:]
+            best = min(best, cost + go(nxt))
+        return best
+
+    return go(tuple(a))
+
+
+ST = [4, 1, 2, 3]
+print(f'   石子 {ST}')
+print(f'   区间 DP（长度从小到大）: {stone_dp(ST)[0]}')
+print(f'   暴力枚举所有合并顺序  : {stone_brute(ST)}')
+ST2 = [3, 4, 5, 6, 7]
+print(f'   石子 {ST2}: 区间 DP {stone_dp(ST2)[0]}，暴力 {stone_brute(ST2)}')</code></pre>
+
+  <pre data-lang="text"><code>   石子 [4, 1, 2, 3]
+   区间 DP（长度从小到大）: 19
+   暴力枚举所有合并顺序  : 19
+   石子 [3, 4, 5, 6, 7]: 区间 DP 57，暴力 57</code></pre>
+
+  <p><code>[4, 1, 2, 3]</code> 的 19 是这么来的：先合 1 和 2 成 3（代价 3，剩 4、3、3），再合两个 3 成 6（代价 6，剩 4、6），最后合成 10（代价 10）——3 + 6 + 10 = <b>19</b>。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "石子合并的转移方程，为什么末尾要再加一个区间和？",
+    "opts": [
+      "那是这次合并本身的代价，躲不掉",
+      "那是前缀和的修正项，用来对齐下标",
+      "那是合并完之后的石子总数，用于比较",
+      "那是防止下标越界的范围检查项"
+    ],
+    "ans": 0,
+    "why": "dp[i][j] 是「把第 i 到第 j 堆合成一堆的最小代价」。前面怎么合是 dp[i][k] + dp[k+1][j] 决定的，但最后把这两堆并成一大堆时，必然要清点区间内所有石子——代价就是 sum(i..j)。不管前面选哪个断点 k，这一项都躲不掉，所以放在取 min 的外面。"
+  }
+]'></div>
+
+  <h2>枚举顺序写反会怎样</h2>
+
+  <p>把 <code>range(2, n+1)</code> 改成 <code>range(n, 1, -1)</code>——<b>区间长度从大到小枚举</b>，其他一个字不动：</p>
+
+  <pre data-lang="python"><code>for st in ([4, 1, 2, 3], [3, 4, 5, 6, 7], [1, 2, 3, 4, 5, 6]):
+    asc = stone_dp(st, 'asc')[0]
+    desc = stone_dp(st, 'desc')[0]
+    print(f'   {st}: 长度从小到大 {asc}，从大到小 {desc}')</code></pre>
+
+  <pre data-lang="text"><code>   [4, 1, 2, 3]: 长度从小到大 19，从大到小 10
+   [3, 4, 5, 6, 7]: 长度从小到大 57，从大到小 25
+   [1, 2, 3, 4, 5, 6]: 长度从小到大 51，从大到小 21</code></pre>
+
+  <p>答案<b>偏小</b>，而且小得离谱。</p>
+
+  <p>原因不绕：长度从大到小枚举时，算长区间要用到的短区间<b>还没被算过</b>，<code>dp[i][k]</code> 和 <code>dp[k+1][j]</code> 都还是初始的 0。于是转移只加上了「这次合并的代价」，<b>前面所有合并的代价全被漏掉了</b>。区间越长漏得越多——57 变 25、51 变 21，正是这个道理。</p>
+
+  <p>上一课背包写错方向时答案是<b>偏大</b>的（同一件物品被拿了多次）；这里写错顺序答案是<b>偏小</b>的（有些代价没被算进去）。两次都说明同一件事：</p>
+
+  <div class="lesson-tip">
+    <p><b>答案偏离的方向会告诉你错在哪一类。</b> 背包偏大 → 用掉了不存在的资源；区间 DP 偏小 → 少算了本该付出的代价。看到答案不对，先问「它错向了哪边」，比从头读代码有效得多。</p>
+  </div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "区间动态规划把长度枚举写成从大到小，答案会怎样？",
+    "opts": [
+      "偏小，因为前面那些合并的代价被漏掉了",
+      "偏大，因为同一段区间被重复算了两次",
+      "不变，最后取的那个格子照旧是最小值",
+      "偏大，因为短区间的初值把它顶上去了"
+    ],
+    "ans": 0,
+    "why": "长度从大到小枚举时，算长区间要用到的短区间还没算过，dp[i][k] 和 dp[k+1][j] 都还是初始的 0。于是转移只加上了「这次合并的代价」，前面所有合并的代价全被漏掉。区间越长漏得越多：实测 [3,4,5,6,7] 由 57 变 25、[1,2,3,4,5,6] 由 51 变 21。200 组对拍里从大到小错 137 组。"
+  }
+]'></div>
+
+  <h2>随机对拍</h2>
+
+  <p>区间 DP 的枚举顺序、断点范围、前缀和边界，都是「看一眼看不出错」的地方。对拍照旧是最省事的办法：</p>
+
+  <pre data-lang="python"><code>import random
+random.seed(9)
+bad_asc = bad_desc = 0
+trials = 200
+for _ in range(trials):
+    n = random.randint(1, 7)
+    a = [random.randint(1, 20) for _ in range(n)]
+    want = stone_brute(a)
+    if stone_dp(a, 'asc')[0] != want:
+        bad_asc += 1
+    if stone_dp(a, 'desc')[0] != want:
+        bad_desc += 1
+print(f'   {trials} 组随机石子堆（1~7 堆）：')
+print(f'      长度从小到大与暴力不一致的有 {bad_asc} 组')
+print(f'      长度从大到小与暴力不一致的有 {bad_desc} 组')</code></pre>
+
+  <pre data-lang="text"><code>   200 组随机石子堆（1~7 堆）：
+      长度从小到大与暴力不一致的有 0 组
+      长度从大到小与暴力不一致的有 137 组</code></pre>
+
+  <p><b>从小到大 0 组错，从大到小 137 组错</b>——200 组里错了三分之二还多。</p>
+
+  <p>序列题的暴力版比背包更好写：石子合并直接递归枚举「这次合哪两堆」，LIS 直接枚举子集。<b>只要暴力版能写出来，就没有对拍不出来的序列题。</b></p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "为什么序列题的暴力版比背包更容易写出来？",
+    "opts": [
+      "序列题的暴力就是递归枚举，不用枚举子集",
+      "序列题的数据规模小，暴力一定跑得动",
+      "序列题的答案唯一，暴力只要找一条",
+      "序列题的状态少，暴力只要存一维"
+    ],
+    "ans": 0,
+    "why": "背包的暴力要枚举所有子集（2^n 个），长度稍微大一点就跑不动。序列题不一样：石子合并直接递归枚举「这次合相邻的哪两堆」，最长递增子序列直接枚举子集但数据可以开得很小。只要暴力版能写出来，就没有对拍不出来的序列题——而区间 DP 的枚举顺序、断点范围、前缀和边界，恰恰都是「看一眼看不出错」的地方。"
+  }
+]'></div>
+
+  <h2>这一课用到的判断</h2>
+
+  <ul>
+    <li><b>背包的状态是给的，序列题的状态要自己设计。</b> 卡住的地方几乎都在状态定义，不在代码。</li>
+    <li><b>LIS 的状态必须「以 <span class="math-inline">i</span> 结尾」</b>。「前 <span class="math-inline">i</span> 个里的最长长度」接不上——算前 <span class="math-inline">i</span> 个时不知道那条子序列结尾是几，没法判断 <span class="math-inline">a_i</span> 能否接上。</li>
+    <li><b>答案是 <code>max(dp)</code> 而不是 <code>dp[n-1]</code></b>：最长的那条不一定结尾在最后。</li>
+    <li><b><code>tails</code> 只是记账数组，不能当答案。</b> <code>tails[k]</code> 记的是「长度为 <span class="math-inline">k+1</span> 的递增子序列里最小的那个结尾」。实测 <code>tails = [2, 3, 7, 18]</code> 与 <code>dp</code> 回溯出的 <code>[2, 5, 7, 101]</code>——<b>长度一样、元素完全对不上</b>。它甚至<b>不保证是子序列</b>：<code>[2, 3, 1]</code> 的 <code>tails</code> 是 <code>[1, 3]</code>，可 <code>1</code> 在原序列里排在 <code>3</code> 后面；2000 组随机数据里有 <b>902 组</b> 是这样。要长度用二分版，要序列本身用 <code>dp</code> 加 <code>prev</code> 回溯。</li>
+    <li><b>别把「这组碰巧对」当成规律。</b> <code>[10,9,2,5,3,7,101,18]</code> 上 <code>tails</code> 恰好是一条合法子序列，很容易由此得出「它就是答案」——换一组就塌。判断一个写法能不能用，要看它<b>有没有保证</b>，不看它在样例上跑没跑对。</li>
+    <li><b>两版的长度从不出错</b>：500 组随机数据上不一致 0 组。所以混用出的错，一定出在「你问的是长度还是序列」。</li>
+    <li><b><code>bisect_left</code> 是严格递增，<code>bisect_right</code> 是不下降</b>，先看清题目要哪个。</li>
+    <li><b>LCS 的状态是「两个前缀」</b>：<span class="math-inline">dp[i][j]</span> 只依赖左边、上边、左上三个方向，逐行逐列填即可。</li>
+    <li><b>区间 DP 的状态是一个区间</b>：<span class="math-inline">dp[i][j]</span> 依赖的是<b>更短的区间</b><code>dp[i+1][j-1]</code>、<code>dp[i+1][j]</code>、<code>dp[i][j-1]</code>，所以<b>必须按区间长度从小到大枚举</b>。</li>
+    <li><b>石子合并的转移要枚举断点 <span class="math-inline">k</span></b>，末尾再加上区间和——那是这次合并本身的代价，不管前面怎么合都躲不掉。</li>
+    <li><b>枚举顺序写反的后果是答案偏小</b>：短区间还没算，<code>dp</code> 里还是 0，前面所有合并的代价全被漏掉。实测 <code>[3,4,5,6,7]</code> 由 57 变 25、<code>[1,2,3,4,5,6]</code> 由 51 变 21；200 组对拍从大到小错 <b>137</b> 组、从小到大错 <b>0</b> 组。</li>
+    <li><b>答案偏离的方向指向错的类型</b>：偏小 → 少算了代价；偏大（如上一课的背包）→ 用掉了不存在的资源。</li>
+    <li><b>打印状态表自查</b>：LCS 的表第一行第一列全是 0；石子合并的表主对角线全是 0。表本身不对，转移一定不对。</li>
+  </ul>
+
+  <div class="lesson-practice">
+    <div class="lesson-practice__head">
+      <span class="lesson-practice__level">上手做</span>
+      <span class="lesson-practice__title">四道题先写状态再写代码</span>
+    </div>
+
+      <p>这一课配了动手练习，在 <a href="../lab/0026-dp-sequence-interval/">lab/0026-dp-sequence-interval/</a>。</p>
+
+      <ol>
+        <li><code>task1_lis.py</code>：写 <span class="math-inline">O(n^2)</span> 的 DP 版与 <span class="math-inline">O(n \log n)</span> 的二分版，并实现「恢复一条真正的最长递增子序列」。</li>
+        <li><code>task2_lcs.py</code>：写最长公共子序列，并把整张状态表打印出来。</li>
+        <li><code>task3_palindrome.py</code>：写最长回文子序列，注意按区间长度从小到大枚举。</li>
+        <li><code>task4_stone.py</code>：写石子合并，跟暴力版对拍；再故意把长度顺序写反，观察答案偏小。</li>
+      </ol>
+
+      <p>跑法、判分在读什么、卡住了先看哪里，都写在该目录的说明与 <code>../lab/README.md</code> 里。写完想对照，看 <a href="../lab/solutions/">lab/solutions/</a>。</p>
+  </div>
+
+  <ul class="lesson-resources">
+    <li><a href="https://www.luogu.com.cn/training/106">洛谷题单：动态规划的线性与区间模型</a><span class="lesson-resources__meta">题单 · 从线性 DP 到区间 DP 的成体系练习</span></li>
+    <li><a href="https://oi-wiki.org/dp/basic/">OI Wiki：动态规划基础</a><span class="lesson-resources__meta">文章 · 状态设计与转移方程的一般方法</span></li>
+    <li><a href="0025-dp-knapsack.html">第 25 课：背包：选与不选</a><span class="lesson-resources__meta">上一课讲清了「遍历方向」，这一课把状态设计往前推一步</span></li>
+    <li><a href="0024-dp-from-recursion.html">第 24 课：动态规划：把重复计算记下来</a><span class="lesson-resources__meta">记忆化、递推与状态定义的基础在这一课</span></li>
+  </ul>
+
+  <!-- ── 提问提示：固定写法，别删 ── -->
+
+  <div class="lesson-ask">
+    <b>没看懂？随时问</b>
+    把看不懂的段落（或报错）原样复制回会话，说一句哪里不懂就行，我只解释这一段，不打断你的进度。
+  </div>
+
+  <!-- ── 上/下节课指针由渲染器按 curriculum.yaml 的 nodes 顺序算（第一课无 --prev、最后一课无 --next） ── -->
+
+  <nav class="lesson-nav" aria-label="上一课 / 下一课">
+    <a class="lesson-nav__link lesson-nav__link--prev" href="0025-dp-knapsack.html">
+      <span class="lesson-nav__dir">上节课</span>
+      <span class="lesson-nav__title">背包：选与不选</span>
+    </a>
+    <a class="lesson-nav__link lesson-nav__link--next" href="0027-lab-03-recommend-and-verify.html">
+      <span class="lesson-nav__dir">下节课</span>
+      <span class="lesson-nav__title">实验三：让助手推荐并验证</span>
+    </a>
+  </nav>
+
+  <footer class="lesson-footer">
+    StudyMate · 0026 序列与区间的状态设计 · 本地学习工作区
+  </footer>
+
+</article>
+
+<script src="../../../assets/sayo/sayo.js"></script>
+<link rel="stylesheet" href="../../../assets/katex/katex.min.css">
+<script src="../../../assets/katex/katex.min.js" defer></script>
+<script src="../../../assets/lesson-math.js" defer></script>
+<script src="../assets/quiz.js" defer></script>
+<script src="../assets/lesson-toc.js" defer></script>
+<script>LearnTheme.wire(document.getElementById('lesson-theme-checkbox'));</script>
+</body>
+</html>

@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>双指针：两个下标的配合 · Python 算法与蓝桥杯</title>
+
+<!-- 共享层在 .learning/assets/，课件在 .learning/subjects/<slug>/lessons/ 下，所以是 ../../../assets/ -->
+<link rel="stylesheet" href="../../../assets/sayo/sayo.css">
+<link rel="stylesheet" href="../../../assets/learn-theme.css">
+<link rel="stylesheet" href="../assets/style.css">
+
+<!-- 主题要在首帧前应用，避免闪白/闪黑 -->
+<script src="../../../assets/learn-theme.js"></script>
+<script>LearnTheme.apply();</script>
+</head>
+
+<body class="lesson-body">
+
+<nav class="lesson-bar">
+  <a href="../index.html">← 返回课程</a>
+  <span>Python 算法与蓝桥杯</span>
+  <span class="lesson-bar__no">0011</span>
+  <!-- 课件页自带主题开关：学生从文件管理器直接打开课件时也能切暗色 -->
+  <label class="syo-toggle syo-toggle--theme lesson-bar__toggle" title="切换深浅主题" aria-label="切换深浅主题">
+    <input type="checkbox" id="lesson-theme-checkbox" checked>
+    <span class="syo-toggle-track"></span>
+    <span class="syo-toggle-knob">
+      <svg class="syo-toggle-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.5" stroke="#f57c00" stroke-width="1.5"/><path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.34 4.34l1.77 1.77M13.89 13.89l1.77 1.77M4.34 15.66l1.77-1.77M13.89 6.11l1.77-1.77" stroke="#f57c00" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <svg class="syo-toggle-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.5 12.5A6 6 0 019 4.5a6 6 0 007.5 8z" stroke="#5c6bc0" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </span>
+  </label>
+</nav>
+
+<article class="lesson">
+
+  <header class="lesson-header">
+    <span class="lesson-header__eyebrow">0011 · 双指针：两个下标的配合</span>
+    <h1>双指针：两个下标的配合</h1>
+    <p class="lesson-goal"><b>本节目标：</b>能用对撞指针与快慢指针解配对、判定与去重类题目，并说清每个指针各自保证什么。</p>
+  </header>
+
+  <!-- ── 正文：渲染器按内容文件（lessons/<序号>-<节点id>.md）产出，块词汇见 docs/规范/课件内容格式.md ── -->
+
+  <p>第 9 课的两种走法处理的是「连续一段」的问题：前缀和把区间和变成两次减法，滑动窗口用一个窗口框住一段并让它只往右滑。那一课里两个下标 <span class="math-inline">l</span> 与 <span class="math-inline">r</span> 记的是同一段区间，走向也相同。</p>
+
+  <p>这一课要解的题换了一类：有序数组里找一对和为目标值的数、原地去掉重复元素、判断一个序列是不是回文、把两个有序数组合并成一个。这些题的共同点是：一个下标不够用，常见的做法是再套一层循环。第二个下标用对了，循环就从平方降到线性——同样是两数之和，<span class="math-inline">n = 16000</span> 时两层循环要跑 3.3 秒，对撞指针 0.0017 秒（文末的实测表）。</p>
+
+  <p>配合的方式有两种，两个名字在算法竞赛里已经固定下来了。<b>对撞指针</b>的两个下标分别从两端出发、相向而行，用来处理配对与判定；<b>快慢指针</b>的两个下标同向而行、但职责不同，一个负责读、一个负责写，用来原地整理一段数据。它们与第 9 课的滑动窗口落在同一族写法里（统称<b>双指针</b>），区别在于两个下标各自的走向与职责：滑动窗口的两个下标是同一段区间的两条边，本课的对撞指针是两条相向收拢的边界，快慢指针是一条读位置加一条写位置。</p>
+
+  <p>四个任务按下面的顺序展开：先讲对撞指针（两数之和、回文判定），再讲快慢指针（原地去重），最后讲两个指针各管一个数组的合并。每一段都配一段能直接跑的代码，并用本机实测的输出说明两个指针各自保证了什么。</p>
+
+  <h2>对撞指针：左右相向</h2>
+
+  <p>设数组 <span class="math-inline">a</span> 已经按非降序排好，要找一对下标 <span class="math-inline">i &lt; j</span> 使 <span class="math-inline">a[i] + a[j] = S</span>。最直接的写法是枚举所有下标对，代价 <span class="math-inline">O(n^2)</span>。对撞指针给出的是另一种走法：取 <span class="math-inline">l = 0</span>、<span class="math-inline">r = n - 1</span>，每轮比较 <span class="math-inline">a[l] + a[r]</span> 与 <span class="math-inline">S</span>，按比较结果移动其中一个下标。</p>
+
+  <p>这个走法的名字来自两个下标的走向：<span class="math-inline">l</span> 只往右走，<span class="math-inline">r</span> 只往左走，两者每轮靠近一格，最后相遇。三条移动规则如下。</p>
+
+  <table>
+    <thead>
+      <tr><th>比较结果</th><th>写法</th><th>这一步丢掉了什么</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><span class="math-inline">a[l] + a[r] = S</span></td><td><code>return (l, r)</code></td><td>什么都没有丢，已经找到</td></tr>
+      <tr><td><span class="math-inline">a[l] + a[r] &lt; S</span></td><td><code>l += 1</code></td><td>丢掉 <span class="math-inline">a[l]</span>：它与 <span class="math-inline">r</span> 以内任何元素的和都不超过 <span class="math-inline">a[l] + a[r]</span></td></tr>
+      <tr><td><span class="math-inline">a[l] + a[r] &gt; S</span></td><td><code>r -= 1</code></td><td>丢掉 <span class="math-inline">a[r]</span>：它与 <span class="math-inline">l</span> 以外任何元素的和都不小于 <span class="math-inline">a[l] + a[r]</span></td></tr>
+    </tbody>
+  </table>
+
+  <p>第二条与第三条都要靠<b>有序</b>这条前提才成立，第三节会专门说它。先说清两个指针各自保证什么。每一轮比较开始之前，下面这条命题都成立：</p>
+
+  <p><b>若答案存在，则答案的两个下标都落在闭区间 <span class="math-inline">[l, r]</span> 之内。</b> 这条命题就是这份写法的<b>循环不变式</b>：初始时 <span class="math-inline">l = 0</span>、<span class="math-inline">r = n - 1</span>，区间覆盖整个数组，命题当然成立；每轮丢掉 <span class="math-inline">a[l]</span> 或 <span class="math-inline">a[r]</span> 时，被丢的那一格由上面两条规则保证不可能出现在答案里，于是区间缩小之后命题依然成立；<span class="math-inline">l</span> 与 <span class="math-inline">r</span> 相遇（<span class="math-inline">l \ge r</span>）时区间里剩下的候选不足两个下标，答案不存在。</p>
+
+  <p>两个指针各自的保证也就能分开写了：</p>
+
+  <ul>
+    <li><span class="math-inline">l</span> 保证：区间 <span class="math-inline">[0, l)</span> 里的每个元素都不可能出现在答案里。这些元素要么已经作为左端与当时的 <span class="math-inline">a[r]</span> 配过、和偏小，要么由不变式排除在候选区间之外。</li>
+    <li><span class="math-inline">r</span> 保证：区间 <span class="math-inline">(r, n - 1]</span> 里的每个元素都不可能出现在答案里，理由对称。</li>
+  </ul>
+
+  <pre data-lang="python"><code>def two_sum_sorted(a, target):
+    """有序数组里找一对和为目标值的数，返回下标对；无解返回 None。"""
+    l = 0
+    r = len(a) - 1
+    while l &lt; r:
+        s = a[l] + a[r]
+        if s == target:
+            return (l, r)
+        if s &lt; target:
+            l += 1
+        else:
+            r -= 1
+    return None
+
+
+a = [1, 4, 5, 9, 11, 15]
+print(two_sum_sorted(a, 10))        # (0, 3)：1 + 9
+print(two_sum_sorted(a, 20))        # (2, 5)：5 + 15
+print(two_sum_sorted(a, 100))       # None：没有这样的两数</code></pre>
+
+  <pre data-lang="text"><code>(0, 3)
+(2, 5)
+None</code></pre>
+
+  <p>第一组数据里，<span class="math-inline">1 + 15 = 16</span> 偏大，<span class="math-inline">r</span> 往左收；<span class="math-inline">1 + 11 = 12</span> 还是偏大，<span class="math-inline">r</span> 再收；<span class="math-inline">1 + 9 = 10</span> 命中。第二组里 <span class="math-inline">1 + 15</span> 偏小，<span class="math-inline">l</span> 往右走，走到 <span class="math-inline">5 + 15 = 20</span> 命中。前两组各走 3 轮就命中。第三组没有答案，两个指针走 5 轮后相遇（<span class="math-inline">l = r = 5</span>）而结束，正好是 <span class="math-inline">n - 1</span> 轮。</p>
+
+  <p>代价是两条：每轮至少有一个指针移动一格，指针合计最多走 <span class="math-inline">n - 1</span> 格，所以时间 <span class="math-inline">O(n)</span>；全程只用两个整数下标和几次加法，额外空间 <span class="math-inline">O(1)</span>。第 3 课那张价格表里，按下标取元素是 <span class="math-inline">O(1)</span>，对撞指针每次比较正好只做两次取值与一次加法。</p>
+
+  <div class="lesson-note">
+    <b>一条以后再展开的话</b>
+    <p>等学过哈希表那一课，同一题可以用字典一遍扫过，代价是多花 <span class="math-inline">O(n)</span> 空间换掉「必须先有序」这个前提。</p>
+  </div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "有序数组里找一对和为目标值的数，对撞指针每轮比较 a[l] + a[r] 后丢掉一格。为什么丢掉的那一格可以确定不在答案里？",
+    "opts": [
+      "和偏大时，a[r] 配谁都已经太大了",
+      "丢掉的那一格在数组里只出现了一次",
+      "指针合计只走 n-1 格，所以要尽快丢",
+      "丢掉的永远是较小的那个，不可能配对"
+    ],
+    "ans": 0,
+    "why": "数组有序，a[r] 已经是剩下部分里最大的。和都偏大了，说明 a[r] 与任何更小的数相加只会更小、还是偏大——所以它配谁都不行，可以安全丢掉。偏小时同理丢 a[l]。"
+  }
+]'></div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "两数之和的暴力版是两层循环枚举所有数对。改成对撞指针版，前提条件是什么？",
+    "opts": [
+      "数组必须已经有序，或者允许先排序",
+      "数组里不能有重复的元素，否则会漏解",
+      "目标值必须大于数组里的每一个元素",
+      "数组长度必须是偶数，两两配对用"
+    ],
+    "ans": 0,
+    "why": "对撞指针靠「和偏大就往左收、偏小就往右走」来判断，这个信号只有在有序时才有意义。无序时它会丢掉本可以配对的元素——课件里有 [2, 7, 4, 1] 目标 9 的反例。"
+  }
+]'></div>
+
+  <figure class="lesson-figure lesson-figure--inline" role="img" aria-label="有序数组里对撞指针收拢到 l 与 r 相邻时的状态">
+<svg viewBox="0 0 528 200" role="img" aria-hidden="true">
+  <g stroke="currentColor" fill="none">
+    <rect x="40" y="44" width="64" height="36" stroke-dasharray="4 3"/>
+    <rect x="110" y="44" width="64" height="36" stroke-dasharray="4 3"/>
+    <rect x="180" y="44" width="64" height="36"/>
+    <rect x="250" y="44" width="64" height="36"/>
+    <rect x="320" y="44" width="64" height="36" stroke-dasharray="4 3"/>
+    <rect x="390" y="44" width="64" height="36" stroke-dasharray="4 3"/>
+    <path d="M212 126 L212 88"/>
+    <path d="M207 94 L212 84 L217 94"/>
+    <path d="M282 126 L282 88"/>
+    <path d="M277 94 L282 84 L287 94"/>
+    <path d="M180 156 L180 148 M180 152 L314 152 M314 148 L314 156"/>
+  </g>
+  <g font-family="sans-serif" fill="currentColor" text-anchor="middle">
+    <g font-size="12">
+      <text x="72" y="36">0</text>
+      <text x="142" y="36">1</text>
+      <text x="212" y="36">2</text>
+      <text x="282" y="36">3</text>
+      <text x="352" y="36">4</text>
+      <text x="422" y="36">5</text>
+      <text x="107" y="106">已排除</text>
+      <text x="387" y="106">已排除</text>
+      <text x="247" y="176">答案只可能在这两格之间</text>
+    </g>
+    <g font-size="15">
+      <text x="72" y="68">1</text>
+      <text x="142" y="68">4</text>
+      <text x="212" y="68">5</text>
+      <text x="282" y="68">9</text>
+      <text x="352" y="68">11</text>
+      <text x="422" y="68">15</text>
+      <text x="212" y="144">l</text>
+      <text x="282" y="144">r</text>
+    </g>
+  </g>
+</svg>
+    <figcaption>图 1 · l 左边与 r 右边的格子已被排除，答案只可能落在 l 与 r 之间</figcaption>
+  </figure>
+
+  <h2>该收一格还是收到位</h2>
+
+  <p>上面的 <code>while l &lt; r</code> 版本里，每轮只动一格，写成 <code>if</code> 与写成 <code>while</code> 都对——外层循环一定会带着新的 <span class="math-inline">(l, r)</span> 回来再比一次，没收够的格数还有机会在下一轮补上。把外层换成 <code>for l in range(len(a))</code> 之后，这两种写法就分开了：<code>l</code> 一去不回，同一个 <code>l</code> 与更小的 <code>r</code> 的组合再没有人检查。</p>
+
+  <p>看下面的对照。数组 <span class="math-inline">a = [1, 4, 5, 9, 11]</span>，目标值 <span class="math-inline">10</span>，答案只有一对：<span class="math-inline">1 + 9 = 10</span>，下标 <span class="math-inline">(0, 3)</span>。</p>
+
+  <pre data-lang="python"><code>def two_sum_if(a, target):
+    """右指针每轮只收一格。"""
+    r = len(a) - 1
+    for l in range(len(a)):
+        if l &gt;= r:
+            break
+        s = a[l] + a[r]
+        if s == target:
+            return (l, r)
+        if s &gt; target:
+            r -= 1
+    return None
+
+
+def two_sum_while(a, target):
+    """右指针一直收到不再偏大。"""
+    r = len(a) - 1
+    for l in range(len(a)):
+        while l &lt; r and a[l] + a[r] &gt; target:
+            r -= 1
+        if l &gt;= r:
+            break
+        if a[l] + a[r] == target:
+            return (l, r)
+    return None
+
+
+a = [1, 4, 5, 9, 11]
+print(two_sum_if(a, 10))        # None：漏了 1 + 9
+print(two_sum_while(a, 10))     # (0, 3)：1 + 9</code></pre>
+
+  <pre data-lang="text"><code>None
+(0, 3)</code></pre>
+
+  <p>两个函数只差一个关键字，一个返回 <code>None</code>，一个返回正确答案。把 <code>if</code> 版的每一轮状态打出来，漏在哪一步就清楚了：</p>
+
+  <table>
+    <thead>
+      <tr><th>轮次</th><th><span class="math-inline">l</span></th><th><span class="math-inline">r</span></th><th><span class="math-inline">a[l] + a[r]</span></th><th><code>if</code> 版这一步做的动作</th><th>被跳过的组合</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>第 1 轮</td><td>0</td><td>4</td><td>12</td><td>偏大，只把 <span class="math-inline">r</span> 收到 3</td><td>没有跳过</td></tr>
+      <tr><td>第 2 轮</td><td>1</td><td>3</td><td>13</td><td>偏大，只把 <span class="math-inline">r</span> 收到 2</td><td><span class="math-inline">(0, 3)</span> 正是答案，<span class="math-inline">1 + 9 = 10</span></td></tr>
+      <tr><td>第 3 轮</td><td>2</td><td>2</td><td>未比较</td><td><span class="math-inline">l \ge r</span>，循环结束</td><td>—</td></tr>
+    </tbody>
+  </table>
+
+  <p>第 1 轮结束时 <span class="math-inline">r</span> 已经收到 3，<span class="math-inline">(0, 3)</span> 这一对本来就该在第 2 轮被检查。<code>if</code> 版在这一轮之前就把 <span class="math-inline">l</span> 交给了 <code>for</code>，<span class="math-inline">l</span> 变成 1，于是 <span class="math-inline">(0, 3)</span> 再也没有出现过。判据可以写成一句话：<b>移动一格之后，我还会回到同一个 <span class="math-inline">(l, r)</span> 组合重新比一次吗？</b> 外层是 <code>while l &lt; r</code> 会，<code>if</code> 够用；外层是 <code>for l</code> 不会，该用 <code>while</code> 的地方写成 <code>if</code> 就漏解。</p>
+
+  <p>还有一处细节：<code>while</code> 版的条件里带了 <code>l &lt; r</code>。它保证区间里始终至少剩下两个候选下标；<span class="math-inline">r</span> 收到与 <span class="math-inline">l</span> 相遇时立刻停手，不让两个下标交错——交错之后再比较，得到的一对下标次序也就反了。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "对撞指针的移动条件从 while 写成 if，在 a = [1, 4, 5, 9, 11]、目标 10 上会怎样？",
+    "opts": [
+      "输出 None，(0, 3) 那一对被跳过了",
+      "输出 (0, 3)，与 while 版结果一样",
+      "输出 (2, 3)，能找到一对但下标不对",
+      "程序报 IndexError，两个指针交错后越界"
+    ],
+    "ans": 0,
+    "why": "第 1 轮把 r 收到 3 后，if 只收一次就交给了 for，l 被推到 1，于是 (0, 3) 这一对再也没有被检查过。每轮该移动多少格是不确定的，所以要用 while 一直收到不再偏大为止。"
+  }
+]'></div>
+
+  <h2>有序这条前提</h2>
+
+  <p>上面两条移动规则都建立在「数组已按非降序排好」之上：<span class="math-inline">a[l] + a[r]</span> 偏小时，要有 <span class="math-inline">a[l] + a[j] \le a[l] + a[r]</span> 对一切 <span class="math-inline">j \le r</span> 成立，才能断定 <span class="math-inline">a[l]</span> 与 <span class="math-inline">[l, r]</span> 内任何元素的和都小于 <span class="math-inline">S</span>。这条不等式只在有序时成立。数组无序时，丢掉的那一格完全可能是答案的一半。</p>
+
+  <p>取 <span class="math-inline">a = [2, 7, 4, 1]</span>、<span class="math-inline">S = 9</span>，答案 <span class="math-inline">2 + 7 = 9</span> 在下标 <span class="math-inline">(0, 1)</span>。</p>
+
+  <pre data-lang="python"><code>def two_sum_brute(a, target):
+    """两层循环：枚举所有下标对。"""
+    n = len(a)
+    for i in range(n):
+        for j in range(i + 1, n):
+            if a[i] + a[j] == target:
+                return (i, j)
+    return None
+
+
+a = [2, 7, 4, 1]
+print(two_sum_brute(a, 9))      # (0, 1)：2 + 7
+print(two_sum_sorted(a, 9))     # None：2 与 7 都被丢掉了
+print(sorted(a))                # [1, 2, 4, 7]
+print(two_sum_sorted(sorted(a), 9))   # (1, 3)：2 + 7，下标是排好序之后的</code></pre>
+
+  <pre data-lang="text"><code>(0, 1)
+None
+[1, 2, 4, 7]
+(1, 3)</code></pre>
+
+  <p>对撞版在这组数据上走的每一步，都在丢掉答案需要的元素：</p>
+
+  <pre data-lang="text"><code>l = 0  r = 3  a[l] + a[r] = 3  偏小，丢掉 a[0] = 2
+l = 1  r = 3  a[l] + a[r] = 8  偏小，丢掉 a[1] = 7
+l = 2  r = 3  a[l] + a[r] = 5  偏小，丢掉 a[2] = 4
+l 与 r 相遇，没有找到</code></pre>
+
+  <p>第 1 步看到 <span class="math-inline">2 + 1 = 3</span> 偏小，就把 <span class="math-inline">2</span> 丢了；可是 <span class="math-inline">2</span> 要配的元素是 <span class="math-inline">7</span>，它排在更远的位置，<span class="math-inline">r</span> 当时指着的 <span class="math-inline">1</span> 比 <span class="math-inline">7</span> 小，于是「和偏小」这个信号在这一步给出的结论是错的。<span class="math-inline">7</span> 在第 2 步被丢，原因相同。把数组排好再对撞，两步之内就命中：<span class="math-inline">1 + 7 = 8</span> 偏小、<span class="math-inline">2 + 7 = 9</span> 命中。</p>
+
+  <p>能用的判断办法有两条：</p>
+
+  <ul>
+    <li>题目给的数组已经有序，或者允许先排序：<code>sorted(a)</code> 之后再用对撞指针，此时得到的是排好序之后的下标。</li>
+    <li>题目要的是原来那对下标：排序会打乱下标，这条路走不通，这类题要换别的写法。</li>
+  </ul>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "在无序数组 a = [2, 7, 4, 1] 上找和为目标 9 的一对，对撞指针会怎样？",
+    "opts": [
+      "返回 None，而暴力版能找到 (0, 1)",
+      "返回 (0, 1)，与暴力版得到的结果一样",
+      "返回 (1, 3)，找到了另一对合法的答案",
+      "程序报错，因为无序数组不允许用对撞指针"
+    ],
+    "ans": 0,
+    "why": "第 1 步看到 2 + 1 = 3 偏小，就把 2 丢掉了；可 2 要配的是 7，此刻排在更远的位置。无序时「和偏小」这个信号给出的结论是错的，于是答案被丢掉。"
+  }
+]'></div>
+
+  <h2>快慢指针：一读一写</h2>
+
+  <p>第二个任务是原地去重：数组已排好序，把重复的值去掉，只留每个值一次，并且不使用额外空间。「不使用额外空间」是题目明写的条件，也是这一课的一个考点：原地改写把额外空间压到 <span class="math-inline">O(1)</span>，付出的是写错之后不容易发现。</p>
+
+  <p>先看现成的删除操作能做什么。官方教程里的口径是：<code>list.remove(value)</code> 从列表中移除第一个值为 <code>value</code> 的条目，没有这个值就抛 <code>ValueError</code>；按下标删除用 <code>del a[i]</code>，<code>del a[2:4]</code> 删掉一段切片，<code>del a[:]</code> 清空整个列表。这些操作都只改原列表、返回 <code>None</code>，而且都要把后面的元素整体往前搬一格——第 3 课的价格表里，<code>lst.pop(i)</code> 与 <code>lst.insert(i, x)</code> 都是 <span class="math-inline">O(n)</span>，越靠前越贵。删 <span class="math-inline">k</span> 个重复值就是 <span class="math-inline">O(kn)</span>，<span class="math-inline">n = 10^5</span> 时这条路走不通。</p>
+
+  <p>快慢指针把「找到重复」与「搬动元素」合成一趟扫描，两个下标的职责分得很清楚：</p>
+
+  <ul>
+    <li><code>fast</code> 是<b>读位置</b>：它从 1 开始，每轮往右走一格，保证 <span class="math-inline">a[fast]</span> 左边的每个位置都已经被看过一次。</li>
+    <li><code>slow</code> 是<b>写位置</b>：它指向已经整理好的那一段的最后一个元素，保证 <span class="math-inline">[0, slow]</span> 里的值互不相同、且相对顺序与原来一致。</li>
+  </ul>
+
+  <p>每一轮开始之前，下面两条同时成立：</p>
+
+  <ul>
+    <li><span class="math-inline">[0, slow]</span> 是整理好的部分：前缀里的值两两不同、按原来的顺序排列；</li>
+    <li><span class="math-inline">(slow, fast)</span> 之间的位置已经处理过，里面的内容不再需要；<span class="math-inline">[fast, n)</span> 还没有看过。</li>
+  </ul>
+
+  <p>判断规则只有一条：<span class="math-inline">a[fast]</span> 与 <span class="math-inline">a[slow]</span> 相同时，这个值是重复的，丢掉；不同时，它是第一个出现的值，必须留下来——先把 <code>slow</code> 往前挪一格，再把 <code>a[fast]</code> 写到新的 <code>a[slow]</code> 上。这两步的先后顺序不能换：先写再挪，会把已整理部分的最后一个值覆盖掉。</p>
+
+  <pre data-lang="python"><code>def dedup_sorted(a):
+    """有序数组原地去重，返回值是去重后剩下的元素个数。"""
+    if len(a) == 0:
+        return 0
+    slow = 0
+    for fast in range(1, len(a)):
+        if a[fast] != a[slow]:
+            slow += 1
+            a[slow] = a[fast]
+    return slow + 1
+
+
+b = [1, 1, 2, 3, 3, 3, 5]
+k = dedup_sorted(b)
+print(k, b[:k])                     # 4 [1, 2, 3, 5]
+print(b)                            # 只有前 k 项是答案</code></pre>
+
+  <pre data-lang="text"><code>4 [1, 2, 3, 5]
+[1, 2, 3, 5, 3, 3, 5]</code></pre>
+
+  <p>第二行输出要读准：函数返回的是<b>个数</b> <code>k</code>，只保证 <code>b[:k]</code> 是去重后的结果，<code>b[k:]</code> 里是上一轮留下来的旧值，不用清也不用管。这与返回一个新列表的函数不同，原地改写的函数必须把「哪一段有效」交代出去，<code>k</code> 就是这份交代。</p>
+
+  <p>代价是 <span class="math-inline">O(n)</span> 时间与 <span class="math-inline">O(1)</span> 额外空间：<code>fast</code> 走 <span class="math-inline">n - 1</span> 格，<code>slow</code> 最多走 <span class="math-inline">n - 1</span> 格，两个下标合计 <span class="math-inline">O(n)</span>，且没有造新列表。收尾打印用的 <code>b[:k]</code> 是一次切片，第 3 课讲过它会复制出 <span class="math-inline">k</span> 个元素、代价 <span class="math-inline">O(k)</span>；这里用一次没关系，它的位置在循环之外。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "有序数组原地去重用的快慢指针，两个下标各自的职责是什么？",
+    "opts": [
+      "fast 读、slow 写，写位置划出有效段",
+      "fast 写、slow 读，读位置决定丢弃谁",
+      "两个都负责读，靠比较两个下标的值判断重复",
+      "两个都负责写，各自负责写数组的一半来省时间"
+    ],
+    "ans": 0,
+    "why": "fast 一路读过去，slow 指向已整理部分的末尾。不变式是 [0, slow] 已整理好、(slow, fast) 已处理且不再需要、[fast, n) 还没看。最后返回 slow + 1 作为有效长度。"
+  }
+]'></div>
+
+  <figure class="lesson-figure lesson-figure--inline" role="img" aria-label="快慢指针在有序数组上读一格写一格的状态">
+<svg viewBox="0 0 528 180" role="img" aria-hidden="true">
+  <g stroke="currentColor" fill="none">
+    <rect x="40" y="56" width="64" height="36"/>
+    <rect x="110" y="56" width="64" height="36"/>
+    <rect x="180" y="56" width="64" height="36"/>
+    <rect x="250" y="56" width="64" height="36" stroke-dasharray="4 3"/>
+    <rect x="320" y="56" width="64" height="36" stroke-dasharray="4 3"/>
+    <rect x="390" y="56" width="64" height="36"/>
+    <path d="M40 40 L40 32 M40 36 L244 36 M244 40 L244 32"/>
+    <path d="M422 26 L422 52"/>
+    <path d="M417 46 L422 56 L427 46"/>
+    <path d="M212 140 L212 96"/>
+    <path d="M207 102 L212 92 L217 102"/>
+  </g>
+  <g font-family="sans-serif" fill="currentColor" text-anchor="middle">
+    <g font-size="12">
+      <text x="142" y="26">已整理好：每个值只留一个</text>
+      <text x="422" y="16">fast 在这里读</text>
+      <text x="317" y="130">已处理过，内容不再需要</text>
+      <text x="212" y="156">slow：写位置</text>
+    </g>
+    <g font-size="15">
+      <text x="72" y="80">1</text>
+      <text x="142" y="80">2</text>
+      <text x="212" y="80">3</text>
+      <text x="282" y="80">3</text>
+      <text x="352" y="80">3</text>
+      <text x="422" y="80">5</text>
+    </g>
+  </g>
+</svg>
+    <figcaption>图 2 · 慢指针指向已整理好的最后一项，快指针读到新值时慢指针前移一格并写入</figcaption>
+  </figure>
+
+  <h2>写入位置忘了往前挪</h2>
+
+  <p>读位置与写位置混在一起，是原地改写最容易出错的地方。把上面那段代码里的 <code>slow += 1</code> 删掉，<code>slow</code> 会一直停在 0，所有的值都往 <code>a[0]</code> 上写：</p>
+
+  <pre data-lang="python"><code>def dedup_forget_write(a):
+    """忘记了把写入位置往前挪：所有不同的值都写到 a[0]。"""
+    if len(a) == 0:
+        return 0
+    slow = 0
+    for fast in range(1, len(a)):
+        if a[fast] != a[slow]:
+            a[slow] = a[fast]
+    return slow + 1
+
+
+b = [1, 1, 2, 3, 3, 5]
+print(dedup_forget_write(b))    # 1：声称只剩 1 个元素
+print(b)                        # 原数组被写花</code></pre>
+
+  <pre data-lang="text"><code>1
+[5, 1, 2, 3, 3, 5]</code></pre>
+
+  <p>这个错版的返回值和数组内容都是错的，两个错还能互相解释。逐轮打出来看：</p>
+
+  <table>
+    <thead>
+      <tr><th>轮次</th><th><code>a[fast]</code></th><th><code>a[slow]</code>（也就是 <code>a[0]</code>）</th><th>动作</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>1</td><td>1</td><td>1</td><td>相同，跳过</td></tr>
+      <tr><td>2</td><td>2</td><td>1</td><td>写入 <code>a[0] = 2</code></td></tr>
+      <tr><td>3</td><td>3</td><td>2</td><td>写入 <code>a[0] = 3</code></td></tr>
+      <tr><td>4</td><td>3</td><td>3</td><td>相同，跳过</td></tr>
+      <tr><td>5</td><td>5</td><td>3</td><td>写入 <code>a[0] = 5</code></td></tr>
+    </tbody>
+  </table>
+
+  <p>第 3 轮把 3 写进了 <code>a[0]</code>，第 4 轮再读 <code>a[slow]</code> 时读到的就是刚写下去的那个 3，于是「与已整理部分的最后一个值相同」这个判断被自己的写入结果带偏，那个位置上原本要留下来的 3 被当成了重复值丢掉。错版最终声称去重后只剩 1 个元素，而原数组前几项已经被写花成 <code>[5, 1, 2, 3, 3, 5]</code>；正确版的答案是 4 与 <code>[1, 2, 3, 5]</code>。</p>
+
+  <p>防它的办法是先分清两个位置：<code>fast</code> 那一格是<b>读</b>的，<code>slow</code> 那一格是<b>写</b>的；<code>slow += 1</code> 与 <code>a[slow] = a[fast]</code> 是配成一对的动作，中间不插别的语句。上面的不变式也正好用在这里：只要 <span class="math-inline">[0, slow]</span> 是整理好的部分，写入位置就永远落在它的下一格，读到的旧值不会是自己写下去的。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "原地去重时忘记维护写入位置，会看到什么后果？",
+    "opts": [
+      "个数与数组内容都错，写进去的值带偏了判断",
+      "只是个数返回错了，数组里的内容仍然是对的",
+      "程序报 IndexError，写位置跑出了数组",
+      "结果与正确版完全一样，只是跑得慢一些而已"
+    ],
+    "ans": 0,
+    "why": "写入位置错了，后面读到 a[slow] 时读到的是刚写下去的值，「与已整理部分最后一个值相同」这个判断被自己的写入带偏，本该留下的值被当成重复丢掉。两个错互相解释。"
+  }
+]'></div>
+
+  <h2>回文判定：两头向中间</h2>
+
+  <p>对撞指针还管一类题：判定。判断一个序列是不是回文，意思是它与自己的逆序逐项相等。列表与字符串都按下标取元素、都用 <code>len</code> 取长度（官方教程把它们放在「序列」这一节里讲），所以同一段代码对两者都成立。</p>
+
+  <p>两个下标的职责在这里完全对称：<span class="math-inline">l</span> 从左往右、<span class="math-inline">r</span> 从右往左，每轮比较 <span class="math-inline">s[l]</span> 与 <span class="math-inline">s[r]</span>。每一轮开始之前的命题是：</p>
+
+  <ul>
+    <li><span class="math-inline">[0, l)</span> 与 <span class="math-inline">(r, n - 1]</span> 已经逐对比较过，每一对都相等；</li>
+    <li>因此整个序列是不是回文，只剩 <span class="math-inline">[l, r]</span> 这一段还没查。</li>
+  </ul>
+
+  <p><span class="math-inline">l</span> 保证：左边已经比过的部分不需要再比。<span class="math-inline">r</span> 保证：右边已经比过的部分不需要再比。移动条件是两条，与两数之和那种「只动一个」不同——比较结果只有相等与不相等两种，不相等直接给出结论，相等则两个指针一起动。</p>
+
+  <pre data-lang="python"><code>def is_palindrome(s):
+    """判断序列 s 是不是回文。"""
+    l = 0
+    r = len(s) - 1
+    while l &lt; r:
+        if s[l] != s[r]:
+            return False
+        l += 1
+        r -= 1
+    return True
+
+
+print(is_palindrome('上海自来水来自海上'))   # True
+print(is_palindrome('abccba'))               # True
+print(is_palindrome('abcabc'))               # False
+print(is_palindrome([1, 2, 3, 2, 1]))        # True</code></pre>
+
+  <pre data-lang="text"><code>True
+True
+False
+True</code></pre>
+
+  <p>第三条数据 <code>abcabc</code> 在第 1 轮就退出：<code>s[0]</code> 是 <code>a</code>、<code>s[5]</code> 是 <code>c</code>，两者不相等，不必再比。第四条数据是奇数长度，两个指针在中间那一格相遇（<span class="math-inline">l = r = 2</span>），循环条件 <span class="math-inline">l &lt; r</span> 不成立而正常结束——奇数长度的中间那一项与自身相等，不需要单独处理。时间 <span class="math-inline">O(n)</span>，额外空间 <span class="math-inline">O(1)</span>。</p>
+
+  <h2>合并两个有序数组</h2>
+
+  <p>最后一个任务是把两个已经排好序的数组拼成一个有序数组，这是归并排序里的一步。两个下标各管一个数组，都从各自的头部出发：</p>
+
+  <ul>
+    <li><span class="math-inline">p</span> 指向 <span class="math-inline">a</span> 中<b>还没被取走的最小元素</b>，即 <span class="math-inline">a[p]</span> 是 <span class="math-inline">a</span> 剩下的部分的最小值；</li>
+    <li><span class="math-inline">q</span> 指向 <span class="math-inline">b</span> 中还没被取走的最小元素；</li>
+    <li>已经放进结果列表的那一段，是「两个数组已取走的元素」合并后的有序前缀，且其中每一项都不大于 <span class="math-inline">a[p]</span> 与 <span class="math-inline">b[q]</span>。</li>
+  </ul>
+
+  <p>移动条件是「谁小谁走」：比较 <span class="math-inline">a[p]</span> 与 <span class="math-inline">b[q]</span>，小的那个被取走、它所属的下标加一。相等时取 <span class="math-inline">a</span> 的那一个（<code>&lt;=</code>），这样结果里同值的相对次序与输入的先后一致。</p>
+
+  <pre data-lang="python"><code>def merge_sorted(a, b):
+    """把两个有序列表合并成一个有序列表。"""
+    p = 0
+    q = 0
+    out = []
+    while p &lt; len(a) and q &lt; len(b):
+        if a[p] &lt;= b[q]:
+            out.append(a[p])
+            p += 1
+        else:
+            out.append(b[q])
+            q += 1
+    while p &lt; len(a):
+        out.append(a[p])
+        p += 1
+    while q &lt; len(b):
+        out.append(b[q])
+        q += 1
+    return out
+
+
+print(merge_sorted([1, 3, 5, 7], [2, 4, 6]))   # [1, 2, 3, 4, 5, 6, 7]
+print(merge_sorted([1, 2, 3], [2, 2, 9]))      # [1, 2, 2, 2, 3, 9]</code></pre>
+
+  <pre data-lang="text"><code>[1, 2, 3, 4, 5, 6, 7]
+[1, 2, 2, 2, 3, 9]</code></pre>
+
+  <p>主循环走到某一个数组取空为止，剩下的那一个数组整体都比已取走的大，所以后面两个 <code>while</code> 把它整段接上即可，不必逐个比较。时间 <span class="math-inline">O(n + m)</span>：两个下标合计走 <span class="math-inline">n + m</span> 格。空间 <span class="math-inline">O(n + m)</span>：结果放在新列表里。</p>
+
+  <p>同一件事有现成的写法：<code>sorted(a + b)</code>。<code>a + b</code> 先造一个 <span class="math-inline">n + m</span> 项的新列表，再交给 <code>sorted</code>。两条路都跑一遍，结果一样、耗时不一样（<span class="math-inline">n = m = 10^5</span>，本机实测、非通用值）：</p>
+
+  <pre data-lang="text"><code>手写双指针合并 0.0342 秒
+sorted(a + b)  0.0067 秒
+两个结果一样 True 长度 200000</code></pre>
+
+  <p><code>sorted</code> 快了约 5 倍——它是内置函数，循环跑在 C 层；两段各自有序时，它用的排序正好能把两段直接接起来。这个差距不影响选择：题目要求 <span class="math-inline">O(1)</span> 额外空间时 <code>sorted(a + b)</code> 用不了（它必然造一个新列表），需要在合并途中顺手做别的判断时也用不了（比如只取前 <span class="math-inline">k</span> 项、或者比较的不是元素本身）。这类场合就得自己写双指针；写熟它的收益是把「两个下标各保证什么」练成本能，速度并不是它的长处。</p>
+
+  <p>要求原地合并、并且第一个数组末尾已经留好空位时，还有一个从后往前写的版本：<span class="math-inline">p</span>、<span class="math-inline">q</span> 分别指向两个数组<b>没被取走的最大元素</b>，写入位置 <code>w</code> 从 <code>m + n - 1</code> 往前移，每次把较大的那个写到 <code>a[w]</code>。从后往前写的好处是每个位置只被写一次、不会覆盖还没读到的元素；往中间 <code>insert</code> 一次就要 <span class="math-inline">O(n)</span>（第 3 课的价格表），从后往前写每次都是 <span class="math-inline">O(1)</span>。</p>
+
+  <pre data-lang="python"><code>def merge_into(a, m, b):
+    """a 的前 m 项已排好、后面留了 len(b) 个空位，把 b 原地合并进 a。"""
+    p = m - 1
+    q = len(b) - 1
+    w = m + len(b) - 1
+    while q &gt;= 0:
+        if p &gt;= 0 and a[p] &gt; b[q]:
+            a[w] = a[p]
+            p -= 1
+        else:
+            a[w] = b[q]
+            q -= 1
+        w -= 1
+    return a
+
+
+c = [1, 4, 7, 0, 0, 0]
+print(merge_into(c, 3, [2, 5, 6]))   # [1, 2, 4, 5, 6, 7]</code></pre>
+
+  <pre data-lang="text"><code>[1, 2, 4, 5, 6, 7]</code></pre>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "把有序数组 b 合并进 a 的后半段空位，从后往前写。两个指针的移动条件是什么？",
+    "opts": [
+      "比较两处的末尾值，谁大就把谁写进末尾空位",
+      "总是先写 b 的末尾，写完再写 a 剩下的",
+      "总是先写 a 的末尾，写完再写 b 剩下的",
+      "比较两处的开头值，谁小就把谁写进开头空位"
+    ],
+    "ans": 0,
+    "why": "从后往前写，比较的是 a 与 b 当前的末尾，谁大谁先落到 a 的最后一个空位，然后那个指针往前退一格。从前往后写会覆盖掉 a 里还没用到的元素。"
+  }
+]'></div>
+
+  <h2>两数之和的两种写法实测</h2>
+
+  <p>同一道两数之和，两层循环与对撞指针在四档规模上的耗时（<span class="math-inline">n</span> 个互不相同的随机整数，答案落在数组中间；本机实测、非通用值）：</p>
+
+  <table>
+    <thead>
+      <tr><th><span class="math-inline">n</span></th><th>两层循环 <span class="math-inline">O(n^2)</span></th><th>对撞指针 <span class="math-inline">O(n)</span></th><th>对撞指针走的轮数</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>2000</td><td>0.041 秒</td><td>0.000132 秒</td><td>1999</td></tr>
+      <tr><td>4000</td><td>0.181 秒</td><td>0.000257 秒</td><td>3999</td></tr>
+      <tr><td>8000</td><td>0.770 秒</td><td>0.000588 秒</td><td>7999</td></tr>
+      <tr><td>16000</td><td>3.347 秒</td><td>0.001709 秒</td><td>15999</td></tr>
+    </tbody>
+  </table>
+
+  <p>两列数字要分开读：</p>
+
+  <ul>
+    <li><b>两层循环那一列</b>：<span class="math-inline">n</span> 翻一倍，耗时从 0.770 秒涨到 3.347 秒，是 4.3 倍，正是 <span class="math-inline">O(n^2)</span> 的形状。第 2 课那把尺子在这里给出的是：1 秒时限下这一版只能扛到 <span class="math-inline">n \approx 9000</span>。</li>
+    <li><b>对撞指针那一列</b>：绝对值都在毫秒以下，刻度太小，这三档之间的秒数有测量波动；它是不是线性的，看最后一列更可靠——指针每一轮只走一格，<span class="math-inline">n = 16000</span> 时合计 15999 轮，正好是 <span class="math-inline">n - 1</span>，每一轮又只做常数次操作。这组数据是它的最坏情形，总代价依然是线性的。</li>
+    <li>在 <span class="math-inline">n = 16000</span> 这一行，两者相差约 1960 倍。这个差距来自走法的改变，与代码写得紧不紧凑无关：两版都是普通写法。</li>
+  </ul>
+
+  <div class="lesson-warn">
+    <b>别背这几个秒数</b>
+    <p>表里的秒数是本机实测、非通用值（Python 3.14 的 free-threading 构建，单次运行）。要记的是两件事：两层循环的耗时随规模翻倍涨四倍，对撞指针的轮数上限是 <span class="math-inline">n - 1</span>、每一轮都是常数代价。同一条读法在第 9 课比较三种区间求和走法时出现过。</p>
+  </div>
+
+  <h2>这一课用到的写法</h2>
+
+  <table>
+    <thead>
+      <tr><th>要做的事</th><th>写法</th><th>边界</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>有序数组里找一对</td><td><code>while l &lt; r</code> 里比较 <code>a[l] + a[r]</code></td><td>前提是数组有序；每轮只移动一个下标</td></tr>
+      <tr><td>对撞指针的移动</td><td>和偏小 <code>l += 1</code>、和偏大 <code>r -= 1</code></td><td>丢掉的那一格由有序保证不再需要</td></tr>
+      <tr><td>一次移动多格</td><td>该跨段时写 <code>while</code></td><td>外层是 <code>for l</code> 时写 <code>if</code> 会漏解</td></tr>
+      <tr><td>原地去重的两个位置</td><td><code>fast</code> 读、<code>slow</code> 写；先 <code>slow += 1</code> 再写</td><td>写位置不往前挪会把原数组写花</td></tr>
+      <tr><td>原地去重的返回值</td><td>返回长度 <span class="math-inline">k</span>，只保证 <code>a[:k]</code> 有效</td><td><code>a[k:]</code> 的旧值不用清</td></tr>
+      <tr><td>回文判定</td><td><code>s[l] != s[r]</code> 直接 False，相等则两个一起动</td><td><code>l &gt;= r</code> 即全部比过，奇数长度不用特判</td></tr>
+      <tr><td>合并两个有序数组</td><td>谁小谁走；一个数组走完后整段接上</td><td>时间 <span class="math-inline">O(n + m)</span>，新列表要 <span class="math-inline">O(n + m)</span> 空间</td></tr>
+      <tr><td>原地合并</td><td>从后往前写，<code>w</code> 从末尾往前移</td><td>只在末尾留好空位时可用</td></tr>
+    </tbody>
+  </table>
+
+  <p>有序数据上的配对与去重是省赛里的低难度高频题，这四道题用到的两种配合方式覆盖了这一类题的主要写法，写熟能省下大量调试时间。蓝桥杯的题面常把「有序」「原地」「不使用额外空间」写在数据范围与说明里，读题时把这三处标出来，用哪套写法基本就定了。</p>
+
+  <p>配套项目「AI 刷题助手」在这一步要能说出两件事：这题的两个指针各是什么，以及各自保证什么。这两句是判断一条建议能不能照着写的最小信息——只报出「用双指针」而说不出两个下标的移动条件，这条建议就没法照着写。</p>
+
+  <div class="lesson-practice">
+    <div class="lesson-practice__head">
+      <span class="lesson-practice__level">上手做</span>
+      <span class="lesson-practice__title">四道题的两个指针移动条件</span>
+    </div>
+
+      <p>动手部分落在 lab 里（任务与断言见 <a href="../lab/0011-two-pointers-applications/">lab/0011-two-pointers-applications/</a>，做完对照 <a href="../lab/solutions/">lab/solutions/</a>）。四道题，每道都要在代码注释里写清两个指针各自的移动条件，再写一句它们各自保证什么。</p>
+
+      <ol>
+        <li>有序数组的两数之和：写出对撞指针版，并在注释里写清三条移动规则与丢掉的那一格为什么不可能出现在答案里。</li>
+        <li>原地去重：写出快慢指针版，注释里写明 <code>fast</code> 与 <code>slow</code> 各保证什么，以及为什么 <code>slow += 1</code> 必须写在赋值之前。</li>
+        <li>回文判定：用对撞指针写，注释里写明两个指针的职责为什么是对称的；再改一版，让它在发现第一处不相等时把下标打出来。</li>
+        <li>合并两个有序数组：先用新列表版写一遍，再把它改成从后往前的原地版；注释里写明每一版两个指针各指向什么。</li>
+        <li>三处排错各跑一次，记录输出并指出错在哪一步：把第 1 题收右指针的条件从 <code>while</code> 写成 <code>if</code>（用 <code>[1, 4, 5, 9, 11]</code> 与目标值 <code>10</code>）；把第 1 题的数组打乱顺序之后再对撞一遍；把第 2 题的写入位置固定在第 0 格。</li>
+      </ol>
+  </div>
+
+  <ul class="lesson-resources">
+    <li><a href="https://docs.python.org/zh-cn/3/tutorial/datastructures.html">Python 官方文档 · 数据结构</a><span class="lesson-resources__meta">列表的 <code>remove</code>、<code>del</code>、切片与序列的公共操作，本课原地删除与原地改写的官方说法出自这里</span></li>
+    <li><a href="https://oi-wiki.org/basic/complexity/">OI Wiki · 复杂度</a><span class="lesson-resources__meta">时间复杂度与空间复杂度的口径，本课「翻倍涨四倍、翻倍涨两倍」的读法照它</span></li>
+    <li><a href="https://oi-wiki.org/basic/prefix-sum/">OI Wiki · 前缀和与差分</a><span class="lesson-resources__meta">第 9 课同一条来源；本课与它对齐「区间」「前缀和」的说法，本课的题不走这条路</span></li>
+    <li>《算法竞赛进阶指南》双指针与尺取法（具体章节待核实）<span class="lesson-resources__meta">本地教材：双指针与尺取法的推导，可作参考书查</span></li>
+    <li>洛谷题单：双指针（模板题起步）<span class="lesson-resources__meta">题单，在洛谷站内检索「双指针」题单</span></li>
+  </ul>
+
+  <div class="lesson-related">
+    <a href="0010-stack-and-queue.html">上节课：后进先出与先进先出</a>
+    <a href="0009-linear-structures-two-pointers.html">第 9 课：一维数据的两种走法</a>
+  </div>
+
+  <!-- ── 提问提示：固定写法，别删 ── -->
+
+  <div class="lesson-ask">
+    <b>没看懂？随时问</b>
+    把看不懂的段落（或报错）原样复制回会话，说一句哪里不懂就行，我只解释这一段，不打断你的进度。
+  </div>
+
+  <!-- ── 上/下节课指针由渲染器按 curriculum.yaml 的 nodes 顺序算（第一课无 --prev、最后一课无 --next） ── -->
+
+  <nav class="lesson-nav" aria-label="上一课 / 下一课">
+    <a class="lesson-nav__link lesson-nav__link--prev" href="0010-stack-and-queue.html">
+      <span class="lesson-nav__dir">上节课</span>
+      <span class="lesson-nav__title">后进先出与先进先出</span>
+    </a>
+    <a class="lesson-nav__link lesson-nav__link--next" href="0012-recursion-and-stack.html">
+      <span class="lesson-nav__dir">下节课</span>
+      <span class="lesson-nav__title">递归：函数调用自己</span>
+    </a>
+  </nav>
+
+  <footer class="lesson-footer">
+    StudyMate · 0011 双指针：两个下标的配合 · 本地学习工作区
+  </footer>
+
+</article>
+
+<script src="../../../assets/sayo/sayo.js"></script>
+<link rel="stylesheet" href="../../../assets/katex/katex.min.css">
+<script src="../../../assets/katex/katex.min.js" defer></script>
+<script src="../../../assets/lesson-math.js" defer></script>
+<script src="../assets/quiz.js" defer></script>
+<script src="../assets/lesson-toc.js" defer></script>
+<script>LearnTheme.wire(document.getElementById('lesson-theme-checkbox'));</script>
+</body>
+</html>

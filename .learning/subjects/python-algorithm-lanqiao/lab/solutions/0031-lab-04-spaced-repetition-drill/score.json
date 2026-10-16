@@ -1,0 +1,192 @@
+{
+  "total": 360,
+  "max_total": 360,
+  "problems": {
+    "p1": {
+      "title": "舞台高度",
+      "points": 30,
+      "score": 30,
+      "cases": [
+        {
+          "case": "case01.in",
+          "ok": true,
+          "seconds": 0.019
+        },
+        {
+          "case": "case02.in",
+          "ok": true,
+          "seconds": 0.018
+        },
+        {
+          "case": "case03.in",
+          "ok": true,
+          "seconds": 0.018
+        },
+        {
+          "case": "case04.in",
+          "ok": true,
+          "seconds": 0.018
+        },
+        {
+          "case": "case05.in",
+          "ok": true,
+          "seconds": 0.019
+        },
+        {
+          "case": "case06.in",
+          "ok": true,
+          "seconds": 0.221
+        }
+      ]
+    },
+    "p2": {
+      "title": "四边形合并",
+      "points": 60,
+      "score": 60,
+      "cases": [
+        {
+          "case": "case01.in",
+          "ok": true,
+          "seconds": 0.021
+        },
+        {
+          "case": "case02.in",
+          "ok": true,
+          "seconds": 0.019
+        },
+        {
+          "case": "case03.in",
+          "ok": true,
+          "seconds": 0.019
+        },
+        {
+          "case": "case04.in",
+          "ok": true,
+          "seconds": 0.018
+        },
+        {
+          "case": "case05.in",
+          "ok": true,
+          "seconds": 0.023
+        },
+        {
+          "case": "case06.in",
+          "ok": true,
+          "seconds": 1.641
+        }
+      ]
+    },
+    "p3": {
+      "title": "数颜色",
+      "points": 90,
+      "score": 90,
+      "cases": [
+        {
+          "case": "case01.in",
+          "ok": true,
+          "seconds": 0.02
+        },
+        {
+          "case": "case02.in",
+          "ok": true,
+          "seconds": 0.019
+        },
+        {
+          "case": "case03.in",
+          "ok": true,
+          "seconds": 0.018
+        },
+        {
+          "case": "case04.in",
+          "ok": true,
+          "seconds": 0.024
+        },
+        {
+          "case": "case05.in",
+          "ok": true,
+          "seconds": 0.712
+        },
+        {
+          "case": "case06.in",
+          "ok": true,
+          "seconds": 0.685
+        }
+      ]
+    },
+    "p4": {
+      "title": "最长公共子串",
+      "points": 100,
+      "score": 100,
+      "cases": [
+        {
+          "case": "case01.in",
+          "ok": true,
+          "seconds": 0.02
+        },
+        {
+          "case": "case02.in",
+          "ok": true,
+          "seconds": 0.018
+        },
+        {
+          "case": "case03.in",
+          "ok": true,
+          "seconds": 0.018
+        },
+        {
+          "case": "case04.in",
+          "ok": true,
+          "seconds": 0.028
+        },
+        {
+          "case": "case05.in",
+          "ok": true,
+          "seconds": 1.331
+        },
+        {
+          "case": "case06.in",
+          "ok": true,
+          "seconds": 1.33
+        }
+      ]
+    },
+    "p5": {
+      "title": "雨天迷宫",
+      "points": 80,
+      "score": 80,
+      "cases": [
+        {
+          "case": "case01.in",
+          "ok": true,
+          "seconds": 0.023
+        },
+        {
+          "case": "case02.in",
+          "ok": true,
+          "seconds": 0.022
+        },
+        {
+          "case": "case03.in",
+          "ok": true,
+          "seconds": 0.021
+        },
+        {
+          "case": "case04.in",
+          "ok": true,
+          "seconds": 0.02
+        },
+        {
+          "case": "case05.in",
+          "ok": true,
+          "seconds": 0.022
+        },
+        {
+          "case": "case06.in",
+          "ok": true,
+          "seconds": 0.231
+        }
+      ]
+    }
+  },
+  "note": "这一课真正要判的是 timeline.md 与 explain.md：跑 py check_timeline.py"
+}

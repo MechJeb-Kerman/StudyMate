@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>读完输入再动手 · Python 算法与蓝桥杯</title>
+
+<!-- 共享层在 .learning/assets/，课件在 .learning/subjects/<slug>/lessons/ 下，所以是 ../../../assets/ -->
+<link rel="stylesheet" href="../../../assets/sayo/sayo.css">
+<link rel="stylesheet" href="../../../assets/learn-theme.css">
+<link rel="stylesheet" href="../assets/style.css">
+
+<!-- 主题要在首帧前应用，避免闪白/闪黑 -->
+<script src="../../../assets/learn-theme.js"></script>
+<script>LearnTheme.apply();</script>
+</head>
+
+<body class="lesson-body">
+
+<nav class="lesson-bar">
+  <a href="../index.html">← 返回课程</a>
+  <span>Python 算法与蓝桥杯</span>
+  <span class="lesson-bar__no">0006</span>
+  <!-- 课件页自带主题开关：学生从文件管理器直接打开课件时也能切暗色 -->
+  <label class="syo-toggle syo-toggle--theme lesson-bar__toggle" title="切换深浅主题" aria-label="切换深浅主题">
+    <input type="checkbox" id="lesson-theme-checkbox" checked>
+    <span class="syo-toggle-track"></span>
+    <span class="syo-toggle-knob">
+      <svg class="syo-toggle-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.5" stroke="#f57c00" stroke-width="1.5"/><path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.34 4.34l1.77 1.77M13.89 13.89l1.77 1.77M4.34 15.66l1.77-1.77M13.89 6.11l1.77-1.77" stroke="#f57c00" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <svg class="syo-toggle-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.5 12.5A6 6 0 019 4.5a6 6 0 007.5 8z" stroke="#5c6bc0" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </span>
+  </label>
+</nav>
+
+<article class="lesson">
+
+  <header class="lesson-header">
+    <span class="lesson-header__eyebrow">0006 · 读完输入再动手</span>
+    <h1>读完输入再动手</h1>
+    <p class="lesson-goal"><b>本节目标：</b>能把单行多整数、多行整数、n×m 矩阵、混合行列与带空行的多组数据各读成指定的数据结构，并用最小样例与打印把输入层的错误定位出来。</p>
+  </header>
+
+  <!-- ── 正文：渲染器按内容文件（lessons/<序号>-<节点id>.md）产出，块词汇见 docs/规范/课件内容格式.md ── -->
+
+  <p>第 1 课那道题只有一行输入，一个整数。第 4 课和第 5 课处理的 <code>data</code> 是已经切好的一串字符串。真实题面的输入要复杂得多：一行里塞好几个整数、一个数占一行、<span class="math-inline">n \times m</span> 的矩阵、行列数写在第一行、数据块之间夹着空行。</p>
+
+  <p>学生通用的做法是 <code>input()</code> 一行一行读，一边读一边算。遇到「第一行 <code>n m</code>，接下来 <code>n</code> 行每行 <code>m</code> 个整数」时，卡住的位置常常落在第一步：数据还没有完整地落进一个数据结构，后面每一步都在猜自己读到哪儿了。这一课把动作定下来：<b>先用一次读入把整份输入变成数据结构，算法只面对数据结构。</b> 这门课后面每一道题都从这一步开始。</p>
+
+  <h2>输入没读完，别动手</h2>
+
+  <p>把常见输入摊开，格式只有几类，每一类这一课都会给一份能跑的模板：</p>
+
+  <ul>
+    <li>单行多整数：<code>3 1 4 1 5 9</code>。</li>
+    <li>多行整数：第一行给个数 <code>n</code>，接下来 <code>n</code> 行每行一个整数；也有不给 <code>n</code>、一直给到输入结束的。</li>
+    <li>矩阵：先给 <code>n m</code>，再给 <span class="math-inline">n \times m</span> 个整数，或者直接给 <span class="math-inline">n</span> 行、每行 <span class="math-inline">m</span> 个。</li>
+    <li>混合行列：同一份输入里既有定长的矩阵，后面又跟若干组查询。</li>
+    <li>多组数据：第一行给组数，组与组之间夹空行，数据块末尾还留一个空行。</li>
+  </ul>
+
+  <p>这些格式的共同点是：空白字符在承担分组的职责。换行与空格告诉程序哪些数属于同一行、哪些数属于同一组，而程序得先把这份分组关系还原成数据结构，才轮得到算法。</p>
+
+  <p>规矩只有一句：<b>先读完、再算。</b> 读入只发生一次，结果是一个数据结构；算法从数据结构出发，不再碰输入。</p>
+
+  <figure class="lesson-figure lesson-figure--inline" role="img" aria-label="从标准输入到答案的五个阶段：标准输入、read 得到一整块文本、split 得到 token 表、解析函数得到数据结构、solve 只算">
+<svg viewBox="0 0 520 215" role="img" aria-hidden="true">
+  <g stroke="currentColor" fill="none">
+    <rect x="16" y="10" width="300" height="28"/>
+    <rect x="16" y="50" width="300" height="28"/>
+    <rect x="16" y="90" width="300" height="28"/>
+    <rect x="16" y="130" width="300" height="28"/>
+    <rect x="16" y="170" width="300" height="28"/>
+    <path d="M166 38 L166 50"/>
+    <path d="M166 78 L166 90"/>
+    <path d="M166 118 L166 130"/>
+    <path d="M166 158 L166 170"/>
+    <path d="M330 10 L344 10 L344 118 L330 118" stroke-dasharray="4 3"/>
+    <path d="M330 130 L344 130 L344 158 L330 158" stroke-dasharray="4 3"/>
+    <path d="M330 170 L344 170 L344 198 L330 198" stroke-dasharray="4 3"/>
+  </g>
+  <g font-family="sans-serif" fill="currentColor" font-size="12">
+    <text x="26" y="29">标准输入：一整串字符</text>
+    <text x="26" y="69">sys.stdin.read()　→ 一整块文本</text>
+    <text x="26" y="109">split()　→ token 表 ['3', '1', '4']</text>
+    <text x="26" y="149">解析函数　→ 数据结构 [[3, 1], [4, 1]]</text>
+    <text x="26" y="189">solve() 只算　→ print 答案</text>
+    <text x="352" y="68">读入：只发生一次</text>
+    <text x="352" y="150">解析：token 变数据结构</text>
+    <text x="352" y="189">算法：只面对数据结构</text>
+  </g>
+</svg>
+    <figcaption>图 1 · 读入、解析、算法三段：标准输入只被碰一次，算法只面对数据结构</figcaption>
+  </figure>
+
+  <p>「边读边算」的问题在「先读完再算的规矩」一节用一份对照代码讲清。这里先说它的两种表现：读到的位置与你以为的位置不一致；出错时报的那一行离真正的原因很远。</p>
+
+  <p>一次读完的代价是 <span class="math-inline">O(n)</span> 的时间与额外空间——token 表与数据结构都随输入规模增长（第 2 课的口径：<span class="math-inline">O(n)</span> 的额外空间意思是这类开销随输入规模线性增长，在题目给的数据规模内属于常规开销）。它不改变复杂度档位，省下来的是「读指针现在到哪了」这件事。</p>
+
+  <h2>把整个输入读成一块</h2>
+
+  <p>标准输入在 Python 里有一个名字：<code>sys.stdin</code>。官方文档把它和另外两条流写在同一处：</p>
+
+  <ul>
+    <li><code>stdin</code> 用于所有交互式输入（包括对 <code>input()</code> 的调用）；</li>
+    <li><code>stdout</code> 用于 <code>print()</code> 和表达式语句的输出，以及用于 <code>input()</code> 的提示符；</li>
+    <li>解释器自身的提示符和它的错误消息都发往 <code>stderr</code>。</li>
+  </ul>
+
+  <p>文档紧接着说明：这些流都是<b>常规文本文件</b>，与 <code>open()</code> 函数返回的对象一致。这句话给了两件事。一是 <code>sys.stdin</code> 上能用的读法就是文件对象的读法（<code>read</code>、<code>readline</code>、遍历整个文件对象、<code>readlines</code>），课本讲文件读写那一节可以直接搬过来。二是 <code>input()</code> 并不在另一条通道上，它只是 stdin 上的一个便利入口——这个认识在讲提示文字那一节会变成一个判零分的坑。</p>
+
+  <p><code>sys.stdin.read()</code> 把整份输入读成一个字符串。字符串上的 <code>split()</code> 不带参数时按任意空白切分：空格、制表符、换行都算分隔符，连续几个当作一个，首尾的空白丢掉。于是一整份输入变成一张 <b>token 表</b>。</p>
+
+  <pre data-lang="python"><code>import sys
+
+text = sys.stdin.read()
+tokens = text.split()
+print(tokens)
+print([int(x) for x in tokens])</code></pre>
+
+  <p>样例 <code>sample1.in</code> 是一行 8 个整数：</p>
+
+  <pre data-lang="text"><code>3 1 4 1 5 9 2 6</code></pre>
+
+  <pre data-lang="term"><code>$ cat sample1.in | python read_block.py
+['3', '1', '4', '1', '5', '9', '2', '6']
+[3, 1, 4, 1, 5, 9, 2, 6]</code></pre>
+
+  <p>第一行打印出来的是 token 表：<b>一整份输入在这里变成了一个字符串列表，每一项是一个 token</b>。第二行是按 token 逐个转出来的整数列表。要留意的正是第一行——token 表里全是字符串，这件事在「读进来的都是字符串」一节会变成一个安静的坑。</p>
+
+  <p>官方文档还有一条备注：要从标准流写入或读取二进制数据，请使用底层二进制 <code>buffer</code> 对象。读入这一路上对应的是 <code>sys.stdin.buffer.read()</code>，它交回的是字节串，切出来的 token 是 <code>bytes</code>：</p>
+
+  <pre data-lang="python"><code>import sys
+
+tokens = sys.stdin.buffer.read().split()
+print(tokens[0], type(tokens[0]))
+print(sum(map(int, tokens)))</code></pre>
+
+  <pre data-lang="term"><code>$ cat sample1.in | python buffer_read.py
+b'3' &lt;class 'bytes'&gt;
+31</code></pre>
+
+  <p>第一个 token 的类型是 <code>bytes</code>（打印成 <code>b'3'</code>）。<code>int()</code> 也接受 <code>bytes</code>（实测 <code>b'3'</code> 得 3），所以 <code>map(int, tokens)</code> 照样能用。这层 <code>buffer</code> 省掉的是文本解码这一步，代价是 token 变成了 <code>bytes</code>：一旦某处要拿 token 与普通字符串比较或拼接，还得自己 <code>decode()</code>。普通题目用 <code>sys.stdin.read()</code> 就够。</p>
+
+  <p>读法之间差多少，本机实测一次（20 万个整数、每行一个）：</p>
+
+  <table>
+    <thead>
+      <tr><th>读法</th><th>本机实测</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>input()</code> 一次读一行（20 万次调用）</td><td>约 120 毫秒</td></tr>
+      <tr><td><code>for line in sys.stdin</code> 逐行读</td><td>约 65 到 90 毫秒</td></tr>
+      <tr><td><code>sys.stdin.read().split()</code></td><td>约 70 毫秒</td></tr>
+      <tr><td><code>sys.stdin.buffer.read().split()</code></td><td>约 70 毫秒</td></tr>
+    </tbody>
+  </table>
+
+  <div class="lesson-warn">
+    <b>别背这些毫秒</b>
+    <p>数字是本机实测，换机器、换 Python 版本都会变。要记的是两条：这几种读法都落在同一档复杂度（都是 <span class="math-inline">O(n)</span>），差的是常数；逐行 <code>input()</code> 每次调用都要付一笔固定开销（第 4 课量过），20 万次叠起来本机慢了约一倍。哪种更快我没有找到官方给出的速度结论，上面的数字是自己量的。从「先读完」里拿到的主要东西是一份完整、可打印、可检查的数据结构；速度上的差别只是附带。</p>
+  </div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "下面这段读的是同一份输入，两次打印为什么不一样？\n\n```python\nimport sys\n\ntext = sys.stdin.read()\nprint(text.split())\nprint([int(x) for x in text.split()])\n```\n\n输入是一行 8 个整数，第一行打印 [&#39;3&#39;, &#39;1&#39;, &#39;4&#39;, &#39;1&#39;, &#39;5&#39;, &#39;9&#39;, &#39;2&#39;, &#39;6&#39;]。",
+    "opts": [
+      "第一行是字符串表，第二行才逐个转成了整数",
+      "第一行按行切，第二行才按空白切，切法不同",
+      "第一行多包了一层引号，第二行剥掉了引号",
+      "两次读的是不同的输入，第二次读时已经空了"
+    ],
+    "ans": 0,
+    "why": "sys.stdin.read() 把整份输入读成一个字符串，字符串上的 split() 不带参数时按任意空白切分（空格、制表符、换行都算，连续几个当作一个），得到的 token 表里每一项都是字符串，所以第一行打印出来每一项带着引号。第二行对 token 表逐个做 int() 才转成整数。要留意的正是第一行：token 表里全是字符串，这一课后面「读进来的都是字符串」那个坑就长在这里。"
+  }
+]'></div>
+
+  <h2>按行读还是一起读</h2>
+
+  <p>按行切分的读法，官方教程在文件对象那一节写得很全，四条都用得上：</p>
+
+  <ul>
+    <li><code>f.read(size)</code> 省略 <code>size</code> 时读回整个文件的内容；</li>
+    <li><code>f.readline()</code> 读单行，<b>字符串末尾保留换行符</b>，只有在文件最后一行不以换行符结尾时才会省略；只要它返回空字符串就表示到了文件末尾，<b>空行用 <code>'\n'</code> 表示</b>，这个字符串只包含一个换行符；</li>
+    <li>从文件里读多行时，可以循环遍历整个文件对象；</li>
+    <li>要以列表形式读出所有行，可以用 <code>list(f)</code> 或 <code>f.readlines()</code>。</li>
+  </ul>
+
+  <p>实测最直观。下面的程序把三种读法都用一遍（第三次调用是故意的）：</p>
+
+  <pre data-lang="python"><code>import sys
+
+line = sys.stdin.readline()
+print('readline -&gt;', repr(line))
+print('readlines -&gt;', repr(sys.stdin.readlines()))
+print('input     -&gt;', repr(input()))</code></pre>
+
+  <pre data-lang="term"><code>$ cat sample4.in | python three_readers.py
+readline -&gt; '3 4\n'
+readlines -&gt; ['1 2 3 4\n', '5 6 7 8\n', '9 10 11 12\n', '2\n', '1 1\n', '3 4\n']
+Traceback (most recent call last):
+  File "three_readers.py", line 5, in &lt;module&gt;
+    print('input     -&gt;', repr(input()))
+          ~~~~~^^
+EOFError: EOF when reading a line</code></pre>
+
+  <p>前两行确认了两条官方口径：<code>readline()</code> 交回的行末尾留着 <code>\n</code>（<code>'3 4\n'</code>），<code>readlines()</code> 只是把剩下的行都装进一个列表，每一项同样带着 <code>\n</code>。最后一次调用报错是因为读取位置<b>只能往前</b>：<code>readline()</code> 拿走了第 1 行，<code>readlines()</code> 拿走了剩下全部，<code>input()</code> 被调用时已经到末尾。</p>
+
+  <p>整体读入也一样。<code>sys.stdin.read()</code> 读完之后再用 <code>input()</code>，同样撞 EOF：</p>
+
+  <pre data-lang="python"><code>import sys
+
+data = sys.stdin.read().split()
+print('读到的 token 数:', len(data))
+n = int(input())
+print('再读一行:', n)</code></pre>
+
+  <pre data-lang="term"><code>$ cat sample4.in | python read_then_input.py
+读到的 token 数: 19
+Traceback (most recent call last):
+  File "read_then_input.py", line 4, in &lt;module&gt;
+    n = int(input())
+          ~~~~~^^
+EOFError: EOF when reading a line</code></pre>
+
+  <p>结论很直接：<b>一份程序里只用一种读入口，而且只读一次。</b> 读完之后，所有需要的数据都在你手上。</p>
+
+  <p><code>input()</code> 与 <code>readline()</code> 的差别只有一处：<code>input()</code> 交回的那一行去掉了行尾换行符。实测读 <code>sample2.in</code> 的第一行 <code>5</code>：</p>
+
+  <pre data-lang="term"><code>$ cat sample2.in | python input_strip.py
+'5'
+长度 1</code></pre>
+
+  <p>两种切分的分工，用一张表记：</p>
+
+  <table>
+    <thead>
+      <tr><th></th><th>按空白切分 <code>text.split()</code></th><th>按行切分 <code>text.splitlines()</code></th></tr>
+    </thead>
+    <tbody>
+      <tr><td>分隔依据</td><td>任意空白（空格、制表符、换行）</td><td>换行符</td></tr>
+      <tr><td>换行去了哪</td><td>消失，与空格等价</td><td>行边界保留成列表元素</td></tr>
+      <tr><td>连续空白</td><td>当作一个</td><td>空行切出一个空字符串 <code>''</code></td></tr>
+      <tr><td>行尾换行符</td><td>当作空白处理，不保留</td><td>不保留（<code>readline()</code> 保留 <code>\n</code>）</td></tr>
+      <tr><td>适合的题面</td><td>「给 <span class="math-inline">n \times m</span> 个整数」这类只讲个数的</td><td>「每行一组」「每行一条记录」这类行本身有含义的</td></tr>
+      <tr><td>怕什么</td><td>基本不怕，空白怎么排都行</td><td>空行、折行、行首缩进</td></tr>
+    </tbody>
+  </table>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "同一份 4 行的输入，两种切法各得到什么？\n\n```python\nimport sys\n\ntext = sys.stdin.read()\nprint(len(text.split()), len(text.splitlines()))\n```\n\n输入是三行矩阵加一行查询个数，中间夹一行空行。",
+    "opts": [
+      "两项数一样多，差别只在元素里有没有换行符",
+      "按空白切分把空行也当成一个 token，项数更多",
+      "按行切分遇到空行要报错，得自己先过滤掉空行",
+      "按行切分保留行边界，两项数与按空白一样多",
+      "按空白切分会把每一行的整数拆散，项数更多"
+    ],
+    "ans": 0,
+    "why": "连续空白在按空白切分里当作一个，空行切完就没了，所以空行不占 token；按行切分则把空行切出一个空字符串 &#39;&#39;，行边界保留成列表元素。两种切法切出来的「东西」本身就是两回事：按空白切分交出的是一个个值，适合「给 n×m 个整数」这类只讲个数的题面；按行切分交出的是行，适合「每行一组」这类行本身有含义的题面。它的软肋正是空行、折行、行首缩进——课件那张表里写的就是这一条。"
+  }
+]'></div>
+
+  <h2>先读完再算的规矩</h2>
+
+  <p>拿一份「边读边算」的程序看它怎么错。题面是：第一行 <code>n m</code>，接下来是 <span class="math-inline">n \times m</span> 个整数，求所有数之和。</p>
+
+  <pre data-lang="python"><code>import sys
+
+n, m = map(int, input().split())
+total = 0
+for _ in range(n):
+    row = list(map(int, input().split()))
+    total += sum(row)
+print(total)</code></pre>
+
+  <p>同一份程序，两组输入。第一组是排版整齐的 <code>sample3.in</code>：</p>
+
+  <pre data-lang="text"><code>3 4
+1 2 3 4
+5 6 7 8
+9 10 11 12</code></pre>
+
+  <pre data-lang="term"><code>$ cat sample3.in | python rows_running.py
+78</code></pre>
+
+  <p>结果对。换一块数据（<code>sample6.in</code>），还是那 12 个数，只是换行位置被换过：</p>
+
+  <pre data-lang="text"><code>3 4
+1 2 3 4
+5 6
+7 8
+9 10 11 12</code></pre>
+
+  <pre data-lang="term"><code>$ cat sample6.in | python rows_running.py
+36</code></pre>
+
+  <p>36 是错的，正确答案是 78，而这个程序一个错字都没报。错在读取这一层：<code>input()</code> 每被调用一次就吃掉一行，「第 <code>i</code> 次循环」于是与「输入的第 <code>i</code> 行」绑在了一起。这份程序认为每行恰好是矩阵的一行，而实际数据里有两行被折开了，于是它读到的三行是 <code>1 2 3 4</code>、<code>5 6</code>、<code>7 8</code>，最后一行 <code>9 10 11 12</code> 根本没被读。<b>读过的位置拿不回来：前面读错一段，后面每一次读都跟着错。</b></p>
+
+  <p>换「先读完、再算」的写法，同一块数据：</p>
+
+  <pre data-lang="python"><code>import sys
+
+def read_all():
+    return sys.stdin.read()
+
+def parse_matrix(text):
+    tokens = text.split()
+    n, m = int(tokens[0]), int(tokens[1])
+    vals = [int(x) for x in tokens[2:2 + n * m]]
+    return n, m, [vals[i * m:(i + 1) * m] for i in range(n)]
+
+def solve():
+    n, m, a = parse_matrix(read_all())
+    print('n m =', n, m)
+    for i, row in enumerate(a):
+        print('第', i, '行长度', len(row), row)
+    print('总和', sum(sum(row) for row in a))
+
+solve()</code></pre>
+
+  <pre data-lang="term"><code>$ cat sample6.in | python tokens_then_compute.py
+n m = 3 4
+第 0 行长度 4 [1, 2, 3, 4]
+第 1 行长度 4 [5, 6, 7, 8]
+第 2 行长度 4 [9, 10, 11, 12]
+总和 78</code></pre>
+
+  <p>78 是对的，原因落在 <code>split()</code> 上：它只认空白，不区分空白长什么样（一个空格、一行、三行都一样），所以换行怎么排都不影响切出来的 token 表；矩阵的三行是从 token 表上按 <code>m</code> 个一段切出来的，切的位置由 <code>n</code>、<code>m</code> 决定。</p>
+
+  <p>这次的 12 个数被折行，是我为了让错位看得见而改的排版；真实评测数据多半按题面排版给你，所以「边读边算」在很多题上也能过。它的代价在别处：这份程序把「输入的换行位置」当成了算法的一部分，一旦样例、别人分享的数据、或者从题面复制粘贴时换行被打乱，读指针就错位，而报错的位置与原因隔得很远（后面「多组数据与空行」里那份逐行版程序，报错在第 3 行，原因在第 2 行那个空行上）。</p>
+
+  <p>把这条规矩用第 4 课的骨架固定下来：</p>
+
+  <pre data-lang="python"><code>import sys
+
+def read_all():
+    """唯一碰标准输入的地方。"""
+    return sys.stdin.read()
+
+def parse_input(text):
+    """只面对数据：字符串进来，数据结构出去。"""
+    ...
+
+def solve():
+    data = parse_input(read_all())
+    ...
+
+solve()</code></pre>
+
+  <p>三条纪律：</p>
+
+  <ul>
+    <li>读入只写在一个函数里，只被调用一次；</li>
+    <li>解析函数的输入是字符串、输出是数据结构，里面不出现 <code>input()</code>、<code>sys.stdin</code>；</li>
+    <li><code>solve()</code> 拿到数据结构之后才开始算，算的那部分代码里看不到读入。</li>
+  </ul>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "这段程序在两组输入上都跑完了，一组对一组错：\n\n```python\nimport sys\n\nn, m = map(int, input().split())\ntotal = 0\nfor _ in range(n):\n    row = list(map(int, input().split()))\n    total += sum(row)\nprint(total)\n```\n\n整齐的那组打出 78；另一组是同样 12 个数、只是有两行被折开，它打出 36。\n\n① 根因是什么？\n② 为什么它不报错？\n③ 怎么改？",
+    "answer": "① 根因是「边读边算」把读指针的位置与「输入的第几行」绑在了一起。input() 每调用一次就吃掉一行，程序于是认定「第 i 次循环读到的就是矩阵的第 i 行」。整齐数据里这个假设成立；折行数据里 5 6 与 7 8 各占一行，它读到的三行成了 1 2 3 4、5 6、7 8，最后一行 9 10 11 12 根本没被读，总和自然少了一块。\n\n② 不报错是因为它每一步都「读到了合法的内容」——折行后的每一行仍是能 int() 的整数，没有空行、没有多余 token，所以没有任何异常。它算出来的 36 是一个语法上完全合法的答案，只是数据不全。这类静默错误比报错难查得多。\n\n③ 按这一课的规矩改：一次读完 → 按空白切分 → 解析成数据结构，算法只面对数据结构：\n\n```python\nimport sys\n\ndef read_all():\n    return sys.stdin.read()\n\ndef parse_matrix(text):\n    tokens = text.split()\n    n, m = int(tokens[0]), int(tokens[1])\n    vals = [int(x) for x in tokens[2:2 + n * m]]\n    return n, m, [vals[i * m:(i + 1) * m] for i in range(n)]\n\ndef solve():\n    n, m, a = parse_matrix(read_all())\n    print(&#39;n m =&#39;, n, m)\n    for i, row in enumerate(a):\n        print(&#39;第&#39;, i, &#39;行长度&#39;, len(row), row)\n    print(&#39;总和&#39;, sum(sum(row) for row in a))\n\nsolve()\n```\n\nsplit() 只认空白、不区分空白长什么样，换行怎么排都不影响 token 表；矩阵的三行是从 token 表上按 m 个一段切出来的，切的位置由 n、m 决定，与换行无关。这组数据于是打出「第 0 行长度 4 …」并且总和 78。",
+    "criteria": "① 必须点到「读指针的位置与输入的行号绑在一起」这一层，并说清折行让「第 i 次读」不再等于「第 i 行」，末尾那行没被读。只说「循环次数不对」「数据没读完」而不点出读指针与行号的绑定关系，不算过。\n② 必须说明它不报错的原因：读到的每一行本身都是合法整数，没有触发任何异常，所以给出的是一个合法但错误的答案（静默错误）。答「因为它没检查」太笼统，不算过。\n③ 改法必须落到「一次读完（sys.stdin.read()）→ 按空白切分（text.split()）→ 解析成数据结构」这条主线上，并且能看出算法层不再碰输入。只把 for 循环改成 while、或只加一行 try 不算过。"
+  }
+]'></div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "把上面那份逐行读入的程序改写成「解析函数」版：读入、解析、求解各占一个函数。\n\n```python\nimport sys\n\nn, m = map(int, input().split())\ntotal = 0\nfor _ in range(n):\n    row = list(map(int, input().split()))\n    total += sum(row)\nprint(total)\n```\n\n① 写出 read_all()、parse_input(text) 与 solve() 三个函数。\n② parse_input 交出什么数据结构？\n③ 三条纪律分别管住了什么？",
+    "answer": "① 改成：\n\n```python\nimport sys\n\ndef read_all():\n    \"\"\"唯一碰标准输入的地方。\"\"\"\n    return sys.stdin.read()\n\ndef parse_input(text):\n    \"\"\"只面对数据：字符串进来，数据结构出去。\"\"\"\n    tokens = text.split()\n    n, m = int(tokens[0]), int(tokens[1])\n    vals = [int(x) for x in tokens[2:2 + n * m]]\n    return n, m, [vals[i * m:(i + 1) * m] for i in range(n)]\n\ndef solve():\n    n, m, a = parse_input(read_all())\n    print(sum(sum(row) for row in a))\n\nsolve()\n```\n\n② 交出 (n, m, a) 三样：n 与 m 是两个整数，a 是 n 行 m 列的二维列表。\n\n③ 三条纪律：读入只写在一个函数里、只被调用一次——标准输入只被碰一次，读指针这件事从此不归算法管；解析函数的输入是字符串、输出是数据结构，里面不出现 input() 与 sys.stdin——数字字符串在解析层就一次转完，算法层看不到它们；solve() 拿到数据结构之后才开始算，算的那部分代码里看不到读入——「读错了」与「算错了」于是成了两处可以分别打印、分别验证的地方。",
+    "criteria": "① 三个函数都要有，且分工正确：read_all() 里是 sys.stdin.read()（不是 input()，不是逐行读）；parse_input(text) 的入参是字符串、返回值是数据结构；solve() 里只有算法与 print。把读入留在 solve 里、或者 parse_input 里写 input()，都算没改到位。\n② 必须说清交出的是 (n, m, 二维列表) 这类结构，并指认 a 是列表的列表（每一行是内层列表）。只说「一个列表」不算过。\n③ 三条纪律要各自说清它管住了什么：读入只写一处且只调一次、解析层不许碰输入通道、算法层不许出现读入。照着念三条而不说各自的作用，按部分通过处理。"
+  }
+]'></div>
+
+  <h2>五种格式的解析模板</h2>
+
+  <p>下面五份模板各是一个能跑的程序：一个 <code>read_all()</code>、一个解析函数、一个 <code>solve()</code>。样例输入存成了文件（<code>sample1.in</code> 到 <code>sample6.in</code>），跑法统一是 <code>cat 样例文件 | python 程序.py</code>。每份模板都标出它产出的数据结构。</p>
+
+  <h3>单行多整数</h3>
+
+  <p>样例 <code>sample1.in</code>：</p>
+
+  <pre data-lang="text"><code>3 1 4 1 5 9 2 6</code></pre>
+
+  <p><code>one_line.py</code>：</p>
+
+  <pre data-lang="python"><code>import sys
+
+def read_all():
+    """唯一读标准输入的地方：整份输入读成一个字符串。"""
+    return sys.stdin.read()
+
+def parse_ints(text):
+    """按空白切分整份输入，逐个转成整数。"""
+    return [int(x) for x in text.split()]
+
+def parse_ints_loop(text):
+    """同一件事的循环版。"""
+    out = []
+    for x in text.split():
+        out.append(int(x))
+    return out
+
+def parse_ints_map(text):
+    """同一件事的 map 版（第 5 课的工具）。"""
+    return list(map(int, text.split()))
+
+def solve():
+    text = read_all()
+    a = parse_ints(text)
+    print(a)
+    print(sum(a), max(a))
+    print('推导式版与循环版一致:', a == parse_ints_loop(text))
+    print('推导式版与 map 版一致:', a == parse_ints_map(text))
+    print('token 表:', text.split())
+
+solve()</code></pre>
+
+  <pre data-lang="term"><code>$ cat sample1.in | python one_line.py
+[3, 1, 4, 1, 5, 9, 2, 6]
+31 9
+推导式版与循环版一致: True
+推导式版与 map 版一致: True
+token 表: ['3', '1', '4', '1', '5', '9', '2', '6']</code></pre>
+
+  <p>产出的数据结构：<code>[3, 1, 4, 1, 5, 9, 2, 6]</code>，一个整数列表；<code>sum</code> 得 31，<code>max</code> 得 9。</p>
+
+  <p>转换这一步有三种写法，输出逐字一致（第 5 课那条：改写完必须对着原版比对输出）：</p>
+
+  <table>
+    <thead>
+      <tr><th>写法</th><th>代码</th><th>什么时候用</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>列表推导式</td><td><code>[int(x) for x in text.split()]</code></td><td>默认写法</td></tr>
+      <tr><td>循环加 <code>append</code></td><td>先 <code>out = []</code>，再逐项 <code>out.append(int(x))</code></td><td>转换里还要顺手做别的事</td></tr>
+      <tr><td><code>map</code></td><td><code>list(map(int, text.split()))</code></td><td>转换函数已经现成，这里是 <code>int</code></td></tr>
+    </tbody>
+  </table>
+
+  <p><code>map</code> 返回迭代器（第 5 课），要收进列表才能反复用；只要直接喂给 <code>sum</code>、<code>max</code> 这类走一遍就完的函数，可以省掉 <code>list(...)</code>，写成 <code>sum(map(int, tokens))</code>。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "这一行把 3 1 4 1 5 9 2 6 读成什么？\n\n```python\nimport sys\n\ntokens = sys.stdin.read().split()\na = [int(x) for x in tokens]\nprint(a, sum(a), max(a))\n```",
+    "opts": [
+      "读成一张整数表，求和 31、最大 9",
+      "读成一张字符串表，每项带引号",
+      "读成整个字符串，长度是 15 个",
+      "读成两行表，每一行装着四个整数"
+    ],
+    "ans": 0,
+    "why": "sys.stdin.read() 把整份输入读成一块文本，split() 不带参数时按任意空白切分，得到 token 表 [&#39;3&#39;, &#39;1&#39;, &#39;4&#39;, &#39;1&#39;, &#39;5&#39;, &#39;9&#39;, &#39;2&#39;, &#39;6&#39;]；列表推导式逐个 int() 之后就是一个整数列表，求和 31、最大 9。三种转换写法输出逐字一致：列表推导式、循环加 append、list(map(int, text.split()))。map 交回的是迭代器，要收进列表才能反复用，直接喂给 sum、max 则可以省掉 list(...)。"
+  }
+]'></div>
+
+  <h3>多行整数</h3>
+
+  <p>样例 <code>sample2.in</code>，第一行给 <code>n</code>：</p>
+
+  <pre data-lang="text"><code>5
+3
+-1
+4
+2
+7</code></pre>
+
+  <p><code>many_lines.py</code>：</p>
+
+  <pre data-lang="python"><code>import sys
+
+def read_all():
+    return sys.stdin.read()
+
+def parse_n_then_lines(text):
+    """第一行是 n，接下来 n 行每行一个整数。"""
+    lines = [line for line in text.splitlines() if line.strip()]
+    n = int(lines[0])
+    return [int(line) for line in lines[1:n + 1]]
+
+def solve():
+    a = parse_n_then_lines(read_all())
+    print(a)
+    print(len(a), sum(a))
+
+solve()</code></pre>
+
+  <pre data-lang="term"><code>$ cat sample2.in | python many_lines.py
+[3, -1, 4, 2, 7]
+5 15</code></pre>
+
+  <p>数据结构：<code>[3, -1, 4, 2, 7]</code>，长度 5，与第一行的 <code>n</code> 对得上。第二个 <code>print</code> 就是输入层的自检——长度与题面给的个数一致，才轮到看答案 15 对不对。</p>
+
+  <p>三处边界：</p>
+
+  <ul>
+    <li>取 <code>lines[1:n + 1]</code> 而不是 <code>lines[1:]</code>：按题面给的 <code>n</code> 取，多出来的行会被当成数据。</li>
+    <li><code>if line.strip()</code> 那一层是给空行准备的。<code>line.strip()</code> 去掉这一行首尾的空白（行尾的换行符也在内），空行于是剩下空字符串 <code>''</code>，被这个条件筛掉；<code>splitlines()</code> 正是把空行切成 <code>''</code> 的。而 <code>int('')</code> 与 <code>int('\n')</code> 都会报 <code>ValueError: invalid literal for int() with base 10: ''</code>。</li>
+    <li>用 <code>splitlines()</code> 而不是 <code>readline()</code>：后者交回的字符串末尾留着 <code>\n</code>。<code>int('5\n')</code> 虽然也能算出 5（<code>int</code> 会去掉首尾空白），但那个换行符会留在数据里，后面拿它做字符串处理时碍事。</li>
+  </ul>
+
+  <p>不给 <code>n</code> 的版本，题面是「一行一个整数，给到输入结束」。样例 <code>sample2b.in</code>（第 4 行是空行，数据本身只有 5 个数）：</p>
+
+  <pre data-lang="text"><code>3
+-1
+4
+
+2
+7</code></pre>
+
+  <p><code>many_lines_eof.py</code>：</p>
+
+  <pre data-lang="python"><code>import sys
+
+def read_all():
+    return sys.stdin.read()
+
+def parse_ints_to_eof(text):
+    """不给 n：一行一个整数，读到没有为止，空行跳过。"""
+    return [int(line) for line in text.splitlines() if line.strip()]
+
+def solve():
+    a = parse_ints_to_eof(read_all())
+    print(a)
+    print(len(a), sum(a))
+
+solve()</code></pre>
+
+  <pre data-lang="term"><code>$ cat sample2b.in | python many_lines_eof.py
+[3, -1, 4, 2, 7]
+5 15</code></pre>
+
+  <p>空行被 <code>if line.strip()</code> 跳过了，剩下的 5 个数一个不少。</p>
+
+  <h3>矩阵 n×m</h3>
+
+  <p>样例 <code>sample3.in</code>：</p>
+
+  <pre data-lang="text"><code>3 4
+1 2 3 4
+5 6 7 8
+9 10 11 12</code></pre>
+
+  <p>矩阵有两种读法，<code>matrix.py</code> 把两种都写出来对比：</p>
+
+  <pre data-lang="python"><code>import sys
+
+def read_all():
+    return sys.stdin.read()
+
+def parse_matrix_by_lines(text):
+    """按行读：第一行 n m，接下来正好 n 行、每行 m 个数。"""
+    lines = [line for line in text.splitlines() if line.strip()]
+    n, m = map(int, lines[0].split())
+    return n, m, [list(map(int, line.split())) for line in lines[1:n + 1]]
+
+def parse_matrix_by_tokens(text):
+    """按空白读：token 从头取 n*m 个，再按 m 个一行切开。"""
+    tokens = text.split()
+    n, m = int(tokens[0]), int(tokens[1])
+    vals = [int(x) for x in tokens[2:2 + n * m]]
+    return n, m, [vals[i * m:(i + 1) * m] for i in range(n)]
+
+def solve():
+    text = read_all()
+    n1, m1, a1 = parse_matrix_by_lines(text)
+    n2, m2, a2 = parse_matrix_by_tokens(text)
+    print('按行读 -&gt;', a1)
+    print('按空白读 -&gt;', a2)
+    print('两种读法一致:', a1 == a2)
+
+solve()</code></pre>
+
+  <pre data-lang="term"><code>$ cat sample3.in | python matrix.py
+按行读 -&gt; [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]]
+按空白读 -&gt; [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]]
+两种读法一致: True</code></pre>
+
+  <p>数据结构：<code>[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]]</code>，三行四列的二维列表（列表的列表）。取 <code>a[1][2]</code> 得 7：<code>a[1]</code> 是第二行 <code>[5, 6, 7, 8]</code>，再取它的第 3 个元素（下标从 0 起）。</p>
+
+  <p>按空白读那一版的核心是两步：先把 <span class="math-inline">n \times m</span> 个数取成一段 <code>vals</code>，再按 <code>m</code> 个一段切开。</p>
+
+  <figure class="lesson-figure lesson-figure--inline" role="img" aria-label="token 表按 m 个一段切片：表头两个 token 之后，vals 的前三个是第 0 行、后三个是第 1 行">
+<svg viewBox="0 0 520 170" role="img" aria-hidden="true">
+  <g stroke="currentColor" fill="none">
+    <rect x="22" y="24" width="116" height="32" stroke-dasharray="4 3"/>
+    <rect x="28" y="24" width="52" height="32"/>
+    <rect x="86" y="24" width="52" height="32"/>
+    <rect x="144" y="24" width="52" height="32"/>
+    <rect x="202" y="24" width="52" height="32"/>
+    <rect x="260" y="24" width="52" height="32"/>
+    <rect x="318" y="24" width="52" height="32"/>
+    <rect x="376" y="24" width="52" height="32"/>
+    <rect x="434" y="24" width="52" height="32"/>
+    <path d="M144 58 L144 74 L312 74 L312 58"/>
+    <path d="M318 58 L318 74 L486 74 L486 58"/>
+  </g>
+  <g font-family="sans-serif" fill="currentColor">
+    <g font-size="12">
+      <text x="22" y="16">表头：第一行 n m</text>
+      <text x="228" y="92" text-anchor="middle">第 0 行：vals[0*3 : 1*3]</text>
+      <text x="402" y="92" text-anchor="middle">第 1 行：vals[1*3 : 2*3]</text>
+      <text x="28" y="124">vals = tokens[2 : 2 + n*m]　→　[4, 5, 6, 7, 8, 9]</text>
+      <text x="28" y="152">第 i 行 = vals[i*m : (i+1)*m]（切片右端不包含）</text>
+    </g>
+    <g font-size="13" text-anchor="middle">
+      <text x="54" y="45">2</text>
+      <text x="112" y="45">3</text>
+      <text x="170" y="45">4</text>
+      <text x="228" y="45">5</text>
+      <text x="286" y="45">6</text>
+      <text x="344" y="45">7</text>
+      <text x="402" y="45">8</text>
+      <text x="460" y="45">9</text>
+    </g>
+  </g>
+</svg>
+    <figcaption>图 2 · token 表与切片：第 i 行是 vals 上从 i*m 起的一段</figcaption>
+  </figure>
+
+  <p>关于那段切片：</p>
+
+  <ul>
+    <li>切片右端不包含（第 3 课）：<code>vals[i * m:(i + 1) * m]</code> 取的是第 <code>i</code> 行那 <code>m</code> 个数。</li>
+    <li>每一行是一个<b>新</b>列表（切片是复制，第 4 课那条口径），所以改一行里的某个数，不会串到别的行。</li>
+    <li>按行读那一版依赖「换行位置与题面一致」。<code>matrix.py</code> 拿到 <code>sample6.in</code> 时两种读法就不一致了——按行读得到 <code>[[1, 2, 3, 4], [5, 6], [7, 8]]</code>，这正是上一节那个 36 的来源。题面没讲清换行怎么排的时候，用按空白读的版本。</li>
+  </ul>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "这一行在两种输入上都跑，结果不一样：\n\n```python\nn, m = int(tokens[0]), int(tokens[1])\nvals = [int(x) for x in tokens[2:2 + n * m]]\ngrid = [vals[i * m:i * m + m - 1] for i in range(n)]\n```\n\n输入是 3 4 开头、后面 12 个数，每行 4 个。它打印出 [[1, 2, 3], [5, 6, 7], [9, 10, 11]]。\n\n① 根因是什么？\n② 改法是什么？\n③ 为什么切片右端要写成 (i + 1) * m，而不是 i * m + m - 1？",
+    "answer": "① 根因在切片右端。Python 的切片右端不包含，所以每一行取的是从 i * m 起的 m - 1 个数，而不是 m 个：第 0 行取 vals[0:3] 得 [1, 2, 3]，第 1 行取 vals[4:7] 得 [5, 6, 7]，每行都少了最后 1 个数。它的症状是「不报错、结果偏小」——课件里那个 slice_bug.py 打出「n m = 3 4」紧接着三行「行长度 3」，结论当场就出来了。\n\n② 改法是把右端写成 (i + 1) * m：\n\n```python\ngrid = [vals[i * m:(i + 1) * m] for i in range(n)]\n```\n\n修好之后三行的长度都是 4，总和 78。\n\n③ 因为 (i + 1) * m 是「下一行的起点」，正好是这一行要取到的位置之后一格；i * m + m - 1 算的是「这一行最后一个元素的下标」，而切片右端要的是下标加一，直接写它就少取了一个。两种写法差一个 m 的量：写成 i * m + m 与 (i + 1) * m 是同一个数，也可以。",
+    "criteria": "① 必须点出切片右端不包含这一条规则，并说清由此每行少了 1 个元素。只说「下标写错了」而不点出切片右端不包含，不算过。\n② 改法要给出 [vals[i * m:(i + 1) * m] for i in range(n)]（写 i * m + m 等价，同样算对）。给出别的等价写法但结果正确也算过。\n③ 必须说清 (i + 1) * m 是下一行起点的含义，以及它与「最后一个元素的下标加一」是同一个位置。只说「加 1 就对了」不算过。"
+  }
+]'></div>
+
+  <h3>混合行列</h3>
+
+  <p>样例 <code>sample4.in</code>：第一行 <code>n m</code>，接着是矩阵，然后一行给查询个数 <code>q</code>，再 <code>q</code> 行每行两个整数。</p>
+
+  <pre data-lang="text"><code>3 4
+1 2 3 4
+5 6 7 8
+9 10 11 12
+2
+1 1
+3 4</code></pre>
+
+  <p><code>matrix_and_queries.py</code>：</p>
+
+  <pre data-lang="python"><code>import sys
+
+def read_all():
+    return sys.stdin.read()
+
+def parse_matrix_and_queries(text):
+    """第一行 n m；接着 n*m 个数是矩阵；再一个 q；再 q 组「行 列」。"""
+    tokens = text.split()
+    n, m = int(tokens[0]), int(tokens[1])
+    pos = 2
+    vals = [int(x) for x in tokens[pos:pos + n * m]]
+    pos += n * m
+    matrix = [vals[i * m:(i + 1) * m] for i in range(n)]
+    q = int(tokens[pos])
+    pos += 1
+    queries = []
+    for _ in range(q):
+        r, c = int(tokens[pos]), int(tokens[pos + 1])
+        pos += 2
+        queries.append((r, c))
+    print('还剩没用的 token:', tokens[pos:])
+    return matrix, queries
+
+def solve():
+    matrix, queries = parse_matrix_and_queries(read_all())
+    print(matrix)
+    print(queries)
+    for r, c in queries:
+        print(r, c, '-&gt;', matrix[r - 1][c - 1])
+
+solve()</code></pre>
+
+  <pre data-lang="term"><code>$ cat sample4.in | python matrix_and_queries.py
+还剩没用的 token: []
+[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]]
+[(1, 1), (3, 4)]
+1 1 -&gt; 1
+3 4 -&gt; 12</code></pre>
+
+  <p>数据结构是两块：<code>matrix</code> 是三行四列的二维列表；<code>queries</code> 是元组的列表 <code>[(1, 1), (3, 4)]</code>。最后两行说明查询里的行列从 1 数起（第 3 行第 4 列是 12），所以取值要写 <code>matrix[r - 1][c - 1]</code>。</p>
+
+  <p><code>pos</code> 是这一版的要点：读的位置从隐式的读指针变成了一个<b>显式的下标变量</b>，可以打印、可以对照长度。最后那行 <code>还剩没用的 token: []</code> 就是输入层的自检——token 一个不剩，说明个数都对上了；剩下若干个说明有数据没读，<code>pos</code> 越过末尾则说明读多了。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "第一行 3 4，接着 12 个数，然后一行 2，再两行 1 1 与 3 4。\n这一版解析为什么能自检「数据有没有读多或读少」？\n\n```python\ntokens = text.split()\nn, m = int(tokens[0]), int(tokens[1])\npos = 2\nvals = [int(x) for x in tokens[pos:pos + n * m]]\npos += n * m\nmatrix = [vals[i * m:(i + 1) * m] for i in range(n)]\nq = int(tokens[pos])\npos += 1\nqueries = []\nfor _ in range(q):\n    r, c = int(tokens[pos]), int(tokens[pos + 1])\n    pos += 2\n    queries.append((r, c))\nprint(&#39;还剩没用的 token:&#39;, tokens[pos:])\n```",
+    "opts": [
+      "pos 是显式下标，能和 token 总数对照",
+      "tokens 是列表，能用 len 取出它的项数",
+      "queries 里存的是元组，它本身就带长度",
+      "matrix 是二维表，每一行的长度都是 m",
+      "q 是查询个数，循环次数天然就等于它的值",
+      "vals 是一段切片，它的长度等于 n 乘 m"
+    ],
+    "ans": 0,
+    "why": "关键差别在 pos 从「隐式的读指针」变成了一个显式的下标变量：它每一步走到哪里都写在代码里，可以打印、可以对照长度。所以最后那行「还剩没用的 token: []」才成了输入层的自检——token 一个不剩，说明个数都对上了；剩下若干个说明有数据没读，pos 越过末尾则说明读多了。隐式读指针（input() 那条路）恰恰做不到这件事：你看不见它现在在哪一格，出了错只能靠猜。另三个选项说的都是真的（列表有 len、元组有长度、二维列表每行等长），但没有一个能把「读到哪儿了」变成可以打印的数字。"
+  }
+]'></div>
+
+  <h3>多组数据与空行</h3>
+
+  <p>样例 <code>sample5.in</code>（组间有空行，末尾也有一个空行）：</p>
+
+  <pre data-lang="text"><code>2
+
+3
+1 2 3
+
+4
+10 20 30 40
+</code></pre>
+
+  <p><code>groups.py</code>：</p>
+
+  <pre data-lang="python"><code>import sys
+
+def read_all():
+    return sys.stdin.read()
+
+def parse_groups_with_t(text):
+    """第一行是组数 t；每组先一行 n，再来 n 个数。"""
+    tokens = text.split()
+    t = int(tokens[0])
+    pos = 1
+    groups = []
+    for _ in range(t):
+        n = int(tokens[pos])
+        pos += 1
+        groups.append([int(x) for x in tokens[pos:pos + n]])
+        pos += n
+    print('读完时 pos =', pos, '/ token 总数 =', len(tokens))
+    return groups
+
+def solve():
+    groups = parse_groups_with_t(read_all())
+    print(groups)
+    print([sum(g) for g in groups])
+
+solve()</code></pre>
+
+  <pre data-lang="term"><code>$ cat sample5.in | python groups.py
+读完时 pos = 10 / token 总数 = 10
+[[1, 2, 3], [10, 20, 30, 40]]
+[6, 100]</code></pre>
+
+  <p>数据结构：<code>[[1, 2, 3], [10, 20, 30, 40]]</code>，列表的列表，每一组是内层列表。<code>pos</code> 与 <code>len(tokens)</code> 都是 10，说明空行什么都没影响——<code>split()</code> 把空行当成空白，切完就没了。这条也正是「末尾空行」与「组间空行」在按空白切分的读法下不需要额外代码的原因。</p>
+
+  <p>不给组数的版本（一直读到输入结束），样例 <code>sample5b.in</code>：</p>
+
+  <pre data-lang="text"><code>3
+1 2 3
+
+4
+10 20 30 40
+</code></pre>
+
+  <p><code>groups_to_eof.py</code> 把 <code>pos</code> 指针换成 <code>while pos &lt; len(tokens)</code>：</p>
+
+  <pre data-lang="python"><code>import sys
+
+def read_all():
+    return sys.stdin.read()
+
+def parse_groups_to_eof(text):
+    """不给组数：一直读到 token 用完。"""
+    tokens = text.split()
+    pos = 0
+    groups = []
+    while pos &lt; len(tokens):
+        n = int(tokens[pos])
+        pos += 1
+        groups.append([int(x) for x in tokens[pos:pos + n]])
+        pos += n
+    return groups
+
+def solve():
+    print(parse_groups_to_eof(read_all()))
+
+solve()</code></pre>
+
+  <pre data-lang="term"><code>$ cat sample5b.in | python groups_to_eof.py
+[[1, 2, 3], [10, 20, 30, 40]]</code></pre>
+
+  <p>两种版本的差别只在有没有组数这一行，空行在两种版本里都不需要额外处理。</p>
+
+  <p>同一份输入用 <code>input()</code> 逐行读就会崩，崩的位置还很容易看错：</p>
+
+  <pre data-lang="python"><code>t = int(input())
+for _ in range(t):
+    n = int(input())
+    a = list(map(int, input().split()))
+    print(sum(a))</code></pre>
+
+  <pre data-lang="term"><code>$ cat sample5.in | python groups_by_input.py
+Traceback (most recent call last):
+  File "groups_by_input.py", line 3, in &lt;module&gt;
+    n = int(input())
+ValueError: invalid literal for int() with base 10: ''</code></pre>
+
+  <p>报错指的是第 3 行，<code>int('')</code> 的原因却是第 2 行那个空行——它被 <code>input()</code> 当成了一行的内容。找错的第一个动作是把它打出来看：<code>print(repr(input()))</code> 会显示 <code>'\n'</code>，一看就知道读到的是一行空行，而不是一个数。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "同一份输入（组间有空行、末尾还有一行空行），两种读法结果差在哪？\n\n```python\nt = int(input())\nfor _ in range(t):\n    n = int(input())\n    a = list(map(int, input().split()))\n    print(sum(a))\n```\n\n另一版用 tokens = text.split() 加 pos 指针。",
+    "opts": [
+      "逐行版撞上组间空行会报错退出",
+      "两版都跑得通，逐行版只是慢一点",
+      "逐行版把空行读成 0，算出的和小",
+      "空白版把空行也切 token 得跳过",
+      "两版都报错，因为末尾空行躲不掉"
+    ],
+    "ans": 0,
+    "why": "逐行版在第一次 n = int(input()) 就撞上组间那个空行：input() 把空行交回一个空字符串，int(&#39;&#39;) 报 ValueError: invalid literal for int() with base 10: &#39;&#39;。报错指的是第 3 行，原因却在第 2 行那个空行上——这就是「报错的位置与原因隔得很远」。按空白切分的版则完全不受影响：split() 把空行当空白，切完就没了，读完时 pos 与 len(tokens) 都是 10，空行什么都没影响。这也正是末尾空行与组间空行在按空白切分下不需要额外代码的原因。"
+  }
+]'></div>
+
+  <h2>读进来的都是字符串</h2>
+
+  <p>教材讲 <code>input()</code> 时给过一句要紧的话：<b>使用函数 <code>input()</code> 时，Python 将用户输入解读为字符串。</b> 书里的例子是问年龄，敲 21，变量拿到的是 <code>'21'</code>。它接着说：如果只想打印输入，这一点问题都没有；但要把它当数用，就会引发错误——书里那行 <code>age &gt;= 18</code> 报的就是类型错误（在本机 3.14 上，这条报错现在的写法是 <code>TypeError: '&lt;' not supported between instances of 'str' and 'int'</code>）。</p>
+
+  <p><code>sys.stdin</code> 这条路一样：token 表里全是字符串。两个字符串比较的时候不会报类型错误，规则换成了另一套：</p>
+
+  <pre data-lang="python"><code>print('10' &lt; '9')
+print('2' &lt; '10')
+print(sorted(['10', '9', '100', '2']))
+print(sorted(['10', '9', '100', '2'], key=int))
+print(max(['10', '9']), min(['10', '9']))
+print(max([int(x) for x in ['10', '9']]))</code></pre>
+
+  <pre data-lang="term"><code>$ python str_cmp.py
+True
+False
+['10', '100', '2', '9']
+['2', '9', '10', '100']
+9 10
+10</code></pre>
+
+  <p>结果都反直觉：<code>'10'</code> 小于 <code>'9'</code>；排序出来 <code>'100'</code> 排在 <code>'2'</code> 前面；<code>max(['10', '9'])</code> 得 <code>'9'</code>，转成整数再求最大才是 10。</p>
+
+  <p>原因是<b>字符串比较按字符逐个进行</b>：从第 1 个字符起比编码顺序，一旦不同就定了输赢，长度根本轮不到参与。<code>'1'</code> 的编码是 49，<code>'9'</code> 的编码是 57，<code>'10'</code> 的第 1 个字符更小，结论当场就定下了。</p>
+
+  <figure class="lesson-figure lesson-figure--inline" role="img" aria-label="字符串 10 与 9 逐字符比较：第一位 1 的编码 49 小于 9 的编码 57，比较在此结束">
+<svg viewBox="0 0 520 180" role="img" aria-hidden="true">
+  <g stroke="currentColor" fill="none">
+    <rect x="88" y="28" width="52" height="52" stroke-dasharray="4 3"/>
+    <rect x="88" y="94" width="52" height="52" stroke-dasharray="4 3"/>
+    <rect x="90" y="30" width="48" height="48"/>
+    <rect x="150" y="30" width="48" height="48"/>
+    <rect x="90" y="96" width="48" height="48"/>
+  </g>
+  <g font-family="sans-serif" fill="currentColor">
+    <g font-size="22" text-anchor="middle">
+      <text x="114" y="64">1</text>
+      <text x="174" y="64">0</text>
+      <text x="114" y="130">9</text>
+    </g>
+    <g font-size="12">
+      <text x="16" y="60">s1 = '10'</text>
+      <text x="16" y="126">s2 = '9'</text>
+      <text x="230" y="46">第 1 位：'1' 的编码是 49</text>
+      <text x="230" y="76">第 1 位：'9' 的编码是 57</text>
+      <text x="230" y="112">57 更大，比较在这里结束</text>
+      <text x="16" y="172">'0' 没轮到：字符串比较从第 1 个字符起逐个比，一旦不同就结束</text>
+    </g>
+  </g>
+</svg>
+    <figcaption>图 3 · 字符串比较按位：第一位分出大小，后面的字符没轮到</figcaption>
+  </figure>
+
+  <p>编码可以用 <code>ord()</code> 直接看：<code>ord('1')</code> 得 49，<code>ord('9')</code> 得 57。</p>
+
+  <p>修法落在转换的时机上：<b>在解析层一次转完，算法层看不到数字字符串。</b> 这一课的五份模板都是这个结构——<code>parse_*</code> 交给 <code>solve</code> 的数据里，数字已经是 <code>int</code>。三条纪律：</p>
+
+  <ul>
+    <li>解析函数的输出里不放数字字符串；</li>
+    <li>求和、求极值、比较、排序之前，用 <code>print(type(a[0]), a[:5])</code> 看一眼类型与前几个值；</li>
+    <li>要输出的时候再让数字变回文本，这件事 <code>print</code> 自己做。</li>
+  </ul>
+
+  <p>一个字符串与一个整数混着比会当场报错：<code>'10' &lt; 5</code> 得 <code>TypeError: '&lt;' not supported between instances of 'str' and 'int'</code>。报错拦下你是好事；两个都是字符串时它不报错，这才是这个坑难查的原因。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "提交后答案不对，程序一行错都没报：\n\n```python\ndata = input().split()\nprint(sorted(data))\nprint(max(data))\n```\n\n输入是 10 9 100 2，程序打出 [&#39;10&#39;, &#39;100&#39;, &#39;2&#39;, &#39;9&#39;] 和 9。\n\n① 根因是什么？\n② 为什么它不报错？\n③ 怎么改？",
+    "answer": "① 根因是 token 表里全是字符串，而字符串比较按字符逐个进行：从第 1 个字符起比编码顺序，一旦不同就定了输赢，长度根本轮不到参与。&#39;1&#39; 的编码是 49（ord(&#39;1&#39;) 可以看），&#39;9&#39; 的编码是 57，所以 &#39;10&#39; 的第 1 个字符更小，&#39;10&#39; &lt; &#39;9&#39; 得 True；排序于是把 &#39;100&#39; 排到 &#39;2&#39; 前面，max([&#39;10&#39;, &#39;9&#39;]) 取回的是 &#39;9&#39; 而不是 10。\n\n② 不报错是因为两个字符串比较是合法操作：类型一致，Python 按定义好的规则给出结果，不会拦下你。真正会报错的是混着比——&#39;10&#39; &lt; 5 得 TypeError: &#39;&lt;&#39; not supported between instances of &#39;str&#39; and &#39;int&#39;。报错拦下你是好事，两个都是字符串时它不报错，这才是这个坑难查的原因。\n\n③ 修在转换的时机上：在解析层一次转完，算法层看不到数字字符串。\n\n```python\ndata = [int(x) for x in input().split()]\nprint(sorted(data))\nprint(max(data))\n```\n\n这样打出 [2, 9, 10, 100] 和 100。三条纪律：解析函数的输出里不放数字字符串；求和、求极值、比较、排序之前先 print(type(a[0]), a[:5]) 看一眼类型与前几个值；要输出的时候再让数字变回文本，这件事 print 自己做。若是已经有了字符串表又只想排序，也可以写 sorted(data, key=int)，但那样比较与求值两处都得记得带上 key，不如一次转完省事。",
+    "criteria": "① 必须点出「字符串比较按字符逐个进行、第一位分出大小后面的就不比了」这一层，并用 &#39;10&#39; 与 &#39;9&#39; 的第一个字符编码（&#39;1&#39; 是 49、&#39;9&#39; 是 57）说清为什么 &#39;10&#39; &lt; &#39;9&#39; 是 True。只说「它是字符串不是数字」而不点出逐字符比较，不算过。\n② 必须说清不报错的原因：两个字符串比较类型一致，是合法操作；并指出混着比 &#39;10&#39; &lt; 5 才会报 TypeError。把不报错解释成「Python 没检查」不算过。\n③ 改法必须落在「在解析层一次转完 int」上，给出 [int(x) for x in ...] 或 list(map(int, ...)) 这类转换；写 sorted(data, key=int) 作为补充可以，但只有它而没有在解析层转换，按部分通过处理。"
+  }
+]'></div>
+
+  <h2>用打印定位错误</h2>
+
+  <p>本节的手法都围绕一件事：<b>先把出错的位置缩小，再改代码</b>。在二十行代码里随机加 <code>print</code>，只会让输出变长。</p>
+
+  <ol>
+    <li>先跑最小样例。拿题面给的第一组样例（通常最小），不要从大样例开始。大样例只会告诉你「错了」，最小样例能让你把中间值一眼读完。</li>
+    <li>打印数据结构与它的长度。<code>print('n m =', n, m)</code>、<code>print(len(row), row)</code>，与题面给的 <code>n</code>、<code>m</code> 对一遍。长度对不上就是解析层的问题，算法先别看。</li>
+    <li>用 <code>repr()</code> 看不可见的字符。<code>print(repr(line))</code> 会把引号、<code>\n</code>、多余的空格显示出来（官方教程在讲输出格式时给过这条：只想快速显示变量进行调试，可以用 <code>repr()</code> 或 <code>str()</code>）。空行导致的 <code>ValueError</code> 靠它一眼分清读到的是 <code>'\n'</code> 还是 <code>''</code>。</li>
+    <li>把「读」与「算」分开打印。先打印全部数据结构，再打印算法结果：答案不对而数据结构是对的，问题在算法；数据结构本身就错，先修解析。这一步能省掉大量来回。</li>
+    <li>二分注释掉一半。确认数据结构没错之后，把 <code>solve()</code> 的后半先注释掉、或者先 <code>return</code> 前半的结果，看答案从哪一半开始不对，范围每次减半。</li>
+    <li>打印指针下标。token 版的解析里 <code>pos</code> 是显式变量，<code>print('pos', pos, 'len', len(tokens))</code> 一句话告诉你读多了还是读少了（多组数据那份模板里就是这么自检的）。</li>
+    <li>改对了就收手。调试用的 <code>print</code> 必须在提交前删掉，原因见下一节。</li>
+  </ol>
+
+  <p>走一遍完整的例子。要算矩阵所有数的和，切片右端写错了一个：</p>
+
+  <pre data-lang="python"><code>import sys
+
+def read_all():
+    return sys.stdin.read()
+
+def parse_matrix(text):
+    tokens = text.split()
+    n, m = int(tokens[0]), int(tokens[1])
+    vals = [int(x) for x in tokens[2:2 + n * m]]
+    return n, m, [vals[i * m:i * m + m - 1] for i in range(n)]
+
+def solve():
+    n, m, a = parse_matrix(read_all())
+    print('n m =', n, m)
+    for i, row in enumerate(a):
+        print('第', i, '行长度', len(row), row)
+    print('总和', sum(sum(row) for row in a))
+
+solve()</code></pre>
+
+  <pre data-lang="term"><code>$ cat sample3.in | python slice_bug.py
+n m = 3 4
+第 0 行长度 3 [1, 2, 3]
+第 1 行长度 3 [5, 6, 7]
+第 2 行长度 3 [9, 10, 11]
+总和 54</code></pre>
+
+  <p>输出里的 <code>n m = 3 4</code> 说每行该有 4 个数，紧接着的「行长度 3」说只有 3 个，结论就出来了：每一行少了 1 个数，问题在切片的右端（<code>i * m + m - 1</code>）。改回 <code>(i + 1) * m</code>：</p>
+
+  <pre data-lang="term"><code>$ cat sample3.in | python slice_fixed.py
+n m = 3 4
+第 0 行长度 4 [1, 2, 3, 4]
+第 1 行长度 4 [5, 6, 7, 8]
+第 2 行长度 4 [9, 10, 11, 12]
+总和 78</code></pre>
+
+  <p>这次定位只用了两行输出，靠的是第 2 条手法。切片右端写错这类 bug 不会报错，只会让结果偏小，属于必须靠打印长度才能找出来的那一类。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "解析矩阵时切片右端写错了一个（写成了 i * m + m - 1），程序打出的结果偏小但不报错。\n下面这些手法，哪一个能最快把范围缩到那一处？",
+    "opts": [
+      "打印每行的长度与 n m，对着题面比一行该有几个数",
+      "把整段代码逐行加 print，把每一步的中间值都打出来",
+      "换成大数据样例跑一遍，看错误会不会变得更明显一些",
+      "在切片那一行外面套上 try，把可能出现的异常打印出来"
+    ],
+    "ans": 0,
+    "why": "课件给的第一条手法是「先把出错的位置缩小，再改代码」，而打印长度正是把它落到地上的一步：print(&#39;n m =&#39;, n, m) 说每行该有 4 个数，紧接着的「行长度 3」说只有 3 个，两行一对照，结论立刻就是「每行少了 1 个数，问题在切片的右端」。整个定位只用了两行输出。反过来说，在二十行代码里随机加 print 只会让输出变长；换成大数据只会告诉你「错了」；这类切片右端写错不会抛异常，套 try 什么也抓不到——它属于必须靠打印长度才能找出来的那一类 bug。"
+  },
+  {
+    "q": "把「用打印缩小出错范围」这套手法说清楚。\n\n① 列出至少四条可操作的手法，每条说清它专门用来查什么。\n② 为什么第一步是跑最小样例，而不是先跑大数据？\n③ 调试用的 print 最后要怎么处理，为什么？",
+    "answer": "① 课件给了七条，挑四条以上说清用途即可：\n\n```text\n跑最小样例       一眼读完中间值，比大数据更能指出错在哪一步\n打印长度与 n m   与题面给的个数对一遍；长度不对就是解析层的问题\nprint(repr(x))   把引号、\\n、多余空格显示出来，空行的 ValueError 靠它分清读到的是 &#39;\\n&#39; 还是 &#39;&#39;\n读与算分开打印   先打印全部数据结构，再打印算法结果：数据错就修解析，数据对而答案错才看算法\n二分注释掉一半   把 solve() 后半先注释掉或先 return 前半，看从哪一半开始不对，范围每次减半\n打印指针下标     print(&#39;pos&#39;, pos, &#39;len&#39;, len(tokens))，一句话看出读多了还是读少了\n改对了就收手     调试 print 必须在提交前删掉\n```\n\n② 因为大样例只会告诉你「错了」——中间值太多，打印出来读不完，你在几十行输出里找不出哪一步开始偏。最小样例能把中间值一眼读完，出错的那一步自己就浮出来了。\n\n③ 调试用的 print 必须在提交前删掉。评测机把标准输出与标准答案逐字比对，多一个字符、多一行都算错——课件里那行「还剩没用的 token: []」在自测时是自检，留在提交的代码里就是让比对失败的那一行。所以自测的最后一步是拿样例输入跑一遍，确认标准输出只剩答案那一行。",
+    "criteria": "① 至少四条手法，每条要带「它专门查什么」：只说「多打印几个值」不算一条。够四条且各自用途说清才算过；少于四条按部分通过，并列出缺哪几条。\n② 必须说到「大样例只告诉你错了、中间值读不完」与「最小样例中间值一眼读完」这个对比。只说「小样例跑得快」不算过。\n③ 必须点出提交前删掉调试 print，理由落到「评测机逐字比对标准输出，多一行就算错」上。只说「删掉比较干净」不算过。"
+  }
+]'></div>
+
+  <h2>提示文字混进标准输出</h2>
+
+  <p>教材在讲 <code>input()</code> 时给了一条写法建议：每当使用函数 <code>input()</code> 时，都应指定清晰易懂的提示。它面向的程序是交互式的：程序暂停下来等人敲一行，提示告诉你该输入什么。蓝桥杯的评测机不读提示。它把标准输入接到数据文件上，运行你的程序，然后拿你的标准输出与标准答案<b>逐字比对</b>——多一个字符、多一行、少一个换行都算错。</p>
+
+  <p><code>input()</code> 的提示走哪条流，官方文档在讲 <code>sys.stdin</code> 的地方写明了：<code>stdout</code> 用于 <code>print()</code> 和表达式语句的输出，<b>以及用于 <code>input()</code> 的提示符</b>。提示与答案走的是同一条流，评测机读的正是它。</p>
+
+  <p>实测一次，把两条流分别重定向到两个文件：</p>
+
+  <pre data-lang="python"><code>n = int(input("请输入 N："))
+print(n * 2)</code></pre>
+
+  <pre data-lang="term"><code>$ echo 10 | python prompt_demo.py &gt; out.txt 2&gt; err.txt
+$ cat out.txt
+请输入 N：20
+$ cat err.txt</code></pre>
+
+  <p><code>err.txt</code> 是空的。提示「请输入 N：」紧贴在答案 <code>20</code> 前面，占的是标准输出——在评测机上，这一行就是让逐字比对失败的那一行。</p>
+
+  <figure class="lesson-figure lesson-figure--inline" role="img" aria-label="input 的提示文字写进 stdout，stderr 里什么都没有，评测机读的是 stdout">
+<svg viewBox="0 0 520 195" role="img" aria-hidden="true">
+  <g stroke="currentColor" fill="none">
+    <rect x="12" y="64" width="150" height="64"/>
+    <rect x="222" y="18" width="170" height="52"/>
+    <rect x="222" y="122" width="170" height="52"/>
+    <rect x="412" y="18" width="96" height="52"/>
+    <path d="M162 76 L192 76 L192 44 L222 44"/>
+    <path d="M162 116 L192 116 L192 148 L222 148"/>
+    <path d="M392 44 L412 44"/>
+  </g>
+  <g font-family="sans-serif" fill="currentColor" font-size="12">
+    <text x="24" y="88">程序</text>
+    <text x="24" y="110">input("请输入 N：")</text>
+    <text x="234" y="40">stdout（标准输出）</text>
+    <text x="234" y="62">请输入 N：20</text>
+    <text x="234" y="144">stderr（标准错误）</text>
+    <text x="234" y="166">什么都没有</text>
+    <text x="422" y="40">评测机</text>
+    <text x="422" y="62">逐字比对</text>
+    <text x="12" y="188">提示走 stdout 这条流，评测机读的正是它</text>
+  </g>
+</svg>
+    <figcaption>图 4 · 提示与答案走同一条流：stderr 里空无一物，评测机只读 stdout</figcaption>
+  </figure>
+
+  <p>于是两条规矩：</p>
+
+  <ul>
+    <li>竞赛代码里用 <code>input()</code> 时，括号里永远不写参数；</li>
+    <li><code>print</code> 只打印答案本身。<code>print('答案：', x)</code> 与 <code>print(x)</code> 之间的差别，就是判零分与满分之间的差别。</li>
+  </ul>
+
+  <p>这一课的模板顺带解决了第一条：读入走 <code>sys.stdin.read()</code>，<code>input()</code> 根本不出现，想加提示也没有地方加。哪道题非用 <code>input()</code> 不可的时候，提交前做两个搜索：</p>
+
+  <ul>
+    <li>搜 <code>input(</code>：括号里凡是写了东西的，删掉；</li>
+    <li>搜 <code>print(</code>：凡是打印内容与答案无关的（调试行、长度检查、<code>n m</code>、<code>还剩没用的 token</code>），删掉。</li>
+  </ul>
+
+  <p>第 1 课记下的这条误解在这里落到手上：它从一条「知道就好」的注意事项，变成提交前要动手检查的两处。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "这段在本机看着完全正常，提交后判零分：\n\n```python\nn = int(input(\"请输入 N：\"))\nprint(n * 2)\n```\n\n把标准输出重定向到文件，里面是「请输入 N：20」；标准错误那个文件是空的。\n\n① 提示为什么会在标准输出里？\n② 评测机为什么会判零分？\n③ 提交前做哪两个搜索？",
+    "answer": "① 官方文档在讲 sys.stdin 的地方写明了：stdout 用于 print() 和表达式语句的输出，以及用于 input() 的提示符。提示与答案走的是同一条流，所以重定向之后「请输入 N：」紧贴在答案 20 前面进了 out.txt，而 err.txt 是空的。\n\n② 评测机把标准输入接到数据文件上运行你的程序，然后拿你的标准输出与标准答案逐字比对——多一个字符、多一行、少一个换行都算错。「请输入 N：20」与标准答案「20」不是同一个字符串，所以判零分。教材那条「使用 input() 时应指定清晰易懂的提示」面向的是交互式程序（程序停下来等人敲一行），蓝桥杯的评测机不读提示。\n\n③ 两条规矩：竞赛代码里用 input() 时，括号里永远不写参数；print 只打印答案本身。提交前搜两个字符串——搜 input(：括号里凡是写了东西的，删掉；搜 print(：凡是打印内容与答案无关的（调试行、长度检查、n m、还剩没用的 token），删掉。这一课的模板顺带解决了第一条：读入走 sys.stdin.read()，input() 根本不出现，想加提示也没有地方加。",
+    "criteria": "① 必须点出「stdout 用于 print() 的输出以及用于 input() 的提示符」这条官方口径，说清提示与答案走同一条流。只说「提示也被打印出来了」而不点出两条流是同一个，不算过。\n② 必须说清评测机的判法是逐字比对标准输出，多一个字符就算错。答「因为提示多余」「因为不礼貌」不算过。\n③ 两个搜索都要给全：input( 的括号里不写参数、print( 只打印答案。只给一条不算过。"
+  }
+]'></div>
+
+  <h2>样例与提交的两条路径</h2>
+
+  <p>同一道题在这门课里要跑两条路：自测的时候你在本机跑，提交的时候评测机跑。两条路的接口是同一个——标准输入与标准输出。所以自测的做法是把样例输入存成文件，再把这个文件接到标准输入上：</p>
+
+  <pre data-lang="term"><code>$ cat sample1.in | python one_line.py
+[3, 1, 4, 1, 5, 9, 2, 6]</code></pre>
+
+  <p>Windows 的 cmd 里也可以写 <code>python one_line.py &lt; sample1.in</code>；PowerShell 不支持 <code>&lt;</code>，用 <code>cat 文件 | python 程序.py</code> 这一行。这条命令下程序读到的标准输入就是那个文件的内容，提交时评测机做的事与它一样，只是换了一份数据。</p>
+
+  <p>由此有三条自测纪律：</p>
+
+  <ul>
+    <li>别在代码里写死样例文件名。程序里出现「打开某个固定文件」这一步，提交时那个文件不存在，而评测机给的是标准输入。</li>
+    <li>输出与样例逐字对一遍，包括空格与换行。这一步也是调试痕迹暴露的地方：多出来的 <code>还剩没用的 token: []</code> 在这里就会露出来。</li>
+    <li>每组样例都先打印一次解析结果（长度与内容），对上了再看答案。这一课的五组样例就是这么过的；把数据结构的检查与算法答案的检查分开做，出错时能省一半时间。</li>
+  </ul>
+
+  <p>输入层写错的人常常以为是算法错了。数据少读了一段、多读了一位，算法拿到的数据结构就不对，算出来的结果自然不对，而报错信息可能落在算法那一半。先打印数据结构这一步，把这两件事分开了。</p>
+
+  <h2>这一课用到的 Python</h2>
+
+  <table>
+    <thead>
+      <tr><th>要做的事</th><th>写法</th><th>边界</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>一次读完</td><td><code>sys.stdin.read()</code></td><td>读完之后流停在末尾，再 <code>input()</code> 会 <code>EOFError</code></td></tr>
+      <tr><td>按空白切分</td><td><code>text.split()</code></td><td>连续空白算一个，首尾丢掉；空串得 <code>[]</code></td></tr>
+      <tr><td>按行切分</td><td><code>text.splitlines()</code></td><td>不保留行尾换行符；<code>readline()</code> 会保留 <code>\n</code></td></tr>
+      <tr><td>空行跳过</td><td><code>if line.strip()</code></td><td><code>int('')</code>、<code>int('\n')</code> 都报 <code>ValueError</code></td></tr>
+      <tr><td>转成整数</td><td><code>[int(x) for x in tokens]</code></td><td>与 <code>list(map(int, tokens))</code>、循环加 <code>append</code> 输出一致</td></tr>
+      <tr><td>快速读入</td><td><code>sys.stdin.buffer.read().split()</code></td><td>token 是 <code>bytes</code>，<code>int()</code> 同样接</td></tr>
+      <tr><td>n×m 铺成二维列表</td><td><code>[vals[i*m:(i+1)*m] for i in range(n)]</code></td><td>切片右端不包含；每行是新列表</td></tr>
+      <tr><td>多组数据</td><td><code>t = int(tokens[0])</code> 加 <code>pos</code> 指针</td><td>每组结束要 <code>pos += n</code>；读完打印 <code>pos</code> 与 <code>len(tokens)</code> 核对</td></tr>
+      <tr><td>一行一个整数</td><td><code>[int(line) for line in text.splitlines() if line.strip()]</code></td><td>行数由输入决定时用这版</td></tr>
+      <tr><td>看不可见字符</td><td><code>print(repr(line))</code></td><td>显示引号与 <code>\n</code></td></tr>
+      <tr><td>读一行整数</td><td><code>n = int(input())</code></td><td>竞赛代码里括号不写参数；提示会写进 stdout</td></tr>
+      <tr><td>比大小、排序前</td><td>先转 <code>int</code></td><td><code>'10' &lt; '9'</code> 是 <code>True</code>；<code>sorted</code> 要 <code>key=int</code></td></tr>
+    </tbody>
+  </table>
+
+  <p>这一课练的动作会一直用下去：紧接着的实验一要把读入、求解、输出组装成一个能跑的脚本，读入那一半就是这里的五份模板；第 3 课的容器选择决定解析出来的数据结构长什么样；第 5 课的推导式与 <code>map</code> 负责把 token 表变成数字。先读完、再算，后面每一道题都从这一步开始。</p>
+
+  <div class="lesson-practice">
+    <div class="lesson-practice__head">
+      <span class="lesson-practice__level">练习</span>
+      <span class="lesson-practice__title">五组样例与一次打印定位</span>
+    </div>
+
+      <p>这一课的动手部分落在 lab 里（任务与断言见 <a href="../lab/0006-python-io-and-debug/">lab/0006-python-io-and-debug/</a>，做完对照 <a href="../lab/solutions/">lab/solutions/</a>）。要做的是三件事。</p>
+
+      <ol>
+        <li>备五组不同格式的样例（单行多整数、多行整数、矩阵、混合行列、末尾空行），每组用这一课的模板解析成指定的数据结构，并把结果打印出来与题面核对。每一组都要写清你产出的数据结构长什么样（每一维有多少个元素、元素是什么类型）。</li>
+        <li>在解析或求解里故意写错一处下标，先用最小样例跑一次，再用打印（长度、<code>repr</code>、指针下标）把出错范围缩到某一处，改对。记下你打印了什么、看到什么、据此得出什么结论。</li>
+        <li>交出去之前把调试用的 <code>print</code> 全部删掉，确认标准输出只剩答案那一行：拿样例输入跑一遍，输出与题面样例逐字对得上。</li>
+      </ol>
+  </div>
+
+  <ul class="lesson-resources">
+    <li><a href="https://docs.python.org/zh-cn/3/library/sys.html">Python 官方文档 · sys</a><span class="lesson-resources__meta"><code>stdin</code>、<code>stdout</code>、<code>stderr</code> 是常规文本文件对象；<code>input()</code> 的调用与提示符都走它们；二进制读写用底层 <code>buffer</code>——本课的主要依据</span></li>
+    <li><a href="https://docs.python.org/zh-cn/3/tutorial/inputoutput.html">Python 官方教程 · 输入与输出</a><span class="lesson-resources__meta">7.1 用 <code>repr()</code> 或 <code>str()</code> 调试；7.2.1 文件对象的方法：<code>read</code> 省略 <code>size</code> 读回全部、<code>readline()</code> 保留行尾换行符、空行是 <code>'\n'</code>、遍历文件对象、<code>readlines()</code></span></li>
+    <li><a href="https://docs.python.org/zh-cn/3/library/functions.html">Python 官方文档 · 内置函数</a><span class="lesson-resources__meta"><code>input()</code>、<code>int()</code>、<code>map()</code> 的签名与边界</span></li>
+    <li><a href="https://oi-wiki.org/basic/complexity/">OI Wiki · 复杂度</a><span class="lesson-resources__meta">空间复杂度与「常数」的口径，判断一次读完要付多少代价时用</span></li>
+    <li>《Python 编程：从入门到实践（第 2 版）》第 7 章 用户输入和 while 循环<span class="lesson-resources__meta">本地教材：7.1 <code>input()</code> 的工作原理与提示（prompt），7.1.2 输入得到的是字符串、把它当数用会报类型错误</span></li>
+  </ul>
+
+  <!-- ── 提问提示：固定写法，别删 ── -->
+
+  <div class="lesson-ask">
+    <b>没看懂？随时问</b>
+    把看不懂的段落（或报错）原样复制回会话，说一句哪里不懂就行，我只解释这一段，不打断你的进度。
+  </div>
+
+  <!-- ── 上/下节课指针由渲染器按 curriculum.yaml 的 nodes 顺序算（第一课无 --prev、最后一课无 --next） ── -->
+
+  <nav class="lesson-nav" aria-label="上一课 / 下一课">
+    <a class="lesson-nav__link lesson-nav__link--prev" href="0005-python-comprehension-builtins.html">
+      <span class="lesson-nav__dir">上节课</span>
+      <span class="lesson-nav__title">推导式与常用内置工具</span>
+    </a>
+    <a class="lesson-nav__link lesson-nav__link--next" href="0007-lab-01-run-one-problem.html">
+      <span class="lesson-nav__dir">下节课</span>
+      <span class="lesson-nav__title">实验一：把一道题跑通</span>
+    </a>
+  </nav>
+
+  <footer class="lesson-footer">
+    StudyMate · 0006 读完输入再动手 · 本地学习工作区
+  </footer>
+
+</article>
+
+<script src="../../../assets/sayo/sayo.js"></script>
+<link rel="stylesheet" href="../../../assets/katex/katex.min.css">
+<script src="../../../assets/katex/katex.min.js" defer></script>
+<script src="../../../assets/lesson-math.js" defer></script>
+<script src="../assets/quiz.js" defer></script>
+<script src="../assets/lesson-toc.js" defer></script>
+<script>LearnTheme.wire(document.getElementById('lesson-theme-checkbox'));</script>
+</body>
+</html>

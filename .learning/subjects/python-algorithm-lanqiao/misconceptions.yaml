@@ -1,0 +1,13 @@
+- topic: 奇数计数与整数开方（第1课·从一道蓝桥杯题说起）
+  question: 1 到 ⌊√N⌋ 范围内有多少个奇数（N 个整数的平方不超过 N 的计数）？
+  misunderstanding: 用 `m // 2` 数奇数，当上界 m 是奇数时漏掉最后一个奇数；且用 `n ** 0.5` / `math.sqrt` 浮点开方，大整数会丢精度。
+  answer_summary: 1 到 m 的奇数个数是 `(m + 1) // 2`，不是 `m // 2`；整数开方用 `math.isqrt(n)`，整数问题别走浮点 sqrt。
+  importance: medium
+  follow_up: 在「二分查找边界」「前缀和区间」「计数类」等节点，留意奇偶边界与 `//2` vs `(x+1)//2` 的坑，以及大整数尽量走整数算术（isqrt / 整除）。
+
+- topic: 标准输入输出的交互提示（第1课·从一道蓝桥杯题说起）
+  question: input() 里的提示文字在评测机上会不会影响判分？
+  misunderstanding: 以为 `input("请输入…")` 的提示只显示在人机交互时、不影响程序输出。
+  answer_summary: input() 的 prompt 会原样写进 stdout；蓝桥杯评测按标准输出逐字比对，多一行提示文字就判零分。竞赛里永远用 `input()` 不带参数。
+  importance: high
+  follow_up: 后续每道带输入输出的题，检查学生代码里是否残留 `input("…")` 提示；判题口径统一为「标准输出只留答案那一行」。

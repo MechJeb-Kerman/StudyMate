@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>树：会递归的结构 · Python 算法与蓝桥杯</title>
+
+<!-- 共享层在 .learning/assets/，课件在 .learning/subjects/<slug>/lessons/ 下，所以是 ../../../assets/ -->
+<link rel="stylesheet" href="../../../assets/sayo/sayo.css">
+<link rel="stylesheet" href="../../../assets/learn-theme.css">
+<link rel="stylesheet" href="../assets/style.css">
+
+<!-- 主题要在首帧前应用，避免闪白/闪黑 -->
+<script src="../../../assets/learn-theme.js"></script>
+<script>LearnTheme.apply();</script>
+</head>
+
+<body class="lesson-body">
+
+<nav class="lesson-bar">
+  <a href="../index.html">← 返回课程</a>
+  <span>Python 算法与蓝桥杯</span>
+  <span class="lesson-bar__no">0017</span>
+  <!-- 课件页自带主题开关：学生从文件管理器直接打开课件时也能切暗色 -->
+  <label class="syo-toggle syo-toggle--theme lesson-bar__toggle" title="切换深浅主题" aria-label="切换深浅主题">
+    <input type="checkbox" id="lesson-theme-checkbox" checked>
+    <span class="syo-toggle-track"></span>
+    <span class="syo-toggle-knob">
+      <svg class="syo-toggle-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.5" stroke="#f57c00" stroke-width="1.5"/><path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.34 4.34l1.77 1.77M13.89 13.89l1.77 1.77M4.34 15.66l1.77-1.77M13.89 6.11l1.77-1.77" stroke="#f57c00" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <svg class="syo-toggle-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.5 12.5A6 6 0 019 4.5a6 6 0 007.5 8z" stroke="#5c6bc0" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </span>
+  </label>
+</nav>
+
+<article class="lesson">
+
+  <header class="lesson-header">
+    <span class="lesson-header__eyebrow">0017 · 树：会递归的结构</span>
+    <h1>树：会递归的结构</h1>
+    <p class="lesson-goal"><b>本节目标：</b>能用嵌套列表表示二叉树，写出前中后序与层序四种遍历，并用递归求树高、节点数与对称性。</p>
+  </header>
+
+  <!-- ── 正文：渲染器按内容文件（lessons/<序号>-<节点id>.md）产出，块词汇见 docs/规范/课件内容格式.md ── -->
+
+  <h2>树是递归定义的</h2>
+
+  <p>前面十五课里的数据结构都是「平」的：列表按下标排成一行，栈和队列在一端进出，字典按键取值。树是第一个<b>有层次</b>的结构。</p>
+
+  <p><b>树</b>（tree）是由 <span class="math-inline">n</span> 个结点组成的有限集合。<span class="math-inline">n = 0</span> 时称为<b>空树</b>；<span class="math-inline">n &gt; 0</span> 时有一个特定的结点称为<b>根</b>（root），其余结点被分成若干个互不相交的集合，每个集合本身又是一棵树，称为根的<b>子树</b>（subtree）。</p>
+
+  <p>这段定义里藏着一件事：<b>树的定义里出现了「树」这个词</b>。定义一棵树要用到更小的树，这与第 12 课讲的递归定义是同一件事。所以树的代码写成递归版是自然结果，不需要额外想办法。</p>
+
+  <p>几个后面会反复用到的词：</p>
+
+  <table>
+    <thead>
+      <tr><th>词</th><th>含义</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>根</td><td>最上面那个结点，它没有父结点</td></tr>
+      <tr><td>叶子</td><td>没有子结点的结点</td></tr>
+      <tr><td>子树</td><td>某个结点及其全部后代构成的树</td></tr>
+      <tr><td>结点的深度</td><td>从根到它的路径长度；根的深度是 0</td></tr>
+      <tr><td>树高</td><td>所有结点深度的最大值加一，也就是层数</td></tr>
+      <tr><td>二叉树</td><td>每个结点最多有两个子结点，分别叫左孩子与右孩子</td></tr>
+    </tbody>
+  </table>
+
+  <p>二叉树的两个孩子有左右之分，这一点在判断对称时是关键。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "「树是递归定义的」这句话在代码里体现为？",
+    "opts": [
+      "每个函数第一句都判空，子树交给同一个函数处理",
+      "每个函数都要用一个循环把结点逐个走一遍",
+      "每个函数都要额外记录一个访问过的结点集合",
+      "每个函数都要先算好树高再决定递归多少层"
+    ],
+    "ans": 0,
+    "why": "树的定义用到了更小的树，所以树函数写成递归是自然结果：判空作为基例，左子树与右子树交给同一个函数，自己在根上把两个答案合并。求节点数、树高、是否对称都是这个形状。"
+  }
+]'></div>
+
+  <h2>用嵌套列表表示树</h2>
+
+  <p>二叉树有几种常见表示。这一课用<b>嵌套列表</b>，它把结构直接摆在代码里：</p>
+
+  <ul>
+    <li>空树用 <code>None</code> 表示；</li>
+    <li>一个结点写成 <code>[值, 左子树, 右子树]</code>。</li>
+  </ul>
+
+  <p>按这个约定搭一棵树：</p>
+
+  <pre data-lang="python"><code>def node(v, l=None, r=None):
+    return [v, l, r]
+
+#        A
+#      /   \
+#     B     C
+#    / \     \
+#   D   E     F
+T = node('A', node('B', node('D'), node('E')), node('C', None, node('F')))</code></pre>
+
+  <p>这棵树的 6 个结点里，<code>D</code>、<code>E</code>、<code>F</code> 是叶子；<code>C</code> 只有右孩子；<code>B</code> 有两个孩子。整棵树的形状与上面的图一致。</p>
+
+  <p>选嵌套列表的理由是<b>基例一眼可见</b>：空树就是 <code>None</code>，代码里写 <code>if t is None</code> 就够了。用类来写（<code>class TreeNode</code>）也可以，但这一课不需要——把注意力留给遍历本身。</p>
+
+  <div class="lesson-warn">
+    <b>空树必须作为基例</b>
+    <p><code>if t is None: return ...</code> 是每个树函数的第一句。漏掉它不会算出一堆错误答案，而是<b>当场停下来</b>，报的是 <code>TypeError: 'NoneType' object is not subscriptable</code>。</p>
+
+    <p>崩的位置是第一个叶子那个不存在的孩子：拿示例树来说，走到 <code>D</code> 时会去调 <code>preorder(None)</code>，接着执行 <code>None[0]</code>——<code>None</code> 不能下标，于是报错。注意这个基例拦的不只是「整棵树是空的」，也拦「某个结点的孩子不存在」：<code>C</code> 的左孩子就是 <code>None</code>，遍历一定会走到那里。</p>
+
+    <p>这种「漏基例」的报错与第 12 课那种爆栈不一样。爆栈是递归不收敛、层数越堆越深；这里是<b>第一次碰到空结点就当场报错</b>，位置明确。看到 <code>NoneType</code> 就去想「哪个函数的基例漏了」。</p>
+  </div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "树函数漏掉「空结点就交回空结果」那一句判断，会看到什么？",
+    "opts": [
+      "在第一个叶子那个空孩子上当场抛类型错误",
+      "递归不收敛，一直调到一千层才抛递归过深",
+      "结果里少一个值，因为叶子结点被跳过去没访问",
+      "算出正确答案但慢很多，因为多走了若干次空调用"
+    ],
+    "ans": 0,
+    "why": "示例树走到叶子 D 时会去调 preorder(None)，接着执行 None[0]，报的是 TypeError: &#39;NoneType&#39; object is not subscriptable。这与爆栈不是一回事：爆栈是递归不收敛、层数越堆越深（第 12 课量到 998 层），漏基例则是第一次碰到空结点就当场报错，位置明确。"
+  }
+]'></div>
+
+  <h2>三种遍历</h2>
+
+  <p><b>遍历</b>（traversal）指按某种顺序把每个结点访问一次。二叉树有三种主要的递归遍历，区别只在「根在什么时候被访问」：</p>
+
+  <pre data-lang="python"><code>def preorder(t):
+    if t is None:
+        return []
+    return [t[0]] + preorder(t[1]) + preorder(t[2])
+
+def inorder(t):
+    if t is None:
+        return []
+    return inorder(t[1]) + [t[0]] + inorder(t[2])
+
+def postorder(t):
+    if t is None:
+        return []
+    return postorder(t[1]) + postorder(t[2]) + [t[0]]
+
+print('前序', preorder(T))
+print('中序', inorder(T))
+print('后序', postorder(T))</code></pre>
+
+  <pre data-lang="text"><code>前序 ['A', 'B', 'D', 'E', 'C', 'F']
+中序 ['D', 'B', 'E', 'A', 'C', 'F']
+后序 ['D', 'E', 'B', 'F', 'C', 'A']</code></pre>
+
+  <p>三个函数几乎一样，差别只在那一行里 <code>[t[0]]</code> 的位置：</p>
+
+  <table>
+    <thead>
+      <tr><th>遍历</th><th>根的位置</th><th>记法</th><th>示例树的结果</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>前序</td><td>最前</td><td>根 → 左子树 → 右子树</td><td><code>A B D E C F</code></td></tr>
+      <tr><td>中序</td><td>中间</td><td>左子树 → 根 → 右子树</td><td><code>D B E A C F</code></td></tr>
+      <tr><td>后序</td><td>最后</td><td>左子树 → 右子树 → 根</td><td><code>D E B F C A</code></td></tr>
+    </tbody>
+  </table>
+
+  <p>名字里的「前中后」指的就是根被访问的位置。写成递归之后，<b>子树内部的顺序由同一个函数自己保证</b>——你不需要在脑子里模拟整棵树的每一层，只要确认「根放在哪、左子树交给自己、右子树交给自己」这三件事，剩下的自然成立。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "三种递归遍历的代码只差一处，差的是哪一处？",
+    "opts": [
+      "根被收进结果的位置：最前、中间还是最后",
+      "两个递归调用的先后次序，三种各不相同",
+      "基例里判断空树用的是哪一种写法",
+      "交回的是列表还是单个值，三种都不同"
+    ],
+    "ans": 0,
+    "why": "「前中后」指的就是根被访问的位置：前序在最前、中序在中间、后序在最后。三个函数其余部分完全一样，子树内部的顺序由同一个函数自己保证，不需要在脑子里模拟每一层。"
+  }
+]'></div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "交上去的遍历结果顺序不对，最该先查什么？",
+    "opts": [
+      "题目要的是哪一种遍历，我交的是哪一种",
+      "树的表示选错了，换成字典再试一遍",
+      "递归上限太小，先把上限调大一些",
+      "结点值有没有重复，重复会打乱顺序"
+    ],
+    "ans": 0,
+    "why": "前序、中序、后序给出的是三个不同的序列，示例树上分别是 A B D E C F、D B E A C F、D E B F C A。顺序整体不对而元素齐全，通常就是交错了遍历种类；先核对题目要的是哪一种。"
+  }
+]'></div>
+
+  <h2>层序遍历用队列</h2>
+
+  <p>三种递归遍历都在往深处走。还有一种走法是<b>一层一层</b>来，叫<b>层序遍历</b>（也叫广度优先遍历）。</p>
+
+  <p>它不好写成递归，因为「先访问完第 1 层再访问第 2 层」这个要求与栈的次序相反。用第 10 课的队列才对：</p>
+
+  <pre data-lang="python"><code>from collections import deque
+
+def level_order(t):
+    if t is None:
+        return []
+    out = []
+    q = deque([t])
+    while q:
+        x = q.popleft()
+        out.append(x[0])
+        if x[1] is not None:
+            q.append(x[1])
+        if x[2] is not None:
+            q.append(x[2])
+    return out
+
+print('层序', level_order(T))</code></pre>
+
+  <pre data-lang="text"><code>层序 ['A', 'B', 'C', 'D', 'E', 'F']</code></pre>
+
+  <p>队列里存的每一项都是<b>子树</b>（一个 <code>[值, 左, 右]</code> 列表），不是单个值。取出一个结点时先把它的值收进结果，再把它存在的孩子从右边排进队列。先进先出这条性质保证了：同一层的结点按从左到右的次序被处理。</p>
+
+  <p>用 <code>list</code> 加 <code>pop(0)</code> 也能写，但第 3 课量过：<code>pop(0)</code> 要从头部挪动整个列表，20 万次约 2.74 秒，而 <code>deque.popleft()</code> 约 0.013 秒。层序遍历里每个结点出队一次，正是这条差距被放大的地方。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "层序遍历为什么用队列而不是递归？",
+    "opts": [
+      "要按层来，就得先处理完同一层的全部结点",
+      "递归版会重复访问结点，结果会多出几个值",
+      "队列能自动把结点按值的大小排好先后顺序",
+      "递归没法处理只有一个孩子的那种结点"
+    ],
+    "ans": 0,
+    "why": "「先访问完第 1 层再访问第 2 层」与栈的次序相反，所以不好写成递归。用队列把结点从右边排进去、从左边取出来，先进先出正好保证同一层按从左到右处理。队列里存的是子树，不是单个值。"
+  }
+]'></div>
+
+  <h2>递归返回值汇总子树</h2>
+
+  <p>树函数的通用写法是：<b>在每个结点上，用两个孩子交回的答案算出自己的答案</b>。求节点数与树高就是这样：</p>
+
+  <pre data-lang="python"><code>def count(t):
+    if t is None:
+        return 0
+    return 1 + count(t[1]) + count(t[2])
+
+def height(t):
+    if t is None:
+        return 0
+    return 1 + max(height(t[1]), height(t[2]))
+
+print('节点数', count(T), ' 树高', height(T))</code></pre>
+
+  <pre data-lang="text"><code>节点数 6  树高 3</code></pre>
+
+  <p>看 <code>height</code> 那一行：左子树交回一个高度，右子树交回一个高度，两边取较大者再加一（加上根自己这一层）。<b>递归的返回值就是「这棵子树的高度」</b>，于是整棵树的答案由两个子树的答案拼出来。这个形状在第 24 课（动态规划）里会再见到一次。</p>
+
+  <p>判断对称是同一套写法的两两配对版本：</p>
+
+  <pre data-lang="python"><code>def is_mirror(a, b):
+    if a is None and b is None:
+        return True
+    if a is None or b is None:
+        return False
+    return a[0] == b[0] and is_mirror(a[1], b[2]) and is_mirror(a[2], b[1])
+
+def is_symmetric(t):
+    return t is None or is_mirror(t[1], t[2])
+
+S = node('A', node('B', node('D')), node('B', None, node('D')))
+print('对称树', is_symmetric(S))
+print('示例树', is_symmetric(T))
+print('空树', is_symmetric(None))
+print('单点', is_symmetric(node('A')))
+print('只差一个值', is_symmetric(node('A', node('B'), node('C'))))</code></pre>
+
+  <pre data-lang="text"><code>对称树 True
+示例树 False
+空树 True
+单点 True
+只差一个值 False</code></pre>
+
+  <p><code>is_mirror(a, b)</code> 问的是「以 <code>a</code> 为根的子树与以 <code>b</code> 为根的子树是否互为镜像」。注意最后一行里两个递归调用的参数：<code>is_mirror(a[1], b[2])</code> 与 <code>is_mirror(a[2], b[1])</code> —— <b>左对右、右对左</b>，这就是「镜像」在代码里的写法。若写成 <code>a[1]</code> 对 <code>b[1]</code>，判的就不是对称而是「两棵子树一模一样」。</p>
+
+  <p>四个基例分支（都空、只有一个空、都非空）缺一个都会算错。<code>a is None or b is None</code> 这一句能拦住「一边空一边不空」的情形——它交回 <code>False</code>，而漏掉它就会去取 <code>None[0]</code> 而报错。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "写「求树高」时，递归的返回值应当是什么？",
+    "opts": [
+      "这棵子树的高度，根上再加一就是整棵的高度",
+      "这棵子树里深度最大的那个结点上的值",
+      "从根走到当前结点经过的结点个数总和",
+      "两个孩子里较高那一个的高度，不含根本身"
+    ],
+    "ans": 0,
+    "why": "height(t) 交回「以 t 为根的子树的高度」，于是 1 + max(左子树高度, 右子树高度) 就是自己的高度。递归的返回值就是「这棵子树对整题的答案」，这个形状在第 24 课动态规划里会再见到。"
+  }
+]'></div>
+
+  <h2>树高与递归深度</h2>
+
+  <p>上一节问的是「树有多高」。这一节问的是另一件事：<b>算这棵树的时候，递归会走到多深？</b></p>
+
+  <p>两者在平衡树上接近，在不平衡树上差得很远。造两种形状来量：</p>
+
+  <pre data-lang="python"><code>import sys
+
+def build_balanced(n):
+    def rec(k):
+        if k == 0:
+            return None
+        left = k // 2
+        return node(k, rec(left), rec(k - 1 - left))
+    return rec(n)
+
+def build_chain(n):
+    t = None
+    for i in range(n):
+        t = node(i, t, None)
+    return t
+
+for n in (998, 999, 1000):
+    try:
+        print(f'链长 {n:&gt;5} 树高 {height(build_chain(n))}  跑得动')
+    except RecursionError:
+        print(f'链长 {n:&gt;5}  RecursionError')
+
+for n in (1000, 100000):
+    print(f'n={n:&gt;6} 平衡树树高 {height(build_balanced(n))}')
+print('当前递归上限', sys.getrecursionlimit())</code></pre>
+
+  <pre data-lang="text"><code>链长   998 树高 998  跑得动
+链长   999  RecursionError
+链长  1000  RecursionError
+n=  1000 平衡树树高 10
+n=100000 平衡树树高 17
+当前递归上限 1000</code></pre>
+
+  <p>链状树（每个结点只有左孩子）在 998 层时还跑得动，999 层就抛 <code>RecursionError</code>。这个数字与第 12 课实测的「最深进入 998 层」完全一致——同一个上限，在那里由函数的自我调用撞上，在这里由树的深度撞上。</p>
+
+  <p>同样是一千个结点，平衡树的高度是 10；十万个结点的平衡树高度只有 17。递归的深度等于树高，所以：</p>
+
+  <table>
+    <thead>
+      <tr><th>树的形状</th><th><span class="math-inline">n</span> 个结点时的树高</th><th>递归深度</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>平衡树</td><td>约 <span class="math-inline">\log_2 n</span></td><td>十万结点也只有 17 层</td></tr>
+      <tr><td>链状树</td><td><span class="math-inline">n</span></td><td>一千结点就爆栈</td></tr>
+    </tbody>
+  </table>
+
+  <p>这就是这一课与第 12、13 课共用的那条判断：<b>递归深度取决于形状，不取决于规模</b>。</p>
+
+  <div class="lesson-warn">
+    <b>题目数据可能故意给一条链</b>
+    <p>多数题目给的树是随机的，深度接近 <span class="math-inline">\log n</span>；但有的题会专门给「一条链」或者「每层只挂一个孩子」的极端数据。递归写法在这种输入上会爆栈。规模到 <span class="math-inline">10^5</span> 时不要假设树的深度很小——要么按题目保证的平衡性来判断，要么改用显式栈的迭代写法。</p>
+  </div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "一千个结点的树，什么时候递归会爆栈？",
+    "opts": [
+      "树长成一条链时爆栈，平衡树十万结点也没事",
+      "结点数过了一千就爆栈，与树的形状没有关系",
+      "只要有结点只有一个孩子，跑起来就会爆栈",
+      "层序遍历会爆栈，三种递归遍历反倒不会"
+    ],
+    "ans": 0,
+    "why": "递归深度等于树高，而树高取决于形状：一千个结点的链状树树高 998 还跑得动、999 就抛 RecursionError；同样一千个结点的平衡树树高只有 10，十万结点的平衡树树高也只有 17。"
+  }
+]'></div>
+
+  <h2>拼接结果的隐藏代价</h2>
+
+  <p>前面三个遍历用的是「左子树结果 + 根 + 右子树结果」这种拼接写法。它读起来最贴近定义，但<b>每一层都要复制一遍子树的结果</b>，而子树的大小与树的形状有关。</p>
+
+  <p>把拼接版与累加器版放在一起量：</p>
+
+  <pre data-lang="python"><code>import time
+
+def preorder_acc(t, out=None):
+    if out is None:
+        out = []
+    if t is None:
+        return out
+    out.append(t[0])
+    preorder_acc(t[1], out)
+    preorder_acc(t[2], out)
+    return out
+
+for n in (200, 400, 800):
+    ct = build_chain(n)
+    best_concat = 1e9
+    best_acc = 1e9
+    for _ in range(20):
+        t0 = time.perf_counter()
+        preorder(ct)
+        t1 = time.perf_counter()
+        if t1 - t0 &lt; best_concat:
+            best_concat = t1 - t0
+        t0 = time.perf_counter()
+        preorder_acc(ct)
+        t1 = time.perf_counter()
+        if t1 - t0 &lt; best_acc:
+            best_acc = t1 - t0
+    print(f'链长 {n:&gt;4}  拼接 {best_concat:.6f} 秒   累加器 {best_acc:.6f} 秒')</code></pre>
+
+  <p>秒数取 20 次里最快的一次，即使这样每次运行的末几位仍会有浮动：</p>
+
+  <pre data-lang="text"><code>链长  200  拼接 0.000054 秒   累加器 0.000012 秒
+链长  400  拼接 0.000192 秒   累加器 0.000035 秒
+链长  800  拼接 0.000726 秒   累加器 0.000081 秒</code></pre>
+
+  <p>链长从 200 涨到 800（四倍），拼接版从 0.000054 秒涨到 0.000726 秒（约 13 倍），每翻一倍涨约 3.6 到 3.8 倍——这是平方级的形状。累加器版只涨约 6.8 倍，接近线性的两倍。</p>
+
+  <p>同一对函数放到<b>平衡树</b>上，差距要小得多：<span class="math-inline">n = 4000</span> 时拼接 0.000484 秒、累加器 0.000349 秒，只差约 1.4 倍。原因还是形状：平衡树上每个结点的子树都不大，拼接要复制的量少；链状树上越靠近根的结点，子树越大，复制的总量按平方级涨。</p>
+
+  <p>所以这一条判断有两层：</p>
+
+  <ul>
+    <li>遍历这种「把结果收集起来」的函数，用<b>累加器</b>（传一个列表进去，往里面 <code>append</code>）比拼接结果稳。</li>
+    <li>代价与<b>树的形状</b>有关，不只是与 <span class="math-inline">n</span> 有关。测性能时不能只测一种形状。</li>
+  </ul>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "遍历用「左边结果 + 根 + 右边结果」拼接，代价取决于什么？",
+    "opts": [
+      "取决于树的形状：链状树上每个结点都要复制大段结果",
+      "取决于结点值的长短：值越长，每次复制就越慢",
+      "取决于递归的上限：上限调大以后复制也会变快",
+      "只取决于结点的个数，与树的形状基本没有关系"
+    ],
+    "ans": 0,
+    "why": "拼接版每层都要复制一遍子树的结果，而子树有多大与形状有关。链长 200 涨到 800 时拼接版涨约 13 倍（每翻倍涨约 3.6 到 3.8 倍，平方级），累加器版只涨约 6.8 倍；同一对函数放到平衡树上，n=4000 时只差约 1.4 倍。"
+  }
+]'></div>
+
+  <h2>这一课用到的判断</h2>
+
+  <ul>
+    <li><b>树是递归定义的</b>，所以树函数写成递归是自然结果。每个函数的第一句都是 <code>if t is None</code> 这个基例。</li>
+    <li><b>三种遍历只差根的位置</b>：前序在最前、中序在中间、后序在最后。子树内部交给同一个函数自己保证。</li>
+    <li><b>层序遍历用队列</b>，不能用递归；队列里存的是子树，<code>deque.popleft()</code> 而不是 <code>list.pop(0)</code>。</li>
+    <li><b>递归返回值用来汇总子树信息</b>：节点数、树高、是否对称都是「两个孩子交回答案，在根上合并」。</li>
+    <li><b>递归深度等于树高</b>，而树高取决于形状：平衡树约 <span class="math-inline">\log_2 n</span>（十万结点 17 层），链状树是 <span class="math-inline">n</span>（不到一千层就爆栈）。</li>
+    <li><b>收集结果用累加器，不要拼接</b>。拼接版在链状树上的代价是平方级。</li>
+  </ul>
+
+  <div class="lesson-practice">
+    <div class="lesson-practice__head">
+      <span class="lesson-practice__level">上手做</span>
+      <span class="lesson-practice__title">九个小函数与两种树的形状</span>
+    </div>
+
+      <p>这一课的动手部分落在 lab 里（任务与断言见 <a href="../lab/0017-binary-tree-traversal/">lab/0017-binary-tree-traversal/</a>，做完对照 <a href="../lab/solutions/">lab/solutions/</a>）。要做的是四件事。</p>
+
+      <ol>
+        <li>把 <code>node</code>、<code>preorder</code>、<code>inorder</code>、<code>postorder</code>、<code>level_order</code> 五个函数抄进一个文件，用嵌套列表搭出课件那棵示例树，确认四种遍历的输出与课件逐字一致；再自己搭两棵树（一棵只有左孩子一直往下的链、一棵每层都挂满的平衡树）各跑一遍。</li>
+        <li>补 <code>count</code>、<code>height</code>、<code>is_mirror</code>、<code>is_symmetric</code> 四个函数，在示例树之外再造四组数据（空树、单点、对称树、只有一处不同的树），把四组结果做成一张表。</li>
+        <li>造一张「形状与递归深度」的表：链状树与平衡树各取 <span class="math-inline">n</span> 为 100、1000、10000，数出树高；把链状树的 <span class="math-inline">n</span> 逐步加到爆栈，记下那个临界值，并与第 12 课的上限对照。</li>
+        <li>把前序遍历写成两个版本（拼接版与累加器版），在链状树与平衡树上各量一次耗时，做成一张表；指出哪一列的形状不是线性。</li>
+      </ol>
+  </div>
+
+  <ul class="lesson-resources">
+    <li><a href="https://oi-wiki.org/graph/tree-basic/">OI Wiki · 树基础</a><span class="lesson-resources__meta">树的定义与术语、四种存储方式、树上 DFS 与 BFS、二叉树遍历（本课术语口径出自这里）</span></li>
+    <li>《算法导论（第 3 版）》第 12 章 二叉搜索树<span class="lesson-resources__meta">书 · 树的遍历与递归结构；当参考书查</span></li>
+    <li><a href="https://docs.python.org/zh-cn/3/library/collections.html">Python 官方文档 · collections</a><span class="lesson-resources__meta"><code>deque</code> 的两端进出都是 <span class="math-inline">O(1)</span>，层序遍历用它（第 10 课已量过代价）</span></li>
+  </ul>
+
+  <div class="lesson-related">
+    <a href="0012-recursion-and-stack.html">第 12 课：递归：函数调用自己</a>
+    <a href="0010-stack-and-queue.html">第 10 课：后进先出与先进先出</a>
+  </div>
+
+  <!-- ── 提问提示：固定写法，别删 ── -->
+
+  <div class="lesson-ask">
+    <b>没看懂？随时问</b>
+    把看不懂的段落（或报错）原样复制回会话，说一句哪里不懂就行，我只解释这一段，不打断你的进度。
+  </div>
+
+  <!-- ── 上/下节课指针由渲染器按 curriculum.yaml 的 nodes 顺序算（第一课无 --prev、最后一课无 --next） ── -->
+
+  <nav class="lesson-nav" aria-label="上一课 / 下一课">
+    <a class="lesson-nav__link lesson-nav__link--prev" href="0016-hash-table.html">
+      <span class="lesson-nav__dir">上节课</span>
+      <span class="lesson-nav__title">为什么字典查得那么快</span>
+    </a>
+    <a class="lesson-nav__link lesson-nav__link--next" href="0018-heap-and-priority-queue.html">
+      <span class="lesson-nav__dir">下节课</span>
+      <span class="lesson-nav__title">每次都要最小的那个</span>
+    </a>
+  </nav>
+
+  <footer class="lesson-footer">
+    StudyMate · 0017 树：会递归的结构 · 本地学习工作区
+  </footer>
+
+</article>
+
+<script src="../../../assets/sayo/sayo.js"></script>
+<link rel="stylesheet" href="../../../assets/katex/katex.min.css">
+<script src="../../../assets/katex/katex.min.js" defer></script>
+<script src="../../../assets/lesson-math.js" defer></script>
+<script src="../assets/quiz.js" defer></script>
+<script src="../assets/lesson-toc.js" defer></script>
+<script>LearnTheme.wire(document.getElementById('lesson-theme-checkbox'));</script>
+</body>
+</html>

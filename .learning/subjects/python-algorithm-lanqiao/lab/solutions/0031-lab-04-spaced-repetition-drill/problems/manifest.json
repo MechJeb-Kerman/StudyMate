@@ -1,0 +1,52 @@
+{
+  "course": "python-algorithm-lanqiao",
+  "lesson": "0031",
+  "title": "实验四：一次完整的赛前模拟",
+  "minutes": 240,
+  "total_points": 360,
+  "note": "五道省赛难度的题。测试数据由 test_data.py 用固定种子现算，cases/ 里的 *.in 与 *.out 就是算出来的那一份；判分只做题面与输出比对，不判算法。",
+  "problems": {
+    "p1": {
+      "title": "舞台高度",
+      "points": 30,
+      "estimate_minutes": 35,
+      "family": "二分答案",
+      "timeout_seconds": 10,
+      "cases": 6
+    },
+    "p2": {
+      "title": "四边形合并",
+      "points": 60,
+      "estimate_minutes": 70,
+      "family": "区间 DP",
+      "timeout_seconds": 25,
+      "cases": 6
+    },
+    "p3": {
+      "title": "数颜色",
+      "points": 90,
+      "estimate_minutes": 110,
+      "family": "离线 + 树状数组",
+      "timeout_seconds": 15,
+      "cases": 6
+    },
+    "p4": {
+      "title": "最长公共子串",
+      "points": 100,
+      "estimate_minutes": 180,
+      "family": "二分 + 字符串哈希（本场超难题）",
+      "timeout_seconds": 25,
+      "cases": 6
+    },
+    "p5": {
+      "title": "雨天迷宫",
+      "points": 80,
+      "estimate_minutes": 75,
+      "family": "0-1 BFS",
+      "timeout_seconds": 15,
+      "cases": 6
+    }
+  },
+  "scoring": "每题的分按测试点平分；某题全部测试点通过才算拿满那一题的分。总分 360（30 + 60 + 90 + 100 + 80）。",
+  "abandon_hint": "p4 的估值 180 分钟已经超过本场剩余预算的常规量级：五道题都试着做满需要 470 分钟，而考试只有 240 分钟。所以必须挑着做——记录里要写清放弃哪一道、依据是什么。"
+}

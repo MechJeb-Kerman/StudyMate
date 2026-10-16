@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>排序：分而治之的样板 · Python 算法与蓝桥杯</title>
+
+<!-- 共享层在 .learning/assets/，课件在 .learning/subjects/<slug>/lessons/ 下，所以是 ../../../assets/ -->
+<link rel="stylesheet" href="../../../assets/sayo/sayo.css">
+<link rel="stylesheet" href="../../../assets/learn-theme.css">
+<link rel="stylesheet" href="../assets/style.css">
+
+<!-- 主题要在首帧前应用，避免闪白/闪黑 -->
+<script src="../../../assets/learn-theme.js"></script>
+<script>LearnTheme.apply();</script>
+</head>
+
+<body class="lesson-body">
+
+<nav class="lesson-bar">
+  <a href="../index.html">← 返回课程</a>
+  <span>Python 算法与蓝桥杯</span>
+  <span class="lesson-bar__no">0013</span>
+  <!-- 课件页自带主题开关：学生从文件管理器直接打开课件时也能切暗色 -->
+  <label class="syo-toggle syo-toggle--theme lesson-bar__toggle" title="切换深浅主题" aria-label="切换深浅主题">
+    <input type="checkbox" id="lesson-theme-checkbox" checked>
+    <span class="syo-toggle-track"></span>
+    <span class="syo-toggle-knob">
+      <svg class="syo-toggle-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.5" stroke="#f57c00" stroke-width="1.5"/><path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.34 4.34l1.77 1.77M13.89 13.89l1.77 1.77M4.34 15.66l1.77-1.77M13.89 6.11l1.77-1.77" stroke="#f57c00" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <svg class="syo-toggle-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.5 12.5A6 6 0 019 4.5a6 6 0 007.5 8z" stroke="#5c6bc0" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </span>
+  </label>
+</nav>
+
+<article class="lesson">
+
+  <header class="lesson-header">
+    <span class="lesson-header__eyebrow">0013 · 排序：分而治之的样板</span>
+    <h1>排序：分而治之的样板</h1>
+    <p class="lesson-goal"><b>本节目标：</b>能手写归并排序与快速排序，说清各自的复杂度与最坏情况，并按数据特点在几种排序之间做出选择。</p>
+  </header>
+
+  <!-- ── 正文：渲染器按内容文件（lessons/<序号>-<节点id>.md）产出，块词汇见 docs/规范/课件内容格式.md ── -->
+
+  <h2>内置排序之外</h2>
+
+  <p>Python 的 <code>sorted</code> 已经是排序问题的现成答案。取两万个随机整数，手写的归并排序与它各跑一次：</p>
+
+  <table>
+    <thead>
+      <tr><th>写法</th><th>耗时（本机实测）</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>手写归并排序</td><td>0.0265 秒</td></tr>
+      <tr><td><code>sorted</code></td><td>0.0014 秒</td></tr>
+    </tbody>
+  </table>
+
+  <p><code>sorted</code> 快约 19 倍。它由 C 实现，省掉了 Python 层每一次循环与比较的开销。</p>
+
+  <p>既然差距这么大，为什么还要手写一遍？因为这两个手写版提供的是一副<b>骨架</b>：归并排序的「分而治之」与快速排序的「划分」，在后面的算法里反复出现——求逆序对、求第 <span class="math-inline">k</span> 大的数、按关键字分组、二分的边界收敛，用的都是同一套动作。把它们写熟，是为了在别的题里认出这副骨架。</p>
+
+  <h2>分治的三段式</h2>
+
+  <p><b>分治</b>（divide and conquer）把一个问题拆成几份更小的同类问题，分别解决之后再合并结果。它由三段组成：</p>
+
+  <table>
+    <thead>
+      <tr><th>段</th><th>做什么</th><th>排序里的对应</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>分</td><td>把问题切成规模更小的同类问题</td><td>把数组从中间切成两半</td></tr>
+      <tr><td>治</td><td>递归地解决这些子问题</td><td>对两半分别排序</td></tr>
+      <tr><td>合</td><td>把子问题的答案拼回原问题的答案</td><td>把两个有序段合并成一个有序段</td></tr>
+    </tbody>
+  </table>
+
+  <p>三段里的第三段最容易被忽略。归并排序之所以能排好，靠的是「合并两个有序数组」这个动作本身非常便宜：两段各自有序时，只要不断比较两段当前的头部，取走较小的一个，一趟就能拼完。<b>分</b>与<b>治</b>把问题变小，<b>合</b>才让结果回到原规模。</p>
+
+  <p>这一课要写三个函数，对应三段：<code>merge</code>（合）、<code>merge_sort</code>（分与治）、<code>partition</code>（快排的分）。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "归并排序的分治三段里，「合」这一步做的是什么？",
+    "opts": [
+      "把两个已经有序的段拼成一个有序段",
+      "把数组从中间切开成两半再分别处理",
+      "递归调用自己把切开的每一半排好",
+      "选一个主元把数组划分成大小两段"
+    ],
+    "ans": 0,
+    "why": "分与治把问题变小，合让结果回到原规模。两段各自有序时，只要不断取走两段头部较小的那个，一趟就能拼完，代价是 O(n)。这一趟正是归并排序效率的来源，也是三段里最容易被忽略的一段。"
+  }
+]'></div>
+
+  <h2>归并排序</h2>
+
+  <pre data-lang="python"><code>def merge(left, right):
+    out = []
+    i = 0
+    j = 0
+    while i &lt; len(left) and j &lt; len(right):
+        if left[i] &lt;= right[j]:
+            out.append(left[i])
+            i += 1
+        else:
+            out.append(right[j])
+            j += 1
+    out.extend(left[i:])
+    out.extend(right[j:])
+    return out
+
+def merge_sort(a):
+    if len(a) &lt;= 1:
+        return a
+    mid = len(a) // 2
+    return merge(merge_sort(a[:mid]), merge_sort(a[mid:]))</code></pre>
+
+  <p><code>merge_sort</code> 的基例是 <code>len(a) &lt;= 1</code>：长度为 0 或 1 的数组已经有序，直接返回。递归关系是把数组切成两半，各自排好之后合并。这与上一课那三个要素一一对应。</p>
+
+  <p>拿两万个随机整数验证一次：</p>
+
+  <pre data-lang="python"><code>import random
+import time
+
+def time_it(f, reps=3):
+    best = 1e9
+    for _ in range(reps):
+        t0 = time.perf_counter()
+        f()
+        t1 = time.perf_counter()
+        if t1 - t0 &lt; best:
+            best = t1 - t0
+    return best
+
+random.seed(7)
+d = [random.randrange(1000) for _ in range(20000)]
+
+def run_merge():
+    return merge_sort(d)
+
+print('与 sorted 一致', merge_sort(d) == sorted(d))
+print(f'归并 {time_it(run_merge, 1):.4f} 秒')</code></pre>
+
+  <pre data-lang="text"><code>与 sorted 一致 True
+归并 0.0265 秒</code></pre>
+
+  <p><code>merge</code> 里有三处细节，写错任何一处结果都会错位：</p>
+
+  <ul>
+    <li><code>while</code> 的条件是 <code>i &lt; len(left) and j &lt; len(right)</code>，两个都没走完时才能比较。写成 <code>or</code> 会在某一段走完后继续取下标，读到越界的位置。</li>
+    <li>比较用 <code>&lt;=</code>。用 <code>&lt;</code> 时，两段头部相等的情况下会先取右边那个，稳定排序的性质就丢了（这一课后面会讲稳定性）。</li>
+    <li>收尾的两行 <code>out.extend(...)</code> 不能省。<code>while</code> 停下来时，总有一段还剩几个元素，它们已经有序且都比 <code>out</code> 里的大，直接接在后面即可。</li>
+  </ul>
+
+  <div class="lesson-warn">
+    <b>合并时的下标错位不容易看出来</b>
+    <p><code>while</code> 里少写一个条件、或者把 <code>i += 1</code> 与 <code>j += 1</code> 写反，结果往往只是「差不多对」——大部分位置正确，少数重复值或边界值跑到错误的位置。写完先拿一组有小规模、有重复值的数据（例如十个元素、其中三个相同）对一次，再看大规模。</p>
+  </div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "merge 里把 while 的连接条件从 and 写成 or，会出现什么后果？",
+    "opts": [
+      "某一段走完后继续取下标，读到越界位置",
+      "两段都走完以后剩下的那些元素会被丢掉",
+      "合并结果依然正确，只是跑得慢了一些",
+      "函数会报错退出，跑不出任何结果"
+    ],
+    "ans": 0,
+    "why": "连接条件为 or 时，只要还有一段没走完循环就继续，于是会去读已经走完那一段的下标，越过它的末尾。正确写法是 and，循环停下后再用 extend 把剩余的那一段接上。"
+  }
+]'></div>
+
+  <h2>归并的深度与代价</h2>
+
+  <p>上一课讲过递归深度受解释器上限约束。归并排序的深度是多少？把每一层的切分走一遍就能数出来：</p>
+
+  <pre data-lang="python"><code>deepest = 0
+
+def depth_of(n, d=1):
+    global deepest
+    if d &gt; deepest:
+        deepest = d
+    if n &lt;= 1:
+        return
+    depth_of(n // 2, d + 1)
+    depth_of(n - n // 2, d + 1)
+
+for n in (8, 1000, 32768, 100000):
+    deepest = 0
+    depth_of(n)
+    print(f'n={n:&gt;6} 最大深度 {deepest}')</code></pre>
+
+  <pre data-lang="text"><code>n=     8 最大深度 4
+n=  1000 最大深度 11
+n= 32768 最大深度 16
+n=100000 最大深度 18</code></pre>
+
+  <p>每切一层，规模减半，所以深度是 <span class="math-inline">\lceil \log_2 n \rceil + 1</span>。<span class="math-inline">n = 100000</span> 时只有 18 层，离上一课那个 1000 的上限极远。</p>
+
+  <p>再看时间。每一层都要把所有 <span class="math-inline">n</span> 个元素搬一遍，共 <span class="math-inline">\lceil \log_2 n \rceil + 1</span> 层，所以总代价是 <span class="math-inline">O(n \log n)</span>。合并本身是线性的，这一点是归并排序效率的来源。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "归并排序的递归深度为什么是 O(log n)？",
+    "opts": [
+      "每切一层规模减半，层数就是 log2 n",
+      "每层只处理一个元素，层数等于元素个数",
+      "合并两个有序段的代价恰好是 log n",
+      "内置函数会自动把递归改成循环执行"
+    ],
+    "ans": 0,
+    "why": "每次递归都把区间从中间切成两半，规模每层减半，所以层数是对数级。实测 n = 100000 时深度只有 18，离递归上限极远；合并的线性代价决定的是总时间 O(n log n)，与深度是两件事。"
+  }
+]'></div>
+
+  <h2>快速排序与划分</h2>
+
+  <p>快速排序走的是另一条路：它不合并，而是选一个<b>主元</b>，把数组分成「比主元小的」与「不小于主元的」两段，再对两段分别递归。分完就已经确定主元的最终位置，不需要合并这一步。</p>
+
+  <pre data-lang="python"><code>def partition(a, lo, hi):
+    p = a[lo]
+    i = lo
+    for j in range(lo + 1, hi + 1):
+        if a[j] &lt; p:
+            i += 1
+            a[i], a[j] = a[j], a[i]
+    a[lo], a[i] = a[i], a[lo]
+    return i
+
+def quick_sort(a, lo=0, hi=None):
+    if hi is None:
+        hi = len(a) - 1
+    if lo &gt;= hi:
+        return a
+    k = partition(a, lo, hi)
+    quick_sort(a, lo, k - 1)
+    quick_sort(a, k + 1, hi)
+    return a</code></pre>
+
+  <p><code>i</code> 的含义是「已确定小于主元的那一段的末尾下标」。扫描一遍 <code>j</code>，每次遇到比主元小的元素，就把 <code>i</code> 往前推一格，并把它换到 <code>i</code> 这个位置。扫描结束后，<code>a[lo]</code> 与 <code>a[i]</code> 交换，主元落到 <code>i</code> 上，它的左边全比它小、右边全不比它小。函数返回 <code>i</code>，递归的两段就以 <code>i</code> 为界。</p>
+
+  <h2>划分的逐步过程</h2>
+
+  <p>取 <code>a = [3, 1, 4, 1, 5, 9, 2]</code>，主元是开头的 3，把划分过程逐步打出来：</p>
+
+  <pre data-lang="python"><code>a = [3, 1, 4, 1, 5, 9, 2]
+p = a[0]
+i = 0
+print('主元 3，初始', a)
+for j in range(1, len(a)):
+    v = a[j]
+    if v &lt; p:
+        i += 1
+        a[i], a[j] = a[j], a[i]
+        print(f'j={j} 读到 {v} &lt; 3，i 增到 {i}，交换后', a)
+    else:
+        print(f'j={j} 读到 {v} &gt;= 3，i 停在 {i}，不动')
+a[0], a[i] = a[i], a[0]
+print('主元落位到下标', i, a)</code></pre>
+
+  <pre data-lang="text"><code>主元 3，初始 [3, 1, 4, 1, 5, 9, 2]
+j=1 读到 1 &lt; 3，i 增到 1，交换后 [3, 1, 4, 1, 5, 9, 2]
+j=2 读到 4 &gt;= 3，i 停在 1，不动
+j=3 读到 1 &lt; 3，i 增到 2，交换后 [3, 1, 1, 4, 5, 9, 2]
+j=4 读到 5 &gt;= 3，i 停在 2，不动
+j=5 读到 9 &gt;= 3，i 停在 2，不动
+j=6 读到 2 &lt; 3，i 增到 3，交换后 [3, 1, 1, 2, 5, 9, 4]
+主元落位到下标 3 [2, 1, 1, 3, 5, 9, 4]</code></pre>
+
+  <p>一趟扫描结束，主元 3 落在下标 3，左边的 <code>[2, 1, 1]</code> 全小于它，右边的 <code>[5, 9, 4]</code> 全不小于它。接着对这两段各做一次同样的事，整个数组就排好了。</p>
+
+  <p>这一步的代价是 <span class="math-inline">O(n)</span>：<code>j</code> 从 <code>lo + 1</code> 走到 <code>hi</code>，每个元素最多被交换一次。</p>
+
+  <h2>有序数据上的退化</h2>
+
+  <p>快排的代价取决于划分得均不均匀。若每次主元都恰好落在中间，深度仍是 <span class="math-inline">O(\log n)</span>，总代价 <span class="math-inline">O(n \log n)</span>；若每次主元都落在端点，两段变成「空的」与「剩下全部」，深度就退化成 <span class="math-inline">O(n)</span>。</p>
+
+  <p>用上面那个「永远取开头作主元」的版本，喂一组已经排好的数据：</p>
+
+  <table>
+    <thead>
+      <tr><th><span class="math-inline">n</span></th><th>耗时（本机实测）</th><th>相邻两行的倍率</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>400</td><td>0.002109 秒</td><td>—</td></tr>
+      <tr><td>800</td><td>0.007990 秒</td><td>3.79</td></tr>
+      <tr><td>1600</td><td>0.027468 秒</td><td>3.44</td></tr>
+      <tr><td>3200</td><td>0.110224 秒</td><td>4.01</td></tr>
+    </tbody>
+  </table>
+
+  <p>规模翻倍、耗时涨约四倍，这是平方级的形状。规模再大一点，代价不只是变慢：</p>
+
+  <pre data-lang="text"><code>已有序 n=1600 固定主元 -&gt; RecursionError: maximum recursion depth exceeded</code></pre>
+
+  <p>深度涨到 <span class="math-inline">n</span>，撞上了上一课那个 1000 的上限。上一课说过「深度随规模线性增长时要考虑改写」，这里正好是一个实例。</p>
+
+  <p>修法是把主元选得随机一点，让划分不容易总是落在端点上：</p>
+
+  <pre data-lang="python"><code>def quick_sort_random(a, lo=0, hi=None):
+    if hi is None:
+        hi = len(a) - 1
+    if lo &gt;= hi:
+        return a
+    m = random.randrange(lo, hi + 1)
+    a[lo], a[m] = a[m], a[lo]
+    k = partition(a, lo, hi)
+    quick_sort_random(a, lo, k - 1)
+    quick_sort_random(a, k + 1, hi)
+    return a</code></pre>
+
+  <p>同一组已有序的数据，换成随机主元之后：<span class="math-inline">n = 1600</span> 时 0.001023 秒（固定主元是 0.027468 秒，差约 27 倍），<span class="math-inline">n = 20000</span> 时 0.018757 秒。</p>
+
+  <div class="lesson-warn">
+    <b>已有序的数据比你想象的常见</b>
+    <p>输入是排好序的、逆序的、或者「几乎有序只有几个位置错位」，这几种在真实题目里都常出现。快排的固定主元版在这几种输入上都会退化，<b>测性能时一定要专门造一组有序数据</b>，只用随机数据测会把这个坑藏起来。</p>
+  </div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "用「永远取第一个元素作主元」的快排，去排一组已经有序的数据，会发生什么？",
+    "opts": [
+      "划分极不均匀，耗时呈平方级并最终爆栈",
+      "与随机数据一样，耗时仍是 n log n",
+      "结果出错，因为主元不能取第一个元素",
+      "自动换成归并排序，所以没有任何变化"
+    ],
+    "ans": 0,
+    "why": "已有序时第一元素就是最小值，划分后一段为空、另一段是剩下的全部，规模每层只减一。实测 n 从 400 到 3200 每翻一倍耗时涨约四倍，n = 1600 时深度撞上递归上限直接 RecursionError。"
+  }
+]'></div>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "用随机主元修掉快排的退化，改动的实质是什么？",
+    "opts": [
+      "让划分不容易每次都落在端点上，深度回到对数级",
+      "把比较操作换成哈希，从而避开元素之间的比较",
+      "把递归改成循环，从而不再受递归深度的限制",
+      "先检查数据是否有序，有序时直接返回原数组"
+    ],
+    "ans": 0,
+    "why": "先在区间里随机挑一个位置与开头交换，再照原样划分。主元落在端点附近的概率大幅下降，划分期望上均匀，深度回到对数级。实测同一组已有序数据 n = 1600 时，随机主元比固定主元快约 27 倍。"
+  }
+]'></div>
+
+  <h2>计数排序</h2>
+
+  <p>前两种排序都靠比较元素大小来决定次序，这类算法的时间下界是 <span class="math-inline">O(n \log n)</span>。若数据的取值落在一个小范围里，可以换一种完全不比较的做法。</p>
+
+  <p><b>计数排序</b>先数出每个值出现了几次，再按值的顺序把它们写回：</p>
+
+  <pre data-lang="python"><code>def counting_sort(a, maxv):
+    cnt = [0] * (maxv + 1)
+    for x in a:
+        cnt[x] += 1
+    out = []
+    for v in range(maxv + 1):
+        out.extend([v] * cnt[v])
+    return out</code></pre>
+
+  <p>两万个取值在 <span class="math-inline">0</span> 到 <span class="math-inline">999</span> 之间的整数，测一次：</p>
+
+  <pre data-lang="python"><code>d4 = [random.randrange(1000) for _ in range(20000)]
+print('结果一致', counting_sort(d4, 999) == sorted(d4))
+
+def run_count():
+    return counting_sort(d4, 999)
+
+def run_sorted():
+    return sorted(d4)
+
+print(f'计数 {time_it(run_count, 1):.4f} 秒  sorted {time_it(run_sorted):.4f} 秒')</code></pre>
+
+  <p>本机跑出来是：</p>
+
+  <table>
+    <thead>
+      <tr><th>写法</th><th>耗时（本机实测）</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>计数排序</td><td>0.0008 秒</td></tr>
+      <tr><td><code>sorted</code></td><td>0.0016 秒</td></tr>
+    </tbody>
+  </table>
+
+  <p>计数排序比内置的 <code>sorted</code> 还快一倍。它的代价是 <span class="math-inline">O(n + V)</span>，其中 <span class="math-inline">V</span> 是值域的宽度；这里 <span class="math-inline">V = 1000</span>，与 <span class="math-inline">n</span> 同量级。适用条件是两条：<b>取值是整数（或能一一对应到整数）</b>，且<b>值域不比 <span class="math-inline">n</span> 大多少</b>。值域有 <span class="math-inline">10^9</span> 那么宽时，那张计数表就开不出来了。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "什么时候适合用计数排序，而不是直接用 sorted？",
+    "opts": [
+      "值是整数，且值域宽度与 n 差不多大",
+      "值是浮点数，且范围非常宽、分布也均匀",
+      "元素之间可以比较，且 n 大到上百万",
+      "需要稳定排序，且元素本身是复杂对象"
+    ],
+    "ans": 0,
+    "why": "计数排序的代价是 O(n + V)，V 是值域宽度，它靠开一张计数表替换掉比较。值域远大于 n 时那张表开不出来。实测 n = 20000、值域 0 到 999 时它比 sorted 还快一倍；值域到 10 的 9 次方就不能用了。"
+  }
+]'></div>
+
+  <h2>键与稳定排序</h2>
+
+  <p>题面常常要求「按某个关键字排序」，而关键字不一定是元素本身。<code>sorted</code> 用一个 <code>key</code> 函数来指定取哪个字段：</p>
+
+  <pre data-lang="python"><code>pairs = [(1, 'a'), (0, 'x'), (1, 'b'), (0, 'y'), (1, 'c')]
+
+def first(x):
+    return x[0]
+
+print(sorted(pairs, key=first))</code></pre>
+
+  <pre data-lang="text"><code>[(0, 'x'), (0, 'y'), (1, 'a'), (1, 'b'), (1, 'c')]</code></pre>
+
+  <p>看两组关键字相同的元素：<code>(0, 'x')</code> 在 <code>(0, 'y')</code> 前面，<code>(1, 'a')</code>、<code>(1, 'b')</code>、<code>(1, 'c')</code> 保持着原来在列表里的先后。这种「关键字相同的元素保持原有相对次序」的性质叫<b>稳定</b>。Python 的 <code>sorted</code> 与 <code>list.sort</code> 都是稳定的。</p>
+
+  <p><code>key</code> 还有一个容易忽略的性质：<b>每个元素只调用一次</b>。<code>sorted</code> 的内部做法是先把每个元素的键算出来存到一边，按键排序，再去掉键取回原元素；官方文档把这套做法叫「装饰 - 排序 - 去装饰」（decorate-sort-undecorate）。把调用次数数出来：</p>
+
+  <pre data-lang="python"><code>calls = 0
+
+def counted(x):
+    global calls
+    calls += 1
+    return x[0]
+
+data = [(random.randrange(100), i) for i in range(2000)]
+
+calls = 0
+sorted(data, key=counted)
+print('sorted(key=) 调用 key', calls, '次')</code></pre>
+
+  <pre data-lang="text"><code>sorted(key=) 调用 key 2000 次</code></pre>
+
+  <p>2000 个元素调用 2000 次，正好是 <span class="math-inline">n</span>。</p>
+
+  <p>把手写排序写成「在比较里调用 <code>key</code>」的版本，这一条就破了：每次比较都要算两个键，而一次排序要比较约 <span class="math-inline">n \log n</span> 次。同样两千个元素，手写归并版的 <code>key</code> 被调用 <b>38738 次</b>（本机实测），是前者的约 19 倍；两个版本的时间是 0.000183 秒与 0.003672 秒，差约 20 倍。</p>
+
+  <p>所以「内置 <code>sorted</code> 永远比手写快」这句话在简单数据上成立，而当 <code>key</code> 是一个开销不小的函数时，手写版若把 <code>key</code> 放进比较里，两者都会变慢，手写版还会慢得更多。若确实要手写排序又需要 <code>key</code>，就先把键算好存到一边——<code>sorted</code> 快在这里，仿照它的做法才有意义。</p>
+
+  <p>另有一处边界要留意：<code>sorted</code> 要求元素之间能比较。字典与集合这类元素之间没有大小关系，直接对它们排序会报 <code>TypeError</code>，要改成按某个字段排，也就是给出 <code>key</code>。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "关于内置 sorted 的 key，下面哪一条说法是对的？",
+    "opts": [
+      "每个元素只调用一次 key，先算好键再排序",
+      "每次比较都要调用两次 key 来取出键值",
+      "key 只对第一个元素调用一次当样本用",
+      "使用 key 之后排序结果就不再是稳定的"
+    ],
+    "ans": 0,
+    "why": "官方文档把这套做法叫装饰-排序-去装饰：先给每个元素算出键放在一边，按键排序，再取回原元素。实测 2000 个元素调用 2000 次。手写排序若在比较里调 key，同一批数据要调 38738 次，约 19 倍。"
+  }
+]'></div>
+
+  <h2>这一课用到的判断</h2>
+
+  <ul>
+    <li><b>手写排序的价值在骨架</b>：分治的三段（分、治、合）与划分这两个动作，在后面的题里反复出现。日常要排序直接用 <code>sorted</code>。</li>
+    <li><b>分治的第三段不能省</b>：合并两个有序段是归并排序效率的来源，代价 <span class="math-inline">O(n)</span>。</li>
+    <li><b>归并的深度是 <span class="math-inline">O(\log n)</span></b>，远离递归上限；<b>快排退化时深度是 <span class="math-inline">O(n)</span></b>，会直接撞上限。</li>
+    <li><b>快排的代价取决于划分是否均匀</b>。已有序、逆序、几乎有序的输入会让固定主元版退化成 <span class="math-inline">O(n^2)</span>，测性能时必须专门造这类数据。</li>
+    <li><b>计数排序不受 <span class="math-inline">O(n \log n)</span> 下界约束</b>，代价 <span class="math-inline">O(n + V)</span>，前提是值为整数且值域不大。</li>
+    <li><b>比较类排序的下界是 <span class="math-inline">O(n \log n)</span></b>，归并与快排的均摊代价已经达到这个下界。</li>
+    <li><b>Python 的排序是稳定的</b>，且 <code>key</code> 对每个元素只调用一次（装饰 - 排序 - 去装饰）。要手写排序又带 <code>key</code>，先把键算好。</li>
+  </ul>
+
+  <div class="lesson-practice">
+    <div class="lesson-practice__head">
+      <span class="lesson-practice__level">上手做</span>
+      <span class="lesson-practice__title">手写三种排序并对照</span>
+    </div>
+
+      <p>这一课的动手部分落在 lab 里（任务与断言见 <a href="../lab/0013-sorting-and-divide-conquer/">lab/0013-sorting-and-divide-conquer/</a>，做完对照 <a href="../lab/solutions/">lab/solutions/</a>）。要做的是四件事。</p>
+
+      <ol>
+        <li>把 <code>merge</code>、<code>merge_sort</code>、<code>partition</code>、<code>quick_sort</code>、<code>counting_sort</code> 五个函数抄进一个文件，用 <code>random</code> 造几组数据（随机、已有序、逆序、含大量重复值），每一组都确认手写版的结果与 <code>sorted</code> 逐字一致。</li>
+        <li>造一张耗时表：<span class="math-inline">n</span> 取 400、800、1600、3200，每档分别跑归并、固定主元快排、随机主元快排、<code>sorted</code>，看每一列的相邻两行是几倍关系，并指出哪一列的形状不是 <span class="math-inline">n \log n</span>。</li>
+        <li>把已有序数据那一组单独留出来，用固定主元快排跑一次，把 <code>RecursionError</code> 的现场抄下来；再换成随机主元跑，记下两次的耗时比。</li>
+        <li>把数据换成 <span class="math-inline">0</span> 到 <span class="math-inline">999</span> 之间的整数，比较计数排序与 <code>sorted</code> 的耗时；再把值域改成 <span class="math-inline">0</span> 到 <span class="math-inline">10^9</span>，说明计数排序为什么不能用了，实际跑一次看它会怎样。</li>
+      </ol>
+  </div>
+
+  <ul class="lesson-resources">
+    <li><a href="https://docs.python.org/3/howto/sorting.html">Python 官方文档 · 排序指南</a><span class="lesson-resources__meta">官方文档 · <code>key</code> 只调用一次、稳定性、装饰 - 排序 - 去装饰、部分排序</span></li>
+    <li><a href="https://docs.python.org/3/library/functions.html#sorted">Python 官方文档 · sorted</a><span class="lesson-resources__meta">官方文档 · <code>sorted</code> 的签名与稳定性保证</span></li>
+    <li>《算法（第 4 版）》第 2 章 排序<span class="lesson-resources__meta">书 · 归并与快排的推导与图示；当参考书查</span></li>
+  </ul>
+
+  <div class="lesson-related">
+    <a href="0012-recursion-and-stack.html">上一课：递归：函数调用自己</a>
+    <a href="0003-python-list-dict-cost.html">第 3 课：列表与字典的隐藏价格</a>
+  </div>
+
+  <!-- ── 提问提示：固定写法，别删 ── -->
+
+  <div class="lesson-ask">
+    <b>没看懂？随时问</b>
+    把看不懂的段落（或报错）原样复制回会话，说一句哪里不懂就行，我只解释这一段，不打断你的进度。
+  </div>
+
+  <!-- ── 上/下节课指针由渲染器按 curriculum.yaml 的 nodes 顺序算（第一课无 --prev、最后一课无 --next） ── -->
+
+  <nav class="lesson-nav" aria-label="上一课 / 下一课">
+    <a class="lesson-nav__link lesson-nav__link--prev" href="0012-recursion-and-stack.html">
+      <span class="lesson-nav__dir">上节课</span>
+      <span class="lesson-nav__title">递归：函数调用自己</span>
+    </a>
+    <a class="lesson-nav__link lesson-nav__link--next" href="0014-binary-search.html">
+      <span class="lesson-nav__dir">下节课</span>
+      <span class="lesson-nav__title">二分：每次砍掉一半</span>
+    </a>
+  </nav>
+
+  <footer class="lesson-footer">
+    StudyMate · 0013 排序：分而治之的样板 · 本地学习工作区
+  </footer>
+
+</article>
+
+<script src="../../../assets/sayo/sayo.js"></script>
+<link rel="stylesheet" href="../../../assets/katex/katex.min.css">
+<script src="../../../assets/katex/katex.min.js" defer></script>
+<script src="../../../assets/lesson-math.js" defer></script>
+<script src="../assets/quiz.js" defer></script>
+<script src="../assets/lesson-toc.js" defer></script>
+<script>LearnTheme.wire(document.getElementById('lesson-theme-checkbox'));</script>
+</body>
+</html>

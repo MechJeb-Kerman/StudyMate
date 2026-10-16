@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>从一道蓝桥杯题说起 · Python 算法与蓝桥杯</title>
+
+<!-- 共享层在 .learning/assets/，课件在 .learning/subjects/<slug>/lessons/ 下，所以是 ../../../assets/ -->
+<link rel="stylesheet" href="../../../assets/sayo/sayo.css">
+<link rel="stylesheet" href="../../../assets/learn-theme.css">
+<link rel="stylesheet" href="../assets/style.css">
+
+<!-- 主题要在首帧前应用，避免闪白/闪黑 -->
+<script src="../../../assets/learn-theme.js"></script>
+<script>LearnTheme.apply();</script>
+</head>
+
+<body class="lesson-body">
+
+<nav class="lesson-bar">
+  <a href="../index.html">← 返回课程</a>
+  <span>Python 算法与蓝桥杯</span>
+  <span class="lesson-bar__no">0001</span>
+  <!-- 课件页自带主题开关：学生从文件管理器直接打开课件时也能切暗色 -->
+  <label class="syo-toggle syo-toggle--theme lesson-bar__toggle" title="切换深浅主题" aria-label="切换深浅主题">
+    <input type="checkbox" id="lesson-theme-checkbox" checked>
+    <span class="syo-toggle-track"></span>
+    <span class="syo-toggle-knob">
+      <svg class="syo-toggle-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.5" stroke="#f57c00" stroke-width="1.5"/><path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.34 4.34l1.77 1.77M13.89 13.89l1.77 1.77M4.34 15.66l1.77-1.77M13.89 6.11l1.77-1.77" stroke="#f57c00" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <svg class="syo-toggle-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.5 12.5A6 6 0 019 4.5a6 6 0 007.5 8z" stroke="#5c6bc0" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </span>
+  </label>
+</nav>
+
+<article class="lesson">
+
+  <header class="lesson-header">
+    <span class="lesson-header__eyebrow">0001 · 从一道蓝桥杯题说起</span>
+    <h1>从一道蓝桥杯题说起</h1>
+    <p class="lesson-goal"><b>本节目标：</b>能说出从问题到程序的四步，并在写代码之前判断出数据规模变大后暴力解法会不会失效。</p>
+  </header>
+
+  <!-- ── 正文：渲染器按内容文件（lessons/<序号>-<节点id>.md）产出，块词汇见 docs/规范/课件内容格式.md ── -->
+
+  <p>蓝桥杯的填空题里有一类题长这样：</p>
+
+  <pre data-lang="text"><code>【问题描述】
+在 1 到 N 之间，有多少个奇数的平方不超过 N？
+
+【输入格式】
+输入一行，包含一个正整数 N。
+
+【输出格式】
+输出一行，包含一个整数，表示答案。
+
+【样例输入】
+100
+
+【样例输出】
+5
+
+【评测用例规模与约定】
+对于 60% 的评测用例，1 ≤ N ≤ 10^6；
+对于所有评测用例，1 ≤ N ≤ 10^9。</code></pre>
+
+  <p>样例只有一行输入、一个输出，看起来比课本里的习题还简单。真正决定这道题难度的是最后两行——<code>N</code> 最大可以到 <span class="math-inline">10^9</span>。这节课要回答的问题就是：末两行为什么能决定一道题的难度。</p>
+
+  <h2>从问题到程序的四步</h2>
+
+  <p>拿到上面的题面，要到一份能提交的代码，中间有四步。</p>
+
+  <p><b>第一步，读清楚问题。</b> 题目问的是"奇数 k 的平方不超过 N"的 k 有几个，不是求这些平方的和，也不是求奇数本身的个数。第一遍读题时把"多少"读成"哪些"、把"不超过"读成"小于"，都是常事。</p>
+
+  <p><b>第二步，想清楚输入和输出。</b> 输入是一行一个正整数 <code>N</code>，输出是一行一个整数。程序从标准输入读、往标准输出写——蓝桥杯的评测机就是把输入喂进来、拿走输出，跟样例里的样子一致。</p>
+
+  <p><b>第三步，处理。</b> 把"符合条件的有几个"变成一串能执行的动作：从 k = 1 开始一个个试，k 平方不超过 N 就计数加一，超过就停。</p>
+
+  <p><b>第四步，输出。</b> 把计数结果打印出来。</p>
+
+  <p>这四步里，第三步是后面每一课要反复练的地方，前两步出错则整道题白做。一种常见的翻车方式是：程序算得又快又对，只是输出多了一行"答案是："。评测机拿它跟标准答案逐字比对，判零分。判题程序不知道你的提示文字有什么意义，它只比较两份文本。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "下面这段程序算得没错，交上去却是 0 分：\n\n```python\nn = int(input())\nprint(\"计算结果：\")\nprint(n * (n + 1) // 2)\n```\n\n样例输入 10 时，判题程序期望的输出只有一行 55。\n零分的原因是什么？",
+    "opts": [
+      "判题程序逐字比对文本，多出的那一行使两份文本不一致",
+      "两次打印被当成两个文件输出，评测机只收到了第一个文件",
+      "先打印文字再打印数字会让程序变慢，超出了这道题的时限",
+      "字符串与整数不能分两次打印，程序运行到这里会直接报错"
+    ],
+    "ans": 0,
+    "why": "评测机把你的输出与标准答案逐字比对：\n它读不出提示文字有什么意义，多一行就对不上。"
+  }
+]'></div>
+
+  <h2>算法是什么</h2>
+
+  <p>"算法"这个词来自 9 世纪的波斯数学家花拉子米（al-Khwarizmi）名字的拉丁化写法 <em>algorismus</em>，最初指的就是用阿拉伯数字做算术的那套笔算步骤。这里的"步骤"包含三层要求：</p>
+
+  <ul>
+    <li><b>有限</b>：执行必须在有限步之内停下。一直循环下去不叫算法，叫死循环。</li>
+    <li><b>确定</b>：每一步做什么是明确规定的。同一个输入跑两遍，必须得到同一个结果；"凭感觉调一下"不算步骤。</li>
+    <li><b>有输入、有输出</b>：给定合法输入，必然产出结果。</li>
+  </ul>
+
+  <p>把这三条合起来：<b>算法是解决某一类问题的一套有限、确定的步骤，给定合法输入，按步骤执行必然在有限步内停下并产出结果。</b> 上面的循环求和是一个算法，<code>while True: pass</code> 不是。</p>
+
+  <p>按照这个定义，覆盖 10^9 的暴力枚举仍然是算法——它有限、确定，也能产出结果。速度不在这三条要求里，它由评测用例的时限决定：考试只给你一秒或两秒，跑不完的算法就得换掉。</p>
+
+  <h2>数据规模决定可行性</h2>
+
+  <p>同一道题，评测用例分档，我们可以把最容易想到的写法（后面统一叫<b>暴力解</b>：不做优化、按定义直接枚举所有可能）拿来分别试。</p>
+
+  <p>题面里的 <span class="math-inline">N</span> 有一个数据范围，正是它决定了这个算法能不能跑完。有一道同样说法的题：求 <span class="math-inline">1 + 2 + \dots + N</span>。最容易想到的写法是把 1 到 <span class="math-inline">N</span> 逐个加起来：</p>
+
+  <pre data-lang="python"><code>n = int(input())
+total = 0
+for i in range(1, n + 1):
+    total += i
+print(total)</code></pre>
+
+  <p>这段代码只有五行。把 <span class="math-inline">n</span> 换成不同的值，在这台机器上跑出来的结果是：</p>
+
+  <table>
+    <thead>
+      <tr><th>输入规模 <span class="math-inline">n</span></th><th>这段循环的实测耗时</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><span class="math-inline">10^5</span></td><td>1.6 毫秒</td></tr>
+      <tr><td><span class="math-inline">10^6</span></td><td>18.6 毫秒</td></tr>
+      <tr><td><span class="math-inline">10^7</span></td><td>188 毫秒</td></tr>
+    </tbody>
+  </table>
+
+  <p>每放大十倍规模，耗时也大约放大十倍，这正是我们期望的规律。可问题就在这个规律上：按这个比例，<span class="math-inline">n = 10^9</span> 要跑大约 19 秒，蓝桥杯的 1 秒时限连零头都不够。</p>
+
+  <p>再过一遍这段代码的每一步：<code>total += i</code> 是一次加法，<code>range</code> 每轮给出一个 <code>i</code>。整个循环执行了 <span class="math-inline">n</span> 次加法，所以耗时正比于 <span class="math-inline">n</span>——循环次数与耗时成正比，这就是耗时随规模线性增长的原因。</p>
+
+  <p>换个思路，这件事其实可以不算那么多次。退一步回到小学奥数就知道的结论：<span class="math-inline">1 + 2 + \dots + n = \dfrac{n(n+1)}{2}</span>。用这个公式，<span class="math-inline">n</span> 取多大都只做几次乘除：</p>
+
+  <pre data-lang="python"><code>n = int(input())
+print(n * (n + 1) // 2)</code></pre>
+
+  <p>在这台机器上，这一行代码无论 <span class="math-inline">n</span> 取 <span class="math-inline">10^6</span> 还是 <span class="math-inline">10^9</span>，耗时都在微秒量级（三次测量取最小值 0.2 微秒）。和循环的 <span class="math-inline">10^9</span> 次加法相比，差了若干数量级，被测代码本身的耗时已经和测量误差一个量级。</p>
+
+  <p>两个算法的答案一样，耗时却差出几个数量级，差别的来源是<b>基本操作的次数</b>：循环要执行 <span class="math-inline">n</span> 次，公式只执行固定几次，两种写法的操作次数随 <span class="math-inline">n</span> 增长的趋势完全不同。这里用的是 OI Wiki 给出的尺子——实际用时依赖机器、难以在理论上计算，实际测量又麻烦，所以衡量算法效率时数的通常不是秒，而是算法需要执行的基本操作数量。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "课件里那段循环求和，在本机实测的耗时是：\n\n$n=10^5$ → 1.6 毫秒\n$n=10^6$ → 18.6 毫秒\n$n=10^7$ → 188 毫秒\n\n① 不跑程序，估计 $n=10^9$ 要跑多久，写出推算过程。\n② 为什么规模放大十倍，耗时也大约放大十倍？\n从这段代码每一步做了什么说清楚。\n③ 有位同学总结：“Python 一秒能跑 $10^7$ 次操作。”\n这个数字哪里站不住脚？",
+    "answer": "① 约 19 秒：188 毫秒 × 100。\n因为 $n$ 从 $10^7$ 到 $10^9$ 正好放大 100 倍，\n按同一比例推下去。\n\n② 循环体那行 total += i 是一次加法，整个循环执行 $n$ 次。\n$n$ 放大十倍，加法次数也放大十倍，耗时跟着放大十倍。\n耗时正比的是基本操作次数，不是 $n$ 这个数本身有多大。\n\n③ 这个数字只对本机、这个 Python 版本、这段代码成立。\n换机器或换版本它就会变——课件那句“没有跨机器通用值”说的正是它。\n要估就只能自己量，或者按本机实测的数字类推。",
+    "criteria": "① 答出约 19 秒（18 到 20 秒之间都算对），\n并写出 188 毫秒 × 100 这个推算过程。\n② 必须答到“循环执行 n 次、每次一次加法，操作次数随 n 等比放大”。\n只说“数据大所以慢”不算过。\n③ 必须指出 $10^7$ 是本机、这个版本、这段代码测出来的，\n不能当成通用常数。"
+  }
+]'></div>
+
+  <div class="lesson-note">
+    <b>关于上面那些数字</b>
+    <p>表格里的耗时不来自任何权威资料，是在本机（Python 3.14.7，free-threading 构建）实测的。<b>"1 秒能跑多少次操作"没有一个跨机器通用的数字</b>：同样的代码换一台机器、换一个 Python 版本都会变，所以后面遇到"这题会不会超时"，都要像这样自己量、或者按实测数字类推。</p>
+  </div>
+
+  <h2>写之前先估一下</h2>
+
+  <p>看两道改过的题。</p>
+
+  <p>第一道：<span class="math-inline">1 \le N \le 10^6</span>，求 <span class="math-inline">1 + 2 + \dots + N</span>。循环要跑 <span class="math-inline">10^6</span> 次，按上面的实测约 19 毫秒，写循环就够了。</p>
+
+  <p>第二道：<span class="math-inline">1 \le N \le 10^9</span>，同样的式子。循环要跑 <span class="math-inline">10^9</span> 次，按实测比例推是 19 秒，交上去等来的会是"运行超时"。这时得换做法，把结论直接算出来，而不是逐项累加——比如奇数求和 <span class="math-inline">1 + 3 + \dots + (2m-1) = m^2</span>：它的操作次数不随 <span class="math-inline">N</span> 增长，<span class="math-inline">N</span> 取多大都只做几次乘除。回顾开头那道填空题，<span class="math-inline">N</span> 取 <span class="math-inline">10^9</span> 时的答案也是同一个道理算出来的：先由 <span class="math-inline">k^2 \le N</span> 定出上界 <span class="math-inline">k \le 31622</span>，再数一数这个范围内有多少个奇数，答案是 15811。</p>
+
+  <p>真正的坑在第一步：这两道题看着是同一句话，代码也几乎一样，数据范围只差三个数量级。样例永远只有三五个数，永远跑得飞快，所以"样例通过了"这句话对评测结果几乎没有预测力——<b>提交前该做的判断是"我的循环会跑多少次、跑到 10^9 还能不能在一秒内跑完"，而这个判断在写代码之前就可以做完。</b> 从下一课起，我们会把它练成一套固定的算法：看数据范围、估操作次数、定复杂度上限。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "这就是本课开头那道蓝桥杯填空题：$1$ 到 $N$ 之间，\n有多少个奇数的平方不超过 $N$？$N$ 最大 $10^9$。\n\n下面是暴力解，样例能过，最后一档会超时：\n\n```python\nn = int(input())\ncnt = 0\nfor k in range(1, n + 1):\n    if k % 2 == 1 and k * k &lt;= n:\n        cnt += 1\nprint(cnt)\n```\n\n① $N=10^9$ 时，循环体会执行多少次？\n和 1 秒的时限对得上吗？\n② 改造它：先定出符合条件的最大的 $k$（上界），\n再由上界直接数出答案。\n写出能跑的完整程序，并用 $N=100$ 跑一遍，确认输出 5。\n③ 说清改造后基本操作次数从多少降到多少，\n为什么这样就不会超时。",
+    "answer": "① $10^9$ 次：$k$ 从 1 到 $10^9$，每个都进循环体一次。\n课件按实测比例外推，纯加法循环 $10^9$ 次约 19 秒；\n这份循环体还要取模和平方比较，只会更慢。\n1 秒的时限对不上。\n\n② 上界是 $\\lfloor\\sqrt{N}\\rfloor$，即 31622：\n$31622^2 \\le 10^9$，$31623^2 &gt; 10^9$。\n1 到 31622 里的奇数共 15811 个，所以答案是 15811。\n样例 $N=100$：上界 10，奇数 5 个，输出 5。\n\n方案一（只用本课学过的循环）：\n\n```python\nn = int(input())\nk = 1\nwhile k * k &lt;= n:\n    k += 1\nbound = k - 1\nprint((bound + 1) // 2)\n```\n\n方案二（标准库一步到位）：\n\n```python\nimport math\n\nn = int(input())\nbound = math.isqrt(n)\nprint((bound + 1) // 2)\n```\n\n③ 方案一的循环约 $\\sqrt{N}$ 次，\n$N=10^9$ 时 3 万多次；\n方案二只有固定几次运算，$N$ 再大也几乎不变。\n省下来的原因不是算得更巧，而是一开始就不去枚举\n那些 $k^2 &gt; N$ 的 $k$：上界以内的 $k$ 才可能符合条件。\n\n注意：课件正文说“$N=10^9$ 时答案是 31622”，\n那个数其实是上界 $\\lfloor\\sqrt{10^9}\\rfloor$；\n本题问的是个数，要把上界以内的奇数再数一遍，得到 15811。",
+    "criteria": "① 答出 $10^9$ 次，并说出它远超 1 秒的时限。\n按课件数字外推约 19 秒。\n② 任一种实现都算过：while 找上界、math.isqrt 都行。\n必须给出上界 31622，并换算成奇数个数 15811，\n且用 $N=100$ 自测输出 5。\n只答 31622 的是把上界当成个数：部分通过，缺最后一步换算。\n③ 必须指出操作次数从 $N$ 次降到约 $\\sqrt{N}$ 次，\n或者降到固定几次。\n只说“换成公式就快了”却不给次数对比的，不算过。"
+  }
+]'></div>
+
+  <h2>练习</h2>
+
+  <div class="lesson-practice">
+    <div class="lesson-practice__head">
+      <span class="lesson-practice__level">练习</span>
+      <span class="lesson-practice__title">自己提出一个问题，再动手量一量</span>
+    </div>
+
+      <p>这一节的动作都在本机的 Python 里做，新建一个 <code>first.py</code> 就够，不需要其他准备。</p>
+
+      <p><b>第一步 · 把循环跑起来。</b> 把前面那段循环求和抄进 <code>first.py</code>，输入 <code>1000000</code> 跑一次：</p>
+
+      <pre data-lang="text"><code>500000500000</code></pre>
+
+      <p>确认结果和公式 <span class="math-inline">1000000 \times 1000001 \div 2</span> 一致。</p>
+
+      <p><b>第二步 · 让程序自己报耗时。</b> Python 标准库里的 <code>timeit</code> 就是为这件事准备的，官方推荐的用法是重复计时后取最小值——单次计时会被机器上别的程序干扰，报出来的数不可靠：</p>
+
+      <pre data-lang="python"><code>import timeit
+
+def loop_sum(n):
+    total = 0
+    for i in range(1, n + 1):
+        total += i
+    return total
+
+for n in (10**5, 10**6, 10**7):
+    t = min(timeit.repeat(lambda: loop_sum(n), number=1, repeat=5))
+    print(n, f"{t:.4f} 秒")</code></pre>
+
+      <p>把三个规模各跑一遍，看看耗时是不是随规模一起按倍数变化。</p>
+
+      <p><b>第三步 · 用测出来的数做估算。</b> 拿第二步打印出来的最后一个数字乘 100，就是 <span class="math-inline">10^9</span> 的估计耗时，和蓝桥杯的时限比一比。写出你的结论：这道题在 <span class="math-inline">10^9</span> 这一档还能不能交暴力解。</p>
+
+      <p><b>第四步 · 换一个问题。</b> 想一个你确实想用程序算的真实问题（统计一份名单里的重复项、算自己一个月的开销、把一堆分数排序……），用一句话写下来，再把它拆成三段：输入是什么、处理要做哪些动作、输出是什么。写下之后，再猜一句：数据放大十倍，你的做法还跑得动吗？</p>
+  </div>
+
+  <h2>这一课用到的 Python</h2>
+
+  <p>后面每一课都会用到 <code>for</code>、<code>range</code>、变量和输入输出，这里把它们的最小用法对一遍。</p>
+
+  <table>
+    <thead>
+      <tr><th>要做的事</th><th>写法</th><th>边界</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>从下标 0 数到 n−1</td><td><code>range(n)</code></td><td><code>range</code> 不含终点，<code>range(1, 5)</code> 是 1 到 4</td></tr>
+      <tr><td>从 1 数到 n</td><td><code>range(1, n + 1)</code></td><td>想包含 n 就得写成 n + 1</td></tr>
+      <tr><td>每隔一个数取一个</td><td><code>range(2, 11, 2)</code></td><td>第三个参数是步长，结果是 2、4、6、8、10</td></tr>
+      <tr><td>把每个元素做同一件事</td><td><code>for i in range(1, n + 1):</code></td><td>冒号不能丢，循环体要缩进</td></tr>
+      <tr><td>循环外只做一次的事</td><td>顶格写，不缩进</td><td>缩进了就变成循环体的一部分</td></tr>
+      <tr><td>读一个整数</td><td><code>n = int(input())</code></td><td><code>input()</code> 读回来的是文本，要算数得先转成整数</td></tr>
+      <tr><td>输出结果</td><td><code>print(total)</code></td><td>只输出要求的那一行，别加提示文字</td></tr>
+    </tbody>
+  </table>
+
+  <p>课程后面会把这套写法整理成函数——重复出现的处理步骤打包成一个有名字的代码块，调用一次就执行一遍。这一步先不展开，眼下循环和缩进够用了。</p>
+
+  <h2>这门课最后会做出什么</h2>
+
+  <p>这门课的检验手段是蓝桥杯真题：真实的数据范围、真实的时限、以及"你到底会不会"的诚实反馈。目标是把原理和复杂度吃透到能讲给别人听的深度，所以后面每一课都会走完"提问题、写代码、估复杂度、验证"这一整套，而不只是背下模板。</p>
+
+  <p>配套项目是一个「AI 刷题助手」：输入一段题目文本，由大模型辅助分析题意、给出候选算法，再用对拍器与样例自动验证候选解。它会在这门课的实验课里一段一段长出来——从这一课开始，你练的每一步都是它的一部分。</p>
+
+  <ul class="lesson-resources">
+    <li>OI Wiki · 复杂度<span class="lesson-resources__meta">复杂度定义、渐进符号与「数据规模 ↔ 可接受复杂度」的对照，本课"数操作次数"的口径出自这里</span></li>
+    <li><a href="https://docs.python.org/zh-cn/3/library/timeit.html">Python 官方文档 · timeit</a><span class="lesson-resources__meta">性能测量的官方用法，练习第二步照它写</span></li>
+    <li>《Python 编程：从入门到实践（第 2 版）》第 4 章 操作列表<span class="lesson-resources__meta">用循环处理一批数据的写法，本地教材</span></li>
+  </ul>
+
+  <!-- ── 提问提示：固定写法，别删 ── -->
+
+  <div class="lesson-ask">
+    <b>没看懂？随时问</b>
+    把看不懂的段落（或报错）原样复制回会话，说一句哪里不懂就行，我只解释这一段，不打断你的进度。
+  </div>
+
+  <!-- ── 上/下节课指针由渲染器按 curriculum.yaml 的 nodes 顺序算（第一课无 --prev、最后一课无 --next） ── -->
+
+  <nav class="lesson-nav" aria-label="上一课 / 下一课">
+    <a class="lesson-nav__link lesson-nav__link--next" href="0002-complexity-basics.html">
+      <span class="lesson-nav__dir">下节课</span>
+      <span class="lesson-nav__title">同一道题，两种写法</span>
+    </a>
+  </nav>
+
+  <footer class="lesson-footer">
+    StudyMate · 0001 从一道蓝桥杯题说起 · 本地学习工作区
+  </footer>
+
+</article>
+
+<script src="../../../assets/sayo/sayo.js"></script>
+<link rel="stylesheet" href="../../../assets/katex/katex.min.css">
+<script src="../../../assets/katex/katex.min.js" defer></script>
+<script src="../../../assets/lesson-math.js" defer></script>
+<script src="../assets/quiz.js" defer></script>
+<script src="../assets/lesson-toc.js" defer></script>
+<script>LearnTheme.wire(document.getElementById('lesson-theme-checkbox'));</script>
+</body>
+</html>

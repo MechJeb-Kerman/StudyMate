@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>二分答案：猜一个再验一遍 · Python 算法与蓝桥杯</title>
+
+<!-- 共享层在 .learning/assets/，课件在 .learning/subjects/<slug>/lessons/ 下，所以是 ../../../assets/ -->
+<link rel="stylesheet" href="../../../assets/sayo/sayo.css">
+<link rel="stylesheet" href="../../../assets/learn-theme.css">
+<link rel="stylesheet" href="../assets/style.css">
+
+<!-- 主题要在首帧前应用，避免闪白/闪黑 -->
+<script src="../../../assets/learn-theme.js"></script>
+<script>LearnTheme.apply();</script>
+</head>
+
+<body class="lesson-body">
+
+<nav class="lesson-bar">
+  <a href="../index.html">← 返回课程</a>
+  <span>Python 算法与蓝桥杯</span>
+  <span class="lesson-bar__no">0022</span>
+  <!-- 课件页自带主题开关：学生从文件管理器直接打开课件时也能切暗色 -->
+  <label class="syo-toggle syo-toggle--theme lesson-bar__toggle" title="切换深浅主题" aria-label="切换深浅主题">
+    <input type="checkbox" id="lesson-theme-checkbox" checked>
+    <span class="syo-toggle-track"></span>
+    <span class="syo-toggle-knob">
+      <svg class="syo-toggle-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.5" stroke="#f57c00" stroke-width="1.5"/><path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.34 4.34l1.77 1.77M13.89 13.89l1.77 1.77M4.34 15.66l1.77-1.77M13.89 6.11l1.77-1.77" stroke="#f57c00" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <svg class="syo-toggle-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.5 12.5A6 6 0 019 4.5a6 6 0 007.5 8z" stroke="#5c6bc0" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </span>
+  </label>
+</nav>
+
+<article class="lesson">
+
+  <header class="lesson-header">
+    <span class="lesson-header__eyebrow">0022 · 二分答案：猜一个再验一遍</span>
+    <h1>二分答案：猜一个再验一遍</h1>
+    <p class="lesson-goal"><b>本节目标：</b>能把「最大中的最小」这类题转成判定问题，写出 check 函数再用二分求解。</p>
+  </header>
+
+  <!-- ── 正文：渲染器按内容文件（lessons/<序号>-<节点id>.md）产出，块词汇见 docs/规范/课件内容格式.md ── -->
+
+  <h2>猜一个答案再验一遍</h2>
+
+  <p>上一课的二分是在<b>有序数组里找一个值</b>：数组已经摆在那儿，我们只要扔掉一半。</p>
+
+  <p>这一课的题目长得完全不一样。比如：<b>有几根木头，要切出至少 <span class="math-inline">K</span> 段一样长的木段，每段最长能有多长？</b></p>
+
+  <p>直接算没有公式。但反过来问就容易多了：<b>假如每段切成 7 长，够不够切出 <span class="math-inline">K</span> 段？</b> 这个问题只要把每根木头除以 7、把商加起来、和 <span class="math-inline">K</span> 比一比——扫一遍就完事。</p>
+
+  <p>于是换个思路：</p>
+
+  <ul>
+    <li><b>别去求最优解，先猜一个答案。</b></li>
+    <li><b>再花一点代价验一验这个猜的答案行不行。</b></li>
+    <li><b>行，就往更「贪心」的方向猜；不行，就往回退。</b></li>
+  </ul>
+
+  <p>那个「验一验」的函数习惯上叫 <code>check</code>。原来的问题叫<b>最优化问题</b>（求最大/最小），新的问题叫<b>判定问题</b>（问行不行）。<b>二分答案的价值就在这一步转换</b>：把「怎么求最好」换成「这样行不行」——后者通常好写得多。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "二分答案把什么类型的问题变成了什么类型？",
+    "opts": [
+      "把求最大最小的问题变成判断行不行的问题",
+      "把有序数组里的查找变成无序数组里的查找",
+      "把递归写法的问题变成循环写法的问题",
+      "把复杂度高的问题变成复杂度低的问题"
+    ],
+    "ans": 0,
+    "why": "原来的问题叫最优化问题（求最大/最小），直接算常常没有公式；换成判定问题（问「这个值行不行」）之后，只要扫一遍就能回答。木头那道题就是这样：求「每段最长能多长」不好下手，但问「每段切成 7 够不够 K 段」只要把每根木头除以 7 再加起来。"
+  }
+]'></div>
+
+  <h2>木头能切多长</h2>
+
+  <p>照着这个思路写出来：</p>
+
+  <pre data-lang="python"><code>def check_wood(woods, length, K):
+    """切出 length 这么长的段，够不够 K 段。"""
+    total = 0
+    for x in woods:
+        total += x // length
+    return total &gt;= K
+
+
+def solve_wood(woods, K):
+    lo, hi = 1, max(woods)
+    while lo &lt;= hi:
+        mid = (lo + hi) // 2
+        if check_wood(woods, mid, K):
+            lo = mid + 1          # 能切出来，试试更长的
+        else:
+            hi = mid - 1          # 切不出来，往短了试
+    return hi
+
+
+woods = [10, 10, 10]
+print('  每段最长:', solve_wood(woods, 3))
+print('  每段最长:', solve_wood(woods, 7))</code></pre>
+
+  <pre data-lang="text"><code>  每段最长: 10
+  每段最长: 3</code></pre>
+
+  <p>三根 10 长的木头要切 3 段，每段最长 10。要切 7 段，每段最长 3——每根各切 3 段共 9 段，够 7 段；再长一点到 4，每根只切得出 2 段、共 6 段，不够了。这个「4 不行、3 行」的界，正是 <code>check</code> 去判的事。</p>
+
+  <p><code>check</code> 里那个 <code>total &gt;= K</code> 是判定的核心。注意它是<b>单调</b>的：段长要求得越短，越容易切够。所以「能不能切够」这个判断随着 <code>length</code> 从小到大一定是从「能」变成「不能」，中间不会有反复。<b>有这个性质，二分才成立。</b></p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "为什么 check 必须单调，二分才成立？",
+    "opts": [
+      "每次都要扔掉一半，扔掉的那半里不能有答案",
+      "二分要求参数是整数，浮点数没办法折半",
+      "不单调的话 check 会算得慢，整体就超时",
+      "不单调的话 check 的返回值就不是真假"
+    ],
+    "ans": 0,
+    "why": "二分每次根据 mid 的判定结果扔掉一半区间，前提是「答案一定在留下的那一半里」。判定结果得是从真到假只拐一次弯（能 能 能 不能 不能），一旦出现「能 不能 能」这种反复，扔掉的那一半里就可能藏着真正的答案。确认办法是问自己：如果长度 d 可以，比 d 短的呢？"
+  }
+]'></div>
+
+  <h2>跳石头</h2>
+
+  <p>再看一道。一条河从起点到终点长 <span class="math-inline">L</span>，河里有 <span class="math-inline">N</span> 块石头，最多能搬走 <span class="math-inline">M</span> 块，问<b>搬完之后最短的那一跳最长能有多长</b>。</p>
+
+  <p>这也是「最大中的最小」：要让所有跳跃距离的最小值尽可能大。同样先写 <code>check</code>：<b>假如要求每一跳都不小于 <span class="math-inline">d</span>，最少要搬走几块石头？</b> 这个能用贪心扫一遍算出来——从头开始走，遇到一块石头离上一块不足 <span class="math-inline">d</span>，就把它搬走。</p>
+
+  <pre data-lang="python"><code>def check_jump(stones, L, d, M):
+    """最短跳跃距离不小于 d，需要搬走几块石头。"""
+    removed = 0
+    prev = 0
+    for s in stones:
+        if s - prev &lt; d:
+            removed += 1
+        else:
+            prev = s
+    if L - prev &lt; d:
+        removed += 1
+    return removed &lt;= M
+
+
+def solve_jump(stones, L, M):
+    lo, hi = 1, L
+    while lo &lt;= hi:
+        mid = (lo + hi) // 2
+        if check_jump(stones, L, mid, M):
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    return hi
+
+
+print('  答案:', solve_jump([2, 11, 14, 17, 21], 25, 2))</code></pre>
+
+  <pre data-lang="text"><code>  答案: 4</code></pre>
+
+  <p>河长 25，石头在 2、11、14、17、21，搬走 2 块之后最短的一跳最长是 4。搬走 2 和 14，剩下 0、11、17、21、25：跳跃距离是 11、6、4、4、4，最短 4。</p>
+
+  <p>两道题的骨架一模一样，差别只在 <code>check</code> 里面。<b>这就是二分答案的通用形状：一个 check，一个二分主体，换题只换 check。</b></p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "跳石头的 check 里为什么要用贪心扫一遍？",
+    "opts": [
+      "要数出最少搬走几块，从左往右遇到不够就搬",
+      "要先对所有石头排序，才能知道哪块离得最近",
+      "要用二分找出每一跳应该落在哪块石头上",
+      "要枚举所有搬法，才能确定最少搬走几块"
+    ],
+    "ans": 0,
+    "why": "check 要回答「要求每一跳都不小于 d 时，最少搬走几块」。从左往右走，遇到一块石头离上一块不足 d 就搬掉它——被搬掉的石头永远不会变成更好的落脚点，所以先搬近的不会吃亏。这个贪心扫一遍是 O(n)，搬走的块数不超过 M 就判定通过。"
+  }
+]'></div>
+
+  <h2>check 必须单调</h2>
+
+  <p>上面两题的 <code>check</code> 都是单调的。如果它不是呢？</p>
+
+  <p>二分的前提是「扔掉的那一半真的可以扔」。所以判定结果必须长成这个样子：</p>
+
+  <div class="lesson-note">
+    <b>单调的判定序列</b>
+    <p><code>能 能 能 能 能 不能 不能 不能 不能</code> 参数从小到大，一路「能」，某个位置之后一路「不能」，中间只拐一次弯。</p>
+  </div>
+
+  <p>一旦出现「能 不能 能」这种反复，二分每次扔掉一半就可能在扔掉的半边里丢掉真正的答案。</p>
+
+  <p>把这个性质人为破坏掉看一看。条件改成「长度是偶数<b>且</b>不超过 8」，可行的长度是 2、4、6、8，真正的最大值是 8：</p>
+
+  <pre data-lang="python"><code>def check_broken(length):
+    return length % 2 == 0 and length &lt;= 8
+
+
+def solve_broken(lo, hi):
+    while lo &lt;= hi:
+        mid = (lo + hi) // 2
+        if check_broken(mid):
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    return hi
+
+
+for lo, hi in [(1, 20), (1, 16), (1, 10), (1, 9), (1, 8), (5, 20)]:
+    got = solve_broken(lo, hi)
+    print(f'  区间 [{lo:&gt;2}, {hi:&gt;2}] -&gt; 交回 {got:&gt;2}   这个值可行吗 {check_broken(got)}')</code></pre>
+
+  <pre data-lang="text"><code>  区间 [ 1, 20] -&gt; 交回  2   这个值可行吗 True
+  区间 [ 1, 16] -&gt; 交回  8   这个值可行吗 True
+  区间 [ 1, 10] -&gt; 交回  2   这个值可行吗 True
+  区间 [ 1,  9] -&gt; 交回  2   这个值可行吗 True
+  区间 [ 1,  8] -&gt; 交回  6   这个值可行吗 True
+  区间 [ 5, 20] -&gt; 交回  8   这个值可行吗 True</code></pre>
+
+  <p><b>同一段二分代码、同一个条件，只把初始区间从 <span class="math-inline">[1,20]</span> 换成 <span class="math-inline">[1,16]</span>，答案就从 2 变成 8。</b></p>
+
+  <p>更麻烦的是「这个值可行吗」那一列<b>全是 True</b>。也就是说拿到错的答案（2）时，你没法靠「验一验它行不行」发现问题——它确实行，只是<b>远不是最大的</b>。真正最大值是 8。</p>
+
+  <p>所以「二分答案」这道菜的第一步不是写二分，而是<b>先确认 <code>check</code> 单调</b>。确认的办法是问自己一句：「如果长度 <span class="math-inline">d</span> 可以，那么比 <span class="math-inline">d</span> 短的呢？」答不上来，就不该用二分。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "check 不单调时，二分交回的答案有什么特征？",
+    "opts": [
+      "答案是可行的，但远不是最大的，换区间就变",
+      "答案一定是不可行的，一验就能发现是错的",
+      "程序会死循环，卡在某两个相邻数之间出不来",
+      "程序会报错，因为 check 违反了约定"
+    ],
+    "ans": 0,
+    "why": "实测把 check 改成「长度是偶数且不超过 8」，同一段二分代码只换初始区间就分别交回 2、8、2、2、6、8——全都在可行集合 {2,4,6,8} 里，所以「验一验它行不行」这一列全是 True，你根本发现不了它错。真正的最大值是 8，交回 2 的那次差了 6。"
+  }
+]'></div>
+
+  <h2>答案区间怎么定</h2>
+
+  <p>二分的两个边界 <code>lo</code> 和 <code>hi</code> 要框住答案。框错了有两种后果。</p>
+
+  <p><b>第一种：上界取小了。</b> 还是木材加工，两根 100 长的木头要切 2 段，答案明明是 100；如果上界只取 50，二分老老实实交回 50：</p>
+
+  <pre data-lang="python"><code>def solve_with_hi(woods, K, hi):
+    lo = 1
+    while lo &lt;= hi:
+        mid = (lo + hi) // 2
+        total = 0
+        for x in woods:
+            total += x // mid
+        if total &gt;= K:
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    return hi
+
+
+print('  上界取 100:', solve_with_hi([100, 100], 2, 100))
+print('  上界取  50:', solve_with_hi([100, 100], 2, 50))</code></pre>
+
+  <pre data-lang="text"><code>  上界取 100: 100
+  上界取  50: 50</code></pre>
+
+  <p><b>上界取小了不会报错，只会安静地给出一个偏小的答案。</b> 取上界的规矩是「宁可大得离谱」：答案最大可能是什么？把木头全长当成一段、把河长当成一跳，都是安全的。</p>
+
+  <p><b>第二种：收缩方向配错了取整方式。</b> 要取「最大的可行值」时，循环里是 <code>lo = mid</code> 这种<b>不往前挪一格</b>的写法。这时如果 <code>mid</code> 用向下取整 <code>(lo + hi) // 2</code>，程序会卡死：</p>
+
+  <pre data-lang="python"><code>def ok(x):
+    return x &lt;= 8
+
+
+def solve_infinite(step_cap=20):
+    lo, hi = 1, 20
+    steps = 0
+    while lo &lt; hi:
+        steps += 1
+        if steps &gt; step_cap:
+            return lo, hi, True
+        mid = (lo + hi) // 2          # 向下取整
+        if ok(mid):
+            lo = mid                  # 不往前挪
+        else:
+            hi = mid - 1
+    return lo, hi, False
+
+
+lo, hi, looped = solve_infinite()
+print(f'  向下取整：卡在 lo={lo} hi={hi}，还在循环里 {"是" if looped else "否"}')</code></pre>
+
+  <pre data-lang="text"><code>  向下取整：卡在 lo=8 hi=9，还在循环里 是</code></pre>
+
+  <p><code>lo=8, hi=9</code> 时 <code>mid</code> 永远是 8，<code>ok(8)</code> 为真于是 <code>lo</code> 又变回 8——一步都没动，死循环。把取整改成<b>向上</b>就通了：</p>
+
+  <pre data-lang="python"><code>def solve_right():
+    lo, hi = 1, 20
+    steps = 0
+    while lo &lt; hi:
+        steps += 1
+        mid = (lo + hi + 1) // 2      # 向上取整
+        if ok(mid):
+            lo = mid
+        else:
+            hi = mid - 1
+    return lo, steps
+
+
+ans, steps = solve_right()
+print(f'  向上取整：答案 {ans}，用了 {steps} 步')</code></pre>
+
+  <pre data-lang="text"><code>  向上取整：答案 8，用了 4 步</code></pre>
+
+  <p>记法：<b>收缩时写 <code>lo = mid</code> 就配向上取整 <code>(lo + hi + 1) // 2</code>；写 <code>lo = mid + 1</code> 就配向下取整。</b> 上一课的二分模板全用 <code>mid + 1</code> 和 <code>mid - 1</code>，所以那边不用管取整方向——<b>两套模板别混着抄</b>，混了就是这里出问题。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "收缩写成 lo = mid 时，为什么要配向上取整？",
+    "opts": [
+      "向下取整时 mid 卡住不动，区间再也缩不小",
+      "向上取整能让二分的次数从 log 降到常数",
+      "向下取整会让交回的答案偏小，但不至于死循环",
+      "向上取整是语言的要求，不写就会直接报错"
+    ],
+    "ans": 0,
+    "why": "lo = 8、hi = 9 时，向下取整的 mid 永远是 8；若 ok(8) 为真，lo 又变回 8，一步都没动，死循环。改成 (lo + hi + 1) // 2 拿到 9，区间才真的缩小。记法：写 lo = mid 就配向上取整，写 lo = mid + 1 就配向下取整——上一课的模板全用 mid + 1 / mid - 1，所以那边不用管取整方向，两套别混抄。"
+  }
+]'></div>
+
+  <h2>check 不能太慢</h2>
+
+  <p>二分只查 <span class="math-inline">O(\log(\text{答案范围}))</span> 次，但每次 check 的代价要乘上去。</p>
+
+  <table>
+    <thead>
+      <tr><th>答案最大可能</th><th>check 调用次数</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><span class="math-inline">10^3</span></td><td>9 次</td></tr>
+      <tr><td><span class="math-inline">10^6</span></td><td>20 次</td></tr>
+      <tr><td><span class="math-inline">10^9</span></td><td>30 次</td></tr>
+      <tr><td><span class="math-inline">10^{12}</span></td><td>40 次</td></tr>
+    </tbody>
+  </table>
+
+  <p>（本机实测，与 <span class="math-inline">\log_2</span> 完全对上：<span class="math-inline">\log_2 10^9 = 29.9</span>。）</p>
+
+  <p>这个表是二分答案最好用的地方：<b>答案范围从一千涨到一万亿，check 次数只从 9 涨到 40。</b> 所以答案范围大得离谱不用怕。</p>
+
+  <p>真正的风险在 check 自己。<span class="math-inline">n</span> 个元素、答案范围 <span class="math-inline">10^9</span>，总复杂度是 <span class="math-inline">O(n \log 10^9) = O(30n)</span>——很宽裕。但如果 check 里塞了个排序：</p>
+
+  <table>
+    <thead>
+      <tr><th>check 的复杂度</th><th>20 次 check 的总耗时（<span class="math-inline">n = 200000</span>）</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><span class="math-inline">O(n)</span></td><td>0.0978 秒</td></tr>
+      <tr><td><span class="math-inline">O(n \log n)</span></td><td>0.2512 秒</td></tr>
+    </tbody>
+  </table>
+
+  <p>（本机实测，只多了一次 <code>sorted</code> 就慢 2.6 倍。）</p>
+
+  <p>一次 <code>sorted</code> 只是 2.6 倍，还能忍。但 check 里如果套了个 <span class="math-inline">O(n^2)</span> 的双重循环，就是 <span class="math-inline">\times 200000</span>——直接超时。<b>规矩：<code>check</code> 里最多一次 <span class="math-inline">O(n)</span> 扫描，或者一次 <span class="math-inline">O(n \log n)</span> 排序加一次扫描。</b> 想放两个循环，先想想能不能合并成一个。</p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "二分答案的总复杂度是怎么算的？",
+    "opts": [
+      "check 复杂度乘以二分次数，次数与答案范围成对数",
+      "check 复杂度加上二分次数，两者互相不影响",
+      "只看 check 复杂度，二分次数小得可以忽略",
+      "只看二分次数，因为 check 每次都是常数时间"
+    ],
+    "ans": 0,
+    "why": "二分次数只跟答案范围的对数有关：范围从 10^3 涨到 10^12，次数只从 9 涨到 40，所以范围大不用怕。风险全在 check 里——n 个元素、范围 10^9 时总复杂度是 O(30n)，很宽裕；但 check 里塞一次 sorted 就从 0.0978 秒涨到 0.2512 秒（慢了 2.6 倍），塞进 O(n^2) 的双重循环就是再乘 n，直接超时。"
+  }
+]'></div>
+
+  <h2>二分答案与二分查找</h2>
+
+  <p>两者都叫二分，形状也像，但问的东西不一样：</p>
+
+  <ul>
+    <li><b>二分查找（第 14 课）</b>：在一个<b>已经有序的数组</b>里找一个值的位置。每次比的是「中间这个数和目标谁大」。</li>
+    <li><b>二分答案（这一课）</b>：在一个<b>答案的取值范围</b>里找最优值。每次比的是「这个猜测值行不行」。</li>
+  </ul>
+
+  <table>
+    <thead>
+      <tr><th></th><th>二分查找</th><th>二分答案</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>二分的对象</td><td>数组的下标</td><td>答案的取值</td></tr>
+      <tr><td>判断依据</td><td><code>arr[mid]</code> 与目标比大小</td><td><code>check(mid)</code> 是真是假</td></tr>
+      <tr><td>前提</td><td>数组有序</td><td><code>check</code> 单调</td></tr>
+      <tr><td>循环里最贵的一步</td><td>一次比较</td><td>一次 check</td></tr>
+    </tbody>
+  </table>
+
+  <p>一句更直白的话：<b>二分查找的「有序」是题目给你的，二分答案的「单调」是你要去证的。</b></p>
+
+  <div class="quiz" data-quiz='[
+  {
+    "q": "二分答案与二分查找最大的差别在哪？",
+    "opts": [
+      "二分查找的对象是下标，二分答案的对象是答案取值",
+      "二分查找只能查整数，二分答案还能查浮点数",
+      "二分查找用 while 循环，二分答案必须用递归",
+      "二分查找的复杂度是 log，二分答案不是 log"
+    ],
+    "ans": 0,
+    "why": "二分查找在一个已经有序的数组里找一个值的位置，比的是 arr[mid] 与目标谁大，前提「有序」是题目给的；二分答案在一个答案的取值范围里找最优值，比的是 check(mid) 是真是假，前提「单调」是你要去证的。两者都是 O(log) 级别，循环结构也像，但问的东西不一样。"
+  }
+]'></div>
+
+  <h2>这一课用到的判断</h2>
+
+  <ul>
+    <li><b>二分答案的第一步是转换</b>：把「求最大/最小」换成「这个值行不行」。判定问题一般比最优化问题好写得多。</li>
+    <li><b><code>check</code> 必须单调</b>：随参数从小到大，判定结果只能是从真到假一趟，不能反复。</li>
+    <li><b>单调性不成立时二分不会报错，只会给出一个乱跳的答案</b>：实测同一段代码、同一个条件，初始区间换成 <span class="math-inline">[1,16]</span> 答案就从 2 变成 8，而两个答案<b>都是可行的</b>，你验不出来。</li>
+    <li><b><code>check</code> 里最多一次 <span class="math-inline">O(n)</span> 扫描</b>（或一次排序加一次扫描）；塞进 <span class="math-inline">O(n^2)</span> 就是 <span class="math-inline">\times n</span> 的灾难。</li>
+    <li><b>二分次数只跟答案范围的对数有关</b>：范围从 <span class="math-inline">10^3</span> 涨到 <span class="math-inline">10^{12}</span>，次数只从 9 涨到 40。范围大不用怕，check 慢才可怕。</li>
+    <li><b>上界宁可取大</b>：答案最大可能是多少，就往那儿取（木头全长、河长）。取小了不报错，只给偏小的答案。</li>
+    <li><b>收缩写 <code>lo = mid</code> 就要配向上取整 <code>(lo + hi + 1) // 2</code></b>；写 <code>lo = mid + 1</code> 配向下取整。两套模板别混抄，混了要么死循环要么差一。</li>
+    <li><b>别把二分查找的模板直接搬过来</b>：那边二分的是下标、判断靠比大小，这边二分的是答案、判断靠 <code>check</code>。</li>
+  </ul>
+
+  <div class="lesson-practice">
+    <div class="lesson-practice__head">
+      <span class="lesson-practice__level">上手做</span>
+      <span class="lesson-practice__title">两道经典题加一次对拍</span>
+    </div>
+
+      <p>这一课的动手部分落在 lab 里（任务与断言见 <a href="../lab/0022-binary-search-on-answer/">lab/0022-binary-search-on-answer/</a>，做完对照 <a href="../lab/solutions/">lab/solutions/</a>）。要做的是四件事。</p>
+
+      <ol>
+        <li>做<b>木材加工</b>：写 <code>check_wood</code> 与二分主体，用课件里 <code>[10, 10, 10]</code> 那组数据确认交回 10 与 4。</li>
+        <li>做<b>跳石头</b>：写 <code>check_jump</code> 与二分主体，用河长 25、石头 <code>[2, 11, 14, 17, 21]</code>、搬走 2 块这组数据确认交回 4；再自己造一组数据，把搬走的块数从 0 试到石头总数。</li>
+        <li>做<b>对拍</b>：在小数据上（木头不超过 60、答案不超过 60）用暴力枚举求出真正的最大值，和你二分出来的答案逐组对比，至少跑 200 组随机数据。</li>
+        <li><b>故意破坏单调性</b>：把 <code>check</code> 改成「长度是偶数且不超过 8」这种非单调条件，跑一遍二分，把交回的答案与枚举出的 8 放在一起，记下「换初始区间答案就变」这个现象。</li>
+      </ol>
+  </div>
+
+  <ul class="lesson-resources">
+    <li><a href="https://www.luogu.com.cn/problem/P2678">洛谷 P2678 跳石头</a><span class="lesson-resources__meta">二分答案的经典题，本课第二节的题目</span></li>
+    <li><a href="https://oi-wiki.org/basic/binary/">OI Wiki · 二分</a><span class="lesson-resources__meta">二分查找与二分答案的统一下界/上界写法</span></li>
+    <li>《算法导论（第 3 版）》第 2 章 2.3 分治法的设计<span class="lesson-resources__meta">书 · 二分的思想与循环不变式</span></li>
+    <li><a href="0014-binary-search.html">第 14 课：二分：每次砍掉一半</a><span class="lesson-resources__meta">上一课二分的是数组下标，这一课二分的是答案取值</span></li>
+  </ul>
+
+  <!-- ── 提问提示：固定写法，别删 ── -->
+
+  <div class="lesson-ask">
+    <b>没看懂？随时问</b>
+    把看不懂的段落（或报错）原样复制回会话，说一句哪里不懂就行，我只解释这一段，不打断你的进度。
+  </div>
+
+  <!-- ── 上/下节课指针由渲染器按 curriculum.yaml 的 nodes 顺序算（第一课无 --prev、最后一课无 --next） ── -->
+
+  <nav class="lesson-nav" aria-label="上一课 / 下一课">
+    <a class="lesson-nav__link lesson-nav__link--prev" href="0021-dfs-bfs-search.html">
+      <span class="lesson-nav__dir">上节课</span>
+      <span class="lesson-nav__title">搜索：把图走一遍</span>
+    </a>
+    <a class="lesson-nav__link lesson-nav__link--next" href="0023-greedy-and-intervals.html">
+      <span class="lesson-nav__dir">下节课</span>
+      <span class="lesson-nav__title">贪心：每一步都选当前最好</span>
+    </a>
+  </nav>
+
+  <footer class="lesson-footer">
+    StudyMate · 0022 二分答案：猜一个再验一遍 · 本地学习工作区
+  </footer>
+
+</article>
+
+<script src="../../../assets/sayo/sayo.js"></script>
+<link rel="stylesheet" href="../../../assets/katex/katex.min.css">
+<script src="../../../assets/katex/katex.min.js" defer></script>
+<script src="../../../assets/lesson-math.js" defer></script>
+<script src="../assets/quiz.js" defer></script>
+<script src="../assets/lesson-toc.js" defer></script>
+<script>LearnTheme.wire(document.getElementById('lesson-theme-checkbox'));</script>
+</body>
+</html>

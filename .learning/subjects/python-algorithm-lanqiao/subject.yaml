@@ -1,0 +1,5 @@
+name: Python 算法与蓝桥杯
+slug: python-algorithm-lanqiao
+goal: 以 Python 打蓝桥杯为检验手段，把数据结构与算法的原理、复杂度与实现真正练到"能讲给别人"的深度；起点为 Python 只会最基础部分、数据结构与算法零基础；配套项目为 AI 刷题助手（题目文本 → 大模型 API 分析 → 推荐算法 → 对拍验证）；每周可投入 10 小时以上；不学 C/C++ 竞赛写法与 Linux/交互式题目。
+created_at: "2026-10-05"
+status: 进行中
